@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#0b1026">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <title>Scorched Earth Revival</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="app">
+    <div id="stage">
+      <canvas id="game" aria-label="Spielfeld"></canvas>
+    </div>
+
+    <div id="hud">
+      <div class="group" id="angle-group">
+        <div class="label">Winkel</div>
+        <div class="row">
+          <button class="step" data-target="angle" data-delta="-1" aria-label="Winkel kleiner">−</button>
+          <output id="angle-val">45°</output>
+          <button class="step" data-target="angle" data-delta="1" aria-label="Winkel größer">+</button>
+        </div>
+        <input id="angle" type="range" min="0" max="180" value="45">
+      </div>
+
+      <div class="center">
+        <div id="turn-label">Spieler 1</div>
+        <button id="fire">FEUER</button>
+      </div>
+
+      <div class="group" id="power-group">
+        <div class="label">Kraft</div>
+        <div class="row">
+          <button class="step" data-target="power" data-delta="-1" aria-label="Kraft kleiner">−</button>
+          <output id="power-val">60</output>
+          <button class="step" data-target="power" data-delta="1" aria-label="Kraft größer">+</button>
+        </div>
+        <input id="power" type="range" min="5" max="100" value="60">
+      </div>
+    </div>
+
+    <div id="overlay">
+      <div class="card">
+        <h1 id="ov-title">Scorched Earth Revival</h1>
+        <p id="ov-text">Zwei Spieler, ein Tablet. Wer zuerst trifft, gewinnt die Runde.</p>
+        <button id="ov-button">Spiel starten</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="game.js"></script>
+</body>
+</html>
