@@ -9,6 +9,7 @@ Umgesetzt als Web-App (HTML5 Canvas) und als PWA installierbar.
 
 - Zwei Panzer stehen auf zufällig erzeugtem Gelände und schießen abwechselnd.
 - Pro Schuss stellst du **Winkel** und **Kraft** ein und drückst **FEUER**.
+- Die **Zielhilfe** (Knopf unter FEUER, ein/aus) zeigt den Anfang der Flugbahn. Den Rest musst du selbst einschätzen.
 - Der **Wind** (oben in der Mitte) lenkt die Granate ab und ändert sich nach jedem Zug.
 - Einschläge reißen Krater ins Gelände, Panzer rutschen nach.
 - Ein Volltreffer macht 70 Schaden, jeder Panzer hat 100 Lebenspunkte. Wer zuerst nicht mehr kann, verliert die Runde.
@@ -17,6 +18,7 @@ Umgesetzt als Web-App (HTML5 Canvas) und als PWA installierbar.
 
 | Aktion | Touch | Tastatur |
 | --- | --- | --- |
+| Zielen | Finger auf dem Spielfeld ziehen: Richtung = Winkel, Abstand = Kraft | – |
 | Winkel ändern | Regler oder −/+ (gedrückt halten wiederholt) | ← / → |
 | Kraft ändern | Regler oder −/+ | ↑ / ↓ |
 | Schießen | FEUER | Leertaste / Enter |

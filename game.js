@@ -49,6 +49,9 @@
   let scores = [0, 0];
   let roundResult = null;
   let started = false;
+  let aimGuide = true;       // Zielhilfe: zeigt den Anfang der Flugbahn
+  let drag = null;           // {x, y} während des Ziehens auf dem Spielfeld
+  try { aimGuide = localStorage.getItem('aimGuide') !== 'off'; } catch (e) { /* egal */ }
 
   const rand = (a, b) => a + Math.random() * (b - a);
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -323,6 +326,27 @@
     startTurn();
   }
 
+  // ---------- Zielhilfe ----------
+  // Zeigt nur den ersten Teil der Flugbahn, damit Einschätzen von Wind und Gelände Teil des Spiels bleibt.
+  function guidePoints() {
+    const t = tanks[current];
+    const a = (t.angle * Math.PI) / 180;
+    const v = t.power * POWER_TO_V;
+    let x = t.x + Math.cos(a) * 24, y = t.y - 14 - Math.sin(a) * 24;
+    let vx = Math.cos(a) * v, vy = -Math.sin(a) * v;
+    const h = 1 / 120;
+    const pts = [];
+    for (let i = 0; i < 90; i++) {           // 0,75 s Flugzeit
+      vx += wind * h;
+      vy += GRAV * h;
+      x += vx * h;
+      y += vy * h;
+      if (x < 0 || x > W || y > H || isSolid(x, y)) break;
+      if (i % 6 === 5) pts.push({ x, y });
+    }
+    return pts;
+  }
+
   // ---------- Update ----------
   function update(dt) {
     if (state === 'flight' && projectile) stepProjectile(dt);
@@ -429,6 +453,32 @@
 
     tanks.forEach((t, i) => drawTank(t, state === 'aim' && i === current));
 
+    if (state === 'aim' && tanks.length) {
+      if (aimGuide) {
+        guidePoints().forEach((p, i, arr) => {
+          ctx.fillStyle = 'rgba(255,255,255,' + (0.85 - (i / arr.length) * 0.6) + ')';
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, 3, 0, Math.PI * 2);
+          ctx.fill();
+        });
+      }
+      if (drag) {
+        const t = tanks[current];
+        ctx.strokeStyle = 'rgba(255,255,255,.55)';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([6, 6]);
+        ctx.beginPath();
+        ctx.moveTo(t.x, t.y - 14);
+        ctx.lineTo(drag.x, drag.y);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.fillStyle = 'rgba(255,255,255,.8)';
+        ctx.beginPath();
+        ctx.arc(drag.x, drag.y, 9, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
     if (projectile) {
       ctx.fillStyle = 'rgba(255,220,150,.35)';
       projectile.trail.forEach((p, i) => {
@@ -532,6 +582,49 @@
     });
     ['pointerup', 'pointerleave', 'pointercancel'].forEach((ev) => btn.addEventListener(ev, stop));
   });
+
+  // Drag-to-aim: Finger auf dem Spielfeld ziehen. Richtung = Winkel, Abstand = Kraft.
+  // Abgefeuert wird bewusst nur über den FEUER-Knopf.
+  const DRAG_PX_PER_POWER = 3;   // 300 Spielfeld-Pixel Abstand = Kraft 100
+
+  function toField(e) {
+    const r = canvas.getBoundingClientRect();
+    return { x: ((e.clientX - r.left) * W) / r.width, y: ((e.clientY - r.top) * H) / r.height };
+  }
+
+  function applyDrag(p) {
+    const t = tanks[current];
+    const dx = p.x - t.x, dy = t.y - 14 - p.y;
+    let deg = (Math.atan2(dy, dx) * 180) / Math.PI;
+    if (dy < 0) deg = dx >= 0 ? 0 : 180;      // unterhalb des Panzers: flach nach links/rechts
+    setValue('angle', Math.round(clamp(deg, 0, 180)));
+    setValue('power', Math.round(Math.hypot(dx, dy) / DRAG_PX_PER_POWER));
+    drag = p;
+  }
+
+  canvas.addEventListener('pointerdown', (e) => {
+    if (state !== 'aim') return;
+    initAudio();
+    e.preventDefault();
+    canvas.setPointerCapture(e.pointerId);
+    applyDrag(toField(e));
+  });
+  canvas.addEventListener('pointermove', (e) => {
+    if (drag && state === 'aim') applyDrag(toField(e));
+  });
+  ['pointerup', 'pointercancel'].forEach((ev) => canvas.addEventListener(ev, () => (drag = null)));
+
+  // Zielhilfe ein/aus
+  const guideBtn = el('guide');
+  function syncGuideBtn() {
+    guideBtn.textContent = 'Zielhilfe: ' + (aimGuide ? 'an' : 'aus');
+  }
+  guideBtn.addEventListener('click', () => {
+    aimGuide = !aimGuide;
+    try { localStorage.setItem('aimGuide', aimGuide ? 'on' : 'off'); } catch (e) { /* egal */ }
+    syncGuideBtn();
+  });
+  syncGuideBtn();
 
   window.addEventListener('keydown', (e) => {
     if (state !== 'aim') return;

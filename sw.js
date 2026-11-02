@@ -1,6 +1,6 @@
 // Einfacher Service Worker: Spiel nach dem ersten Laden offline spielbar.
 // Bei Änderungen an Dateien die Version erhöhen, damit der Cache erneuert wird.
-const CACHE = 'scorched-earth-revival-v1';
+const CACHE = 'scorched-earth-revival-v2';
 const FILES = [
   './',
   './index.html',

@@ -83,6 +83,12 @@ button.step:active { background: #2d3a78; }
   font-size: 22px; font-weight: 800; letter-spacing: .06em;
 }
 #fire:active { filter: brightness(.88); }
+button.small {
+  height: 30px; padding: 0 12px;
+  border: 0; border-radius: 10px;
+  background: var(--panel-2); color: var(--muted);
+  font-size: 13px; font-weight: 600;
+}
 #fire:disabled, button.step:disabled { opacity: .4; }
 
 #overlay {
