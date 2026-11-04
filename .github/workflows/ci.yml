@@ -24,14 +24,13 @@ jobs:
       - run: npm test
       - run: npm run build
       - uses: actions/upload-pages-artifact@v3
-        if: github.ref == 'refs/heads/main' && vars.PAGES_ENABLED == 'true'
+        if: github.ref == 'refs/heads/main'
         with:
           path: dist
 
   deploy:
-    # Needs GitHub Pages enabled with source "GitHub Actions" (Settings → Pages)
-    # and the repository variable PAGES_ENABLED=true (Settings → Secrets and variables → Actions → Variables).
-    if: github.ref == 'refs/heads/main' && vars.PAGES_ENABLED == 'true'
+    # Needs GitHub Pages with source "GitHub Actions" (Settings → Pages).
+    if: github.ref == 'refs/heads/main'
     needs: test
     runs-on: ubuntu-latest
     environment:
