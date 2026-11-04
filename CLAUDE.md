@@ -2,6 +2,10 @@
 
 Non-commercial Android fan game inspired by Dynatech (1992). Owner: Rocco (GitHub poundah-bit). Talk to him in German; code, identifiers and comments in English; all player-facing text in German.
 
+## Read first
+
+- `docs/konzept.md` – the full game concept (German): original game analysis, goods/facilities/ships, planets, credit, storage, touch UI plan, roadmap, legal notes, and the decisions taken while building Phase 0. When concept and `src/data/*.json` disagree, the data wins.
+
 ## Project rules
 
 - No assets, code, texts or names from the original Dynatech. Planets, companies and values are our own design.

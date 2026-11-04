@@ -36,6 +36,8 @@ npm run dev         # Beobachtungsseite im Browser
 npm run build       # Build nach dist/
 ```
 
+Das vollständige Spielkonzept steht in [docs/konzept.md](docs/konzept.md).
+
 ## Architektur in einem Satz
 
 Der Wirtschaftskern (`src/sim/`) ist reines, deterministisches TypeScript ohne DOM: `step(world)` rückt einen Spieltag vor, und alle Spielzüge laufen über die Funktionen in `actions.ts` – für den Spieler genauso wie für die KI.
