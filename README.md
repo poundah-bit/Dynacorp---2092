@@ -6,6 +6,8 @@ Im Jahr 2092 sind die Rohstoffe der Erde erschöpft. Als Unternehmer kaufst du b
 
 > Fanprojekt ohne Gewinnabsicht. Kein Code, keine Grafik, keine Musik und keine Texte des Originals. Alle Planeten, Firmen und Werte sind neu entworfen und nur am Original orientiert.
 
+**Live:** [poundah-bit.github.io/Dynacorp---2092](https://poundah-bit.github.io/Dynacorp---2092/) – Beobachtungsseite des Wirtschaftskerns, wird bei jedem Push auf `main` neu gebaut.
+
 ## Stand: Phase 0 – Wirtschaftskern
 
 | Phase | Inhalt | Status |
