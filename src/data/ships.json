@@ -1,0 +1,21 @@
+[
+  { "id": "tank-a", "name": "Tanker A", "cargo": "tank", "price": 210000, "capacity": 16000, "speed": 65, "maintenance": 5, "operation": 30 },
+  { "id": "tank-b", "name": "Tanker B", "cargo": "tank", "price": 280000, "capacity": 28000, "speed": 52, "maintenance": 7, "operation": 40 },
+  { "id": "tank-c", "name": "Tanker C", "cargo": "tank", "price": 340000, "capacity": 45000, "speed": 40, "maintenance": 15, "operation": 70 },
+  { "id": "tank-d", "name": "Tanker D", "cargo": "tank", "price": 500000, "capacity": 65000, "speed": 35, "maintenance": 10, "operation": 80 },
+  { "id": "tank-e", "name": "Tanker E", "cargo": "tank", "price": 640000, "capacity": 100000, "speed": 30, "maintenance": 25, "operation": 160 },
+  { "id": "bulk-a", "name": "Schüttgut A", "cargo": "bulk", "price": 220000, "capacity": 14000, "speed": 70, "maintenance": 6, "operation": 40 },
+  { "id": "bulk-b", "name": "Schüttgut B", "cargo": "bulk", "price": 270000, "capacity": 25000, "speed": 57, "maintenance": 10, "operation": 80 },
+  { "id": "bulk-c", "name": "Schüttgut C", "cargo": "bulk", "price": 310000, "capacity": 38000, "speed": 45, "maintenance": 15, "operation": 140 },
+  { "id": "bulk-d", "name": "Schüttgut D", "cargo": "bulk", "price": 440000, "capacity": 55000, "speed": 40, "maintenance": 20, "operation": 170 },
+  { "id": "bulk-e", "name": "Schüttgut E", "cargo": "bulk", "price": 600000, "capacity": 80000, "speed": 38, "maintenance": 30, "operation": 230 },
+  { "id": "piece-a", "name": "Stückgut A", "cargo": "piece", "price": 230000, "capacity": 15000, "speed": 80, "maintenance": 2, "operation": 50 },
+  { "id": "piece-b", "name": "Stückgut B", "cargo": "piece", "price": 290000, "capacity": 26000, "speed": 67, "maintenance": 6, "operation": 150 },
+  { "id": "piece-c", "name": "Stückgut C", "cargo": "piece", "price": 350000, "capacity": 38000, "speed": 57, "maintenance": 12, "operation": 110 },
+  { "id": "piece-d", "name": "Stückgut D", "cargo": "piece", "price": 450000, "capacity": 55000, "speed": 48, "maintenance": 15, "operation": 150 },
+  { "id": "piece-e", "name": "Stückgut E", "cargo": "piece", "price": 650000, "capacity": 80000, "speed": 45, "maintenance": 30, "operation": 210 },
+  { "id": "live-a", "name": "Viehfrachter A", "cargo": "live", "price": 280000, "capacity": 25000, "speed": 95, "maintenance": 10, "operation": 100 },
+  { "id": "live-b", "name": "Viehfrachter B", "cargo": "live", "price": 500000, "capacity": 60000, "speed": 70, "maintenance": 20, "operation": 150 },
+  { "id": "cooled-a", "name": "Kühlfrachter A", "cargo": "cooled", "price": 320000, "capacity": 25000, "speed": 100, "maintenance": 30, "operation": 200 },
+  { "id": "cooled-b", "name": "Kühlfrachter B", "cargo": "cooled", "price": 650000, "capacity": 60000, "speed": 80, "maintenance": 30, "operation": 300 }
+]

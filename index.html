@@ -1,60 +1,44 @@
 <!doctype html>
 <html lang="de">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-  <meta name="theme-color" content="#0b1026">
-  <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <title>Scorched Earth Revival</title>
-  <link rel="manifest" href="manifest.json">
-  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
-  <link rel="apple-touch-icon" href="icons/icon-192.png">
-  <link rel="stylesheet" href="style.css">
-</head>
-<body>
-  <div id="app">
-    <div id="stage">
-      <canvas id="game" aria-label="Spielfeld"></canvas>
-    </div>
-
-    <div id="hud">
-      <div class="group" id="angle-group">
-        <div class="label">Winkel</div>
-        <div class="row">
-          <button class="step" data-target="angle" data-delta="-1" aria-label="Winkel kleiner">−</button>
-          <output id="angle-val">45°</output>
-          <button class="step" data-target="angle" data-delta="1" aria-label="Winkel größer">+</button>
-        </div>
-        <input id="angle" type="range" min="0" max="180" value="45">
-      </div>
-
-      <div class="center">
-        <div id="turn-label">Spieler 1</div>
-        <button id="fire">FEUER</button>
-        <button id="guide" class="small">Zielhilfe: an</button>
-      </div>
-
-      <div class="group" id="power-group">
-        <div class="label">Kraft</div>
-        <div class="row">
-          <button class="step" data-target="power" data-delta="-1" aria-label="Kraft kleiner">−</button>
-          <output id="power-val">60</output>
-          <button class="step" data-target="power" data-delta="1" aria-label="Kraft größer">+</button>
-        </div>
-        <input id="power" type="range" min="5" max="100" value="60">
-      </div>
-    </div>
-
-    <div id="overlay">
-      <div class="card">
-        <h1 id="ov-title">Scorched Earth Revival</h1>
-        <p id="ov-text">Zwei Spieler, ein Tablet. Wer zuerst trifft, gewinnt die Runde.</p>
-        <button id="ov-button">Spiel starten</button>
-      </div>
-    </div>
-  </div>
-
-  <script src="game.js"></script>
-</body>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#0b1020" />
+    <title>Dynacorp 2092 – Wirtschaftskern</title>
+    <link rel="stylesheet" href="./src/ui/debug.css" />
+  </head>
+  <body>
+    <header>
+      <h1>Dynacorp 2092</h1>
+      <p class="sub">Phase 0 · Wirtschaftskern im Beobachtungsmodus – 20 KI-Firmen spielen allein</p>
+    </header>
+    <section class="controls">
+      <span id="day">Tag 0</span>
+      <button data-days="1">+1 Tag</button>
+      <button data-days="10">+10</button>
+      <button data-days="50">+50</button>
+      <button id="auto">Auto ▶</button>
+      <button id="reset">Neu</button>
+    </section>
+    <section id="status" class="status"></section>
+    <main>
+      <article>
+        <h2>Rangliste</h2>
+        <table id="ranking"></table>
+      </article>
+      <article>
+        <h2>Kurse</h2>
+        <table id="prices"></table>
+      </article>
+      <article>
+        <h2>Anlagen</h2>
+        <table id="facilities"></table>
+      </article>
+      <article>
+        <h2>Ticker</h2>
+        <ol id="ticker"></ol>
+      </article>
+    </main>
+    <script type="module" src="./src/ui/debug.ts"></script>
+  </body>
 </html>

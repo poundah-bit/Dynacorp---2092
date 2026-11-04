@@ -1,0 +1,23 @@
+[
+  { "id": "terra", "name": "Terra", "x": 0, "y": 0, "facility": null },
+  { "id": "vesta-nova", "name": "Vesta Nova", "x": 180, "y": -120, "facility": "oilwell" },
+  { "id": "aquilon", "name": "Aquilon", "x": 150, "y": 190, "facility": "waterstation" },
+  { "id": "ferrox", "name": "Ferrox", "x": -120, "y": -260, "facility": "mine" },
+  { "id": "halcyon", "name": "Halcyon", "x": 40, "y": 330, "facility": "chemplant" },
+  { "id": "kharon", "name": "Kharon", "x": -260, "y": 210, "facility": "oilwell" },
+  { "id": "tethys-prime", "name": "Tethys Prime", "x": -330, "y": -140, "facility": "waterstation" },
+  { "id": "sulcis", "name": "Sulcis", "x": -380, "y": 40, "facility": "plasticplant" },
+  { "id": "pyros", "name": "Pyros", "x": 260, "y": -300, "facility": "refinery" },
+  { "id": "vulkan-rho", "name": "Vulkan Rho", "x": -60, "y": -420, "facility": "steelworks" },
+  { "id": "liora", "name": "Liora", "x": -200, "y": 400, "facility": "plantation" },
+  { "id": "magnar", "name": "Magnar", "x": 420, "y": 160, "facility": "mine" },
+  { "id": "polymer-ix", "name": "Polymer IX", "x": -250, "y": -380, "facility": "factory" },
+  { "id": "ceres-minor", "name": "Ceres Minor", "x": 320, "y": 340, "facility": "agrofarm" },
+  { "id": "mirabel", "name": "Mirabel", "x": 480, "y": -80, "facility": "ranch" },
+  { "id": "arkadia", "name": "Arkadia", "x": -480, "y": 300, "facility": "foodplant" },
+  { "id": "kolossos", "name": "Kolossos", "x": 380, "y": -420, "facility": "machineworks" },
+  { "id": "seidra", "name": "Seidra", "x": -520, "y": -260, "facility": "textilemill" },
+  { "id": "asklepios", "name": "Asklepios", "x": -600, "y": 80, "facility": "pharma" },
+  { "id": "ostara", "name": "Ostara", "x": 560, "y": 260, "facility": "brewery" },
+  { "id": "automa", "name": "Automa", "x": 620, "y": -300, "facility": "robotworks" }
+]

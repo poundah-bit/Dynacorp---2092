@@ -1,54 +1,43 @@
-# Scorched Earth Revival
+# Dynacorp 2092
 
-Private test project with Claude Code of the classic game. No commercial use!
+Ein nichtkommerzielles Weltraum-Wirtschaftsspiel für Android, inspiriert von **Dynatech (1992)** von eleven Software / Magic Bytes.
 
-Eigene Version des Artillerie-Klassikers für Android-Tablets: zwei Spieler, ein Gerät, zerstörbares Gelände.
-Umgesetzt als Web-App (HTML5 Canvas) und als PWA installierbar.
+Im Jahr 2092 sind die Rohstoffe der Erde erschöpft. Als Unternehmer kaufst du bei DYNATECH Förderanlagen, Fabriken und Frachter, baust Produktionsketten über 20 Kolonien auf und konkurrierst mit 20 KI-Firmen um Aufträge an der Frachtbörse – in Echtzeit, ohne Kampf, mit Kooperation als Kern.
 
-## Spielprinzip
+> Fanprojekt ohne Gewinnabsicht. Kein Code, keine Grafik, keine Musik und keine Texte des Originals. Alle Planeten, Firmen und Werte sind neu entworfen und nur am Original orientiert.
 
-- Zwei Panzer stehen auf zufällig erzeugtem Gelände und schießen abwechselnd.
-- Pro Schuss stellst du **Winkel** und **Kraft** ein und drückst **FEUER**.
-- Die **Zielhilfe** (Knopf unter FEUER, ein/aus) zeigt den Anfang der Flugbahn. Den Rest musst du selbst einschätzen.
-- Der **Wind** (oben in der Mitte) lenkt die Granate ab und ändert sich nach jedem Zug.
-- Einschläge reißen Krater ins Gelände, Panzer rutschen nach.
-- Ein Volltreffer macht 70 Schaden, jeder Panzer hat 100 Lebenspunkte. Wer zuerst nicht mehr kann, verliert die Runde.
+## Stand: Phase 0 – Wirtschaftskern
 
-## Steuerung
-
-| Aktion | Touch | Tastatur |
+| Phase | Inhalt | Status |
 | --- | --- | --- |
-| Zielen | Finger auf dem Spielfeld ziehen: Richtung = Winkel, Abstand = Kraft | – |
-| Winkel ändern | Regler oder −/+ (gedrückt halten wiederholt) | ← / → |
-| Kraft ändern | Regler oder −/+ | ↑ / ↓ |
-| Schießen | FEUER | Leertaste / Enter |
+| 0 | Spieldaten als JSON, Wirtschaftskern ohne Grafik, Tests | ✅ fertig |
+| 1 | Spielbarer Prototyp: ein Spieler, schlichte Listen-Oberfläche | offen |
+| 2 | Volle Wirtschaft und Balancing | offen |
+| 3 | Touch-Oberfläche (Tabs, Sternkarte, Tutorial) | offen |
+| 4 | Veröffentlichung als PWA und APK | offen |
 
-## Lokal ausprobieren
+Was Phase 0 enthält:
+
+- **Daten** (`src/data/`): 18 Waren, 17 Anlagen, 19 Frachter, 21 Welten, 15 Lager, Kredit- und Balancing-Parameter, 20 KI-Firmen.
+- **Simulation** (`src/sim/`): Produktion mit Lagergrenzen und Verschleiß, Markt nach Angebot und Nachfrage, Warennachfragen und Transportaufträge (eigen und öffentlich), Flotte mit Flugzeiten und Zustand, Bank mit Verzug und Pfändung, Gravo-Stürme, Firmenindex, Bankrott und Wirtschaftskollaps, KI-Firmen.
+- **Tests** (`tests/`): Datenprüfung, Handbuch-Ablauf, Aufträge, Bank, Determinismus und das Balancing-Tor (200 Tage ohne Kollaps auf allen Schwierigkeitsgraden).
+- **Beobachtungsseite** (`index.html`): lässt die 20 KI-Firmen allein spielen und zeigt Rangliste, Kurse, Anlagen und Ticker.
+
+## Loslegen
 
 ```bash
-python3 -m http.server 8000
+npm install
+npm test            # alle Tests
+npm run sim         # Headless-Lauf über 200 Tage mit Balancing-Report
+npm run sim -- 300 7 hard   # Tage, Seed, Schwierigkeit
+npm run dev         # Beobachtungsseite im Browser
+npm run build       # Build nach dist/
 ```
 
-Dann `http://localhost:8000` im Browser öffnen.
+## Architektur in einem Satz
 
-## Auf dem Tablet spielen (GitHub Pages)
+Der Wirtschaftskern (`src/sim/`) ist reines, deterministisches TypeScript ohne DOM: `step(world)` rückt einen Spieltag vor, und alle Spielzüge laufen über die Funktionen in `actions.ts` – für den Spieler genauso wie für die KI.
 
-1. Im Repo auf GitHub: **Settings → Pages**.
-2. Bei „Build and deployment" als Source **Deploy from a branch** wählen, Branch `main`, Ordner `/ (root)`, speichern.
-3. Nach ca. einer Minute ist das Spiel unter `https://<dein-user>.github.io/scorched-earth-revival/` erreichbar.
-4. Auf dem Android-Tablet in Chrome öffnen und über das Menü **„App installieren"** bzw. **„Zum Startbildschirm hinzufügen"** wählen. Danach startet es im Vollbild und läuft nach dem ersten Laden auch offline.
+## Lizenz
 
-Nach Änderungen am Spiel in `sw.js` die Zahl bei `CACHE` erhöhen (z. B. `v2`), damit das Tablet die neue Version lädt.
-
-## Projektstruktur
-
-- `index.html`, `style.css` – Oberfläche und Steuerleiste
-- `game.js` – Spiellogik (Gelände, Physik, Runden)
-- `manifest.json`, `sw.js`, `icons/` – PWA
-
-## Mögliche nächste Schritte
-
-- Waffen und Waffenshop mit Geld zwischen den Runden
-- Computergegner
-- Mehr als zwei Spieler
-- Fallschaden, Schutzschilde, Fallschirme
+Code unter [MIT](LICENSE). „Dynatech“ ist ein Werk von eleven Software / Magic Bytes; dieses Projekt ist davon inspiriert, aber nicht damit verbunden.

@@ -1,0 +1,22 @@
+[
+  { "name": "Helion Petro", "prefers": ["oilwell", "refinery", "plasticplant"] },
+  { "name": "Aquaterra", "prefers": ["waterstation", "chemplant", "pharma"] },
+  { "name": "Ferrum Konsortium", "prefers": ["mine", "steelworks", "machineworks"] },
+  { "name": "Nova Agrar", "prefers": ["agrofarm", "ranch", "foodplant"] },
+  { "name": "Orbit Logistik", "prefers": ["oilwell", "waterstation", "mine"] },
+  { "name": "Kepler Chemie", "prefers": ["refinery", "chemplant", "pharma"] },
+  { "name": "Sternwerk AG", "prefers": ["steelworks", "robotworks", "machineworks"] },
+  { "name": "Polaris Textil", "prefers": ["plantation", "textilemill", "plasticplant"] },
+  { "name": "Vega Food", "prefers": ["agrofarm", "brewery", "foodplant"] },
+  { "name": "Titan Mining", "prefers": ["mine", "oilwell", "steelworks"] },
+  { "name": "Lumen Pharma", "prefers": ["pharma", "chemplant", "waterstation"] },
+  { "name": "Cygnus Industries", "prefers": ["factory", "plasticplant", "refinery"] },
+  { "name": "Andromeda Trading", "prefers": ["waterstation", "agrofarm", "brewery"] },
+  { "name": "Ewing Orbital", "prefers": ["oilwell", "refinery", "steelworks"] },
+  { "name": "Rigel Robotics", "prefers": ["robotworks", "steelworks", "plasticplant"] },
+  { "name": "Deneb Getränke", "prefers": ["brewery", "agrofarm", "waterstation"] },
+  { "name": "Orion Bau", "prefers": ["mine", "steelworks", "machineworks"] },
+  { "name": "Selene Farming", "prefers": ["ranch", "plantation", "agrofarm"] },
+  { "name": "Altair Kunststoff", "prefers": ["plasticplant", "factory", "oilwell"] },
+  { "name": "Castor & Pollux", "prefers": ["textilemill", "plantation", "foodplant"] }
+]

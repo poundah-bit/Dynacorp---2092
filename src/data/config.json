@@ -1,0 +1,69 @@
+{
+  "startCapital": 250000,
+  "maxFacilitiesPerCompany": 10,
+  "baseStorage": 30000,
+  "constructionDays": 5,
+  "loadDays": 1,
+  "credit": {
+    "startLimit": 1000000,
+    "limitShareOfCompanyValue": 0.5,
+    "maxLimit": 5000000,
+    "terms": [
+      { "days": 100, "interest": 0.04 },
+      { "days": 200, "interest": 0.05 },
+      { "days": 300, "interest": 0.06 }
+    ],
+    "maxLoans": 2,
+    "lateInterest": 0.02,
+    "seizureAfterDays": 3,
+    "bankruptcyCash": -500000
+  },
+  "difficulties": {
+    "easy": { "interestDelta": -0.01, "creditLimit": 1000000, "aiReaction": 0.35, "deadlineFactor": 1.5, "penaltyRate": 0.05, "scoreMultiplier": 0.5 },
+    "med":  { "interestDelta": 0.0,   "creditLimit": 1000000, "aiReaction": 0.55, "deadlineFactor": 1.2, "penaltyRate": 0.10, "scoreMultiplier": 1.0 },
+    "hard": { "interestDelta": 0.01,  "creditLimit": 1000000, "aiReaction": 0.75, "deadlineFactor": 1.0, "penaltyRate": 0.15, "scoreMultiplier": 1.5 },
+    "prof": { "interestDelta": 0.02,  "creditLimit": 750000,  "aiReaction": 0.95, "deadlineFactor": 0.9, "penaltyRate": 0.20, "scoreMultiplier": 2.0 }
+  },
+  "market": {
+    "minFactor": 0.4,
+    "maxFactor": 2.5,
+    "elasticity": 0.5,
+    "smoothing": 0.1,
+    "minTransportFeePerFePerParsec": 0.004
+  },
+  "orders": {
+    "deadlineExtraDays": 2,
+    "demandExtraDays": 5,
+    "minAmount": 2000,
+    "maxAmount": 15000
+  },
+  "terra": {
+    "demandChancePerGoodPerDay": 0.25,
+    "maxOpenPerGood": 3,
+    "priceBonus": 1.15,
+    "baseDemandChancePerGoodPerDay": 0.15,
+    "baseDemandPriceFactor": 0.85,
+    "demandDeadlineDays": 40,
+    "openOrderExpiryDays": 30
+  },
+  "ships": {
+    "wearPerTravelDay": 0.4,
+    "scrapBelow": 30,
+    "minSpeedFactor": 0.6,
+    "repairCostPerPercent": 0.004
+  },
+  "facilities": {
+    "wearPerDay": 0.15,
+    "repairBelow": 70,
+    "repairCostPerPercent": 0.003
+  },
+  "events": {
+    "outerRingParsec": 550,
+    "gravoStormChancePerDay": 0.03,
+    "gravoStormDamage": [5, 20]
+  },
+  "collapse": {
+    "priceIndexBelow": 0.45,
+    "insolventShare": 0.5
+  }
+}

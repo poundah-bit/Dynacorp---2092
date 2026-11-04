@@ -1,0 +1,20 @@
+[
+  { "id": "oil", "name": "Erdöl", "tier": "raw", "cargo": "tank", "basePrice": 20 },
+  { "id": "water", "name": "Wasser", "tier": "raw", "cargo": "tank", "basePrice": 12 },
+  { "id": "ore", "name": "Erz", "tier": "raw", "cargo": "bulk", "basePrice": 22 },
+  { "id": "fuel", "name": "Brennstoff", "tier": "intermediate", "cargo": "tank", "basePrice": 45 },
+  { "id": "chemicals", "name": "Chemikalien", "tier": "intermediate", "cargo": "tank", "basePrice": 40 },
+  { "id": "plastic", "name": "Kunststoff", "tier": "intermediate", "cargo": "piece", "basePrice": 45 },
+  { "id": "fertilizer", "name": "Dünger", "tier": "intermediate", "cargo": "bulk", "basePrice": 40 },
+  { "id": "steel", "name": "Stahl", "tier": "intermediate", "cargo": "piece", "basePrice": 90 },
+  { "id": "agro", "name": "Agrarprodukte", "tier": "intermediate", "cargo": "cooled", "basePrice": 35 },
+  { "id": "fiber", "name": "Webstoff", "tier": "intermediate", "cargo": "bulk", "basePrice": 30 },
+  { "id": "livestock", "name": "Vieh", "tier": "intermediate", "cargo": "live", "basePrice": 85 },
+  { "id": "beverages", "name": "Getränke", "tier": "final", "cargo": "piece", "basePrice": 40 },
+  { "id": "machines", "name": "Maschinen", "tier": "final", "cargo": "piece", "basePrice": 290 },
+  { "id": "robots", "name": "Roboter", "tier": "final", "cargo": "piece", "basePrice": 480 },
+  { "id": "medicine", "name": "Medikamente", "tier": "final", "cargo": "piece", "basePrice": 260 },
+  { "id": "food", "name": "Nahrung", "tier": "final", "cargo": "cooled", "basePrice": 85 },
+  { "id": "textiles", "name": "Textilien", "tier": "final", "cargo": "piece", "basePrice": 65 },
+  { "id": "plasticware", "name": "Plastikwaren", "tier": "final", "cargo": "piece", "basePrice": 80 }
+]

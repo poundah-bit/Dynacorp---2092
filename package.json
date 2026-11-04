@@ -1,0 +1,22 @@
+{
+  "name": "dynacorp-2092",
+  "version": "0.1.0",
+  "description": "Dynacorp 2092 – nichtkommerzielles Weltraum-Wirtschaftsspiel für Android, inspiriert von Dynatech (1992)",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "sim": "tsx tools/simulate.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.5",
+    "tsx": "^4.0.0",
+    "typescript": "^5.0.0",
+    "vite": "^6.0.0",
+    "vitest": "^3.0.0"
+  }
+}

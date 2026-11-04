@@ -1,0 +1,17 @@
+[
+  { "id": "tank-s", "name": "Tanklager S", "cargo": "tank", "capacity": 20000, "price": 65000, "maintenance": 5, "operation": 10, "size": 4000 },
+  { "id": "tank-m", "name": "Tanklager M", "cargo": "tank", "capacity": 50000, "price": 145000, "maintenance": 10, "operation": 20, "size": 9000 },
+  { "id": "tank-l", "name": "Tanklager L", "cargo": "tank", "capacity": 100000, "price": 255000, "maintenance": 15, "operation": 35, "size": 16000 },
+  { "id": "bulk-s", "name": "Silo S", "cargo": "bulk", "capacity": 20000, "price": 50000, "maintenance": 4, "operation": 5, "size": 4000 },
+  { "id": "bulk-m", "name": "Silo M", "cargo": "bulk", "capacity": 50000, "price": 105000, "maintenance": 8, "operation": 10, "size": 9000 },
+  { "id": "bulk-l", "name": "Silo L", "cargo": "bulk", "capacity": 100000, "price": 185000, "maintenance": 12, "operation": 18, "size": 16000 },
+  { "id": "piece-s", "name": "Hallenlager S", "cargo": "piece", "capacity": 20000, "price": 60000, "maintenance": 5, "operation": 10, "size": 4000 },
+  { "id": "piece-m", "name": "Hallenlager M", "cargo": "piece", "capacity": 50000, "price": 130000, "maintenance": 10, "operation": 20, "size": 9000 },
+  { "id": "piece-l", "name": "Hallenlager L", "cargo": "piece", "capacity": 100000, "price": 230000, "maintenance": 15, "operation": 35, "size": 16000 },
+  { "id": "cooled-s", "name": "Kühllager S", "cargo": "cooled", "capacity": 20000, "price": 95000, "maintenance": 8, "operation": 30, "size": 4000 },
+  { "id": "cooled-m", "name": "Kühllager M", "cargo": "cooled", "capacity": 50000, "price": 210000, "maintenance": 15, "operation": 60, "size": 9000 },
+  { "id": "cooled-l", "name": "Kühllager L", "cargo": "cooled", "capacity": 100000, "price": 370000, "maintenance": 25, "operation": 105, "size": 16000 },
+  { "id": "live-s", "name": "Stallung S", "cargo": "live", "capacity": 20000, "price": 85000, "maintenance": 6, "operation": 25, "size": 4000 },
+  { "id": "live-m", "name": "Stallung M", "cargo": "live", "capacity": 50000, "price": 180000, "maintenance": 12, "operation": 50, "size": 9000 },
+  { "id": "live-l", "name": "Stallung L", "cargo": "live", "capacity": 100000, "price": 320000, "maintenance": 20, "operation": 90, "size": 16000 }
+]
