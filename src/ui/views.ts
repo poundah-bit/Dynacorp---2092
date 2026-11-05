@@ -41,6 +41,7 @@ import {
   unshippedDemands,
   waitingTransports,
 } from './play';
+import { unshippedAmount } from '../sim/index';
 import {
   cr,
   days,
@@ -61,12 +62,18 @@ import {
   shipLabel,
   shipStatus,
   who,
+  deadlineIn,
 } from './format';
+
+export type MarketSort = 'ready' | 'price' | 'value';
 
 export interface ViewCtx {
   w: World;
   me: string;
   marketAll: boolean;
+  /** good id to show at the exchange, '' = all */
+  marketGood: string;
+  marketSort: MarketSort;
   priceTrend: (goodId: string) => -1 | 0 | 1;
 }
 
@@ -219,16 +226,23 @@ export function fleetView({ w, me }: ViewCtx): string {
               .join('')
           : '';
       const atTerra = s.phase === 'idle' && s.at === TERRA;
+      const worn = s.condition < 100;
       const acts = [
         jobs,
         s.phase === 'idle' && !atTerra ? btn('Nach Terra fliegen', 'to-terra', s.id) : '',
-        atTerra && s.condition < 100 ? btn(`Reparieren (${cr(repairShipCost(s))})`, 'repair-ship', s.id) : '',
+        s.phase === 'idle' && !atTerra && worn ? btn('Zur Reparatur nach Terra', 'repair-trip', s.id) : '',
+        atTerra && worn ? btn(`Reparieren (${cr(repairShipCost(s))})`, 'repair-ship', s.id) : '',
+        !atTerra && worn && s.phase !== 'repair'
+          ? s.repairAtTerra
+            ? btn('Reparatur vorgemerkt ✓ aufheben', 'repair-mark', `${s.id}|0`, 'class="on"')
+            : btn(`Beim nächsten Terra-Stopp reparieren (~${cr(repairShipCost(s))})`, 'repair-mark', `${s.id}|1`)
+          : '',
         atTerra ? btn(`Verkaufen (${cr(Math.round(shipValue(s) * 0.6))})`, 'sell-ship', s.id, 'class="ghost"') : '',
       ].join('');
       return `<section class="card">
         <h2>${shipLabel(s)} <span class="badge ${st.cls}">${s.phase === 'idle' ? 'frei' : 'unterwegs'}</span></h2>
         <p>${st.text}</p>
-        <p class="small muted">${cargoName(def.cargo)} · ${fe(def.capacity)} · ${num(def.speed)} Pc/Tag · Zustand <span class="${s.condition < 50 ? 'bad' : ''}">${dec(s.condition)} %</span>${s.condition < 50 ? ' – bald zur Reparatur nach Terra' : ''}</p>
+        <p class="small muted">${cargoName(def.cargo)} · ${fe(def.capacity)} · ${num(def.speed)} Pc/Tag · Zustand <span class="${s.condition < 50 ? 'bad' : ''}">${dec(s.condition)} %</span>${s.condition < 50 ? ' – bald zur Reparatur nach Terra' : ''}${s.repairAtTerra ? ' · <span class="warn">Reparatur auf Terra vorgemerkt</span>' : ''}</p>
         ${acts ? `<div class="acts">${acts}</div>` : ''}
       </section>`;
     })
@@ -238,8 +252,28 @@ export function fleetView({ w, me }: ViewCtx): string {
 // ---------- Börse ----------
 
 export function marketView(ctx: ViewCtx): string {
-  const { w, me, marketAll } = ctx;
-  const options = deliverableDemands(w, me);
+  const { w, me, marketAll, marketGood, marketSort } = ctx;
+  const allOptions = deliverableDemands(w, me);
+  const otherDemands = w.demands.filter((d) => d.status === 'open' && d.requester !== me && !allOptions.some((o) => o.d.id === d.id));
+  // goods that appear in the lists, for the filter chips
+  const counts = new Map<string, number>();
+  for (const d of [...allOptions.map((o) => o.d), ...(marketAll ? otherDemands : [])]) counts.set(d.good, (counts.get(d.good) ?? 0) + 1);
+  const goodFilter = marketGood && counts.has(marketGood) ? marketGood : '';
+  const byValue = (a: { amount: number; pricePerFe: number }, b: { amount: number; pricePerFe: number }) => b.amount * b.pricePerFe - a.amount * a.pricePerFe;
+  const sortDemands = <T>(list: T[], get: (x: T) => { amount: number; pricePerFe: number }, ready?: (x: T) => number) =>
+    [...list].sort((a, b) =>
+      marketSort === 'price' ? get(b).pricePerFe - get(a).pricePerFe : marketSort === 'value' || !ready ? byValue(get(a), get(b)) : ready(a) - ready(b) || byValue(get(a), get(b)),
+    );
+  const options = sortDemands(
+    allOptions.filter((o) => !goodFilter || o.d.good === goodFilter),
+    (o) => o.d,
+    (o) => o.daysToReady,
+  );
+  const goodChips = [...counts.entries()]
+    .sort((a, b) => gName(a[0]).localeCompare(gName(b[0]), 'de'))
+    .map(([g, n]) => btn(`${gName(g)} <small>${n}</small>`, 'market-good', g, goodFilter === g ? 'class="on"' : ''))
+    .join('');
+  const sortChip = (id: MarketSort, label: string) => btn(label, 'market-sort', id, marketSort === id ? 'class="on"' : '');
   let firstReady = true;
   const demandRows = options
     .map((o) => {
@@ -263,39 +297,43 @@ export function marketView(ctx: ViewCtx): string {
   const transports = openTransports(w, me)
     .map((t) => ({ t, can: carryState(w, me, t) }))
     .filter((x) => marketAll || x.can !== 'none')
+    .filter((x) => !goodFilter || x.t.good === goodFilter)
     .sort((a, b) => b.t.fee - a.t.fee)
     .map(({ t, can }) => {
       const what = loadName(w, t);
       const tag = can === 'idle' ? '<span class="good">passt zu freiem Schiff</span>' : can === 'busy' ? '<span class="muted">passendes Schiff gerade unterwegs</span>' : `<span class="muted">kein passendes Schiff</span>`;
       return `<div class="row"><div class="grow"><b>${what}</b> für ${who(w, t.issuer)} <span class="price">${cr(t.fee)}</span>
-        <div class="small">${route(t.fromPlanet, t.toPlanet)} · ${cargoName(t.cargo)} ${fe(t.amount)} · Frist bis Tag ${t.deadlineDay}</div><div class="small">${tag}</div></div>
+        <div class="small">${route(t.fromPlanet, t.toPlanet)} · ${cargoName(t.cargo)} ${fe(t.amount)} · ${deadlineIn(w, t.deadlineDay)}</div><div class="small">${tag}</div></div>
         <div class="acts">${btn('Übernehmen…', 'carry', t.id, `class="primary" ${can === 'idle' ? '' : 'disabled'}`)}</div></div>`;
     })
     .join('');
 
   const others = marketAll
-    ? w.demands
-        .filter((d) => d.status === 'open' && d.requester !== me && !options.some((o) => o.d.id === d.id))
-        .sort((a, b) => b.amount * b.pricePerFe - a.amount * a.pricePerFe)
+    ? sortDemands(
+        otherDemands.filter((d) => !goodFilter || d.good === goodFilter),
+        (d) => d,
+      )
         .map(
-          (d) => `<tr><td>${gName(d.good)}</td><td>${who(w, d.requester)}</td><td>${pName(d.toPlanet)}</td><td class="n">${fe(d.amount)}</td><td class="n">${perFe(d.pricePerFe)}</td></tr>`,
+          (d) => `<tr><td>${gName(d.good)}</td><td>${who(w, d.requester)}</td><td>${pName(d.toPlanet)}</td><td class="n">${fe(d.amount)}</td><td class="n">${perFe(d.pricePerFe)}</td><td class="n">${cr(d.amount * d.pricePerFe)}</td></tr>`,
         )
         .join('')
     : '';
 
   return `
   <div class="chips">${btn('Nur passende', 'market-all', '0', marketAll ? '' : 'class="on"')}${btn('Alles zeigen', 'market-all', '1', marketAll ? 'class="on"' : '')}</div>
+  <div class="chips wrap"><span class="chip-label">Ware</span>${btn('Alle', 'market-good', '', goodFilter ? '' : 'class="on"')}${goodChips}</div>
+  <div class="chips wrap"><span class="chip-label">Sortieren</span>${sortChip('ready', 'Lieferbar zuerst')}${sortChip('price', 'Preis pro FE')}${sortChip('value', 'Gesamtwert')}</div>
   <section class="card">
     <h2>Nachfragen für deine Waren</h2>
     <p class="hint">Wer zuerst annimmt, bekommt den Auftrag. Bezahlt wird bei Ankunft der Ware; die Ware im Lager wird beim Annehmen reserviert. Du darfst auch annehmen, bevor genug produziert ist – dann wartet das Schiff an der Anlage, und wer die Frist verpasst, zahlt Strafe.</p>
-    ${demandRows || empty(facilitiesOf(w, me).length ? 'Gerade fragt niemand nach deinen Waren.' : 'Sobald du eine Anlage hast, erscheinen hier Nachfragen nach ihren Waren.')}
+    ${demandRows || empty(goodFilter ? 'Für diese Ware gibt es gerade keine passende Nachfrage.' : facilitiesOf(w, me).length ? 'Gerade fragt niemand nach deinen Waren.' : 'Sobald du eine Anlage hast, erscheinen hier Nachfragen nach ihren Waren.')}
   </section>
   <section class="card">
     <h2>Transportaufträge</h2>
     <p class="hint">Andere Firmen zahlen ein Honorar, wenn du ihre Ladung mit einem eigenen Schiff fährst.</p>
     ${transports || empty(marketAll ? 'Keine offenen Transporte.' : 'Kein offener Transport passt zu deinen Schiffen.')}
   </section>
-  ${marketAll ? `<section class="card"><h2>Weitere Nachfragen am Markt</h2>${others ? `<table><tr><th>Ware</th><th>Auftraggeber</th><th>Ziel</th><th class="n">Menge</th><th class="n">Preis</th></tr>${others}</table>` : empty('Keine.')}</section>` : ''}`;
+  ${marketAll ? `<section class="card"><h2>Weitere Nachfragen am Markt</h2>${others ? `<table><tr><th>Ware</th><th>Auftraggeber</th><th>Ziel</th><th class="n">Menge</th><th class="n">Preis</th><th class="n">Wert</th></tr>${others}</table>` : empty('Keine.')}</section>` : ''}`;
 }
 
 // ---------- Aufträge ----------
@@ -303,7 +341,7 @@ export function marketView(ctx: ViewCtx): string {
 export function ordersView({ w, me }: ViewCtx): string {
   const unshipped = unshippedDemands(w, me)
     .map(
-      (d) => `<div class="row"><div class="grow"><b>${fe(d.amount)} ${gName(d.good)}</b> an ${who(w, d.requester)} <div class="small">Zugesagt – Frist bis Tag ${d.deadlineDay}. Es fehlt noch der Transport.</div></div>
+      (d) => `<div class="row"><div class="grow"><b>${fe(d.amount)} ${gName(d.good)}</b> an ${who(w, d.requester)} <div class="small">Zugesagt – ${deadlineIn(w, d.deadlineDay)}. ${unshippedAmount(d) < d.amount ? `${fe(d.amount - unshippedAmount(d))} sind unterwegs, für ${fe(unshippedAmount(d))} fehlt noch der Transport.` : 'Es fehlt noch der Transport.'}</div></div>
       <div class="acts">${btn('Transport organisieren…', 'arrange', d.id, 'class="primary" data-guide="arrange"')}</div></div>`,
     )
     .join('');
@@ -313,7 +351,7 @@ export function ordersView({ w, me }: ViewCtx): string {
       const what = loadName(w, t);
       const ships = idleFittingShips(w, me, t.cargo, t.amount);
       return `<div class="row"><div class="grow"><b>${what}</b> ${route(t.fromPlanet, t.toPlanet)}
-        <div class="small">${t.own ? 'Eigener Transport' : `Für ${who(w, t.issuer)}, Honorar ${cr(t.fee)}`} · Frist bis Tag ${t.deadlineDay} · ${ships.length ? `${ships.length} passende freie Schiffe` : '<span class="bad">kein passendes freies Schiff</span>'}</div></div>
+        <div class="small">${t.own ? 'Eigener Transport' : `Für ${who(w, t.issuer)}, Honorar ${cr(t.fee)}`} · ${deadlineIn(w, t.deadlineDay)} · ${ships.length ? `${ships.length} passende freie Schiffe` : '<span class="bad">kein passendes freies Schiff</span>'}</div></div>
         <div class="acts">${btn('Schiff wählen…', 'move', t.id, 'class="primary" data-guide="waiting"')}</div></div>`;
     })
     .join('');
@@ -329,7 +367,7 @@ export function ordersView({ w, me }: ViewCtx): string {
           : s
             ? `${t.carrier === me ? '' : `${who(w, t.carrier)}: `}${shipStatus(w, s).text}`
             : `Übernommen von ${who(w, t.carrier)}`;
-      return `<div class="row"><div class="grow"><b>${fe(t.amount)} ${gName(t.good!)}</b> ${route(t.fromPlanet, t.toPlanet)}<div class="small">${state}${t.late ? ' · <span class="bad">Frist überzogen</span>' : ` · Frist bis Tag ${t.deadlineDay}`}</div></div>${t.status === 'open' && t.issuer === me ? `<div class="acts">${btn('Zurückziehen', 'unrelease', t.id)}</div>` : ''}</div>`;
+      return `<div class="row"><div class="grow"><b>${fe(t.amount)} ${gName(t.good!)}</b> ${route(t.fromPlanet, t.toPlanet)}<div class="small">${state}${t.late ? ' · <span class="bad">Frist überzogen</span>' : ` · ${deadlineIn(w, t.deadlineDay)}`}</div></div>${t.status === 'open' && t.issuer === me ? `<div class="acts">${btn('Zurückziehen', 'unrelease', t.id)}</div>` : ''}</div>`;
     })
     .join('');
 

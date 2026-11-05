@@ -12,6 +12,14 @@ export const fe = (x: number) => `${num(x)} FE`;
 export const perFe = (x: number) => `${nf2.format(x)} Cr/FE`;
 export const dec = (x: number) => nf2.format(x);
 export const days = (d: number) => (d === 1 ? '1 Tag' : `${num(d)} Tage`);
+/** Remaining time until a deadline day: "Frist: noch 12 Tage" (red once it has passed). */
+export function deadlineIn(w: World, day: number): string {
+  const left = day - w.day;
+  if (left < 0) return '<span class="bad">Frist abgelaufen</span>';
+  if (left === 0) return '<span class="warn">Frist endet heute</span>';
+  return `Frist: noch ${days(left)}`;
+}
+
 /** "in ~3 Tagen" – an estimate, dative after "in". */
 export const inDays = (d: number) => (d === 1 ? 'in ~1 Tag' : `in ~${num(d)} Tagen`);
 

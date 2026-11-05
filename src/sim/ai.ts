@@ -12,6 +12,7 @@ import {
   creditLimit,
   diff,
   incoming,
+  maxOrderAmount,
   minTransportFee,
   postDemand,
   postTransportForDemand,
@@ -143,7 +144,7 @@ function ship(w: World, c: Company, demandId: string, from: Facility) {
 
 /** Keep inputs for ~15 days on stock; use own supply chains first (Eigen-Warennachfrage). */
 function orderInputs(w: World, c: Company) {
-  const { minAmount, maxAmount } = CONFIG.orders;
+  const { minAmount } = CONFIG.orders;
   for (const f of facilitiesOf(w, c.id)) {
     if (f.status !== 'running') continue;
     for (const [g, need] of Object.entries(facilityDef(f.type).inputs)) {
@@ -152,7 +153,7 @@ function orderInputs(w: World, c: Company) {
       if (have >= daily * 15) continue;
       const room = freeCapacity(f, g) - incoming(w, f.id, g);
       // small plants (e.g. pharma: 60 FE chemicals/day) still order at least the minimum amount
-      let amount = Math.min(maxAmount, room, Math.max(minAmount, daily * 20));
+      let amount = Math.min(maxOrderAmount(w, c.id, g), room, Math.max(minAmount, daily * 20));
       amount = Math.floor(amount / 500) * 500;
       if (amount < minAmount) continue;
       const ownSupplier = facilitiesOf(w, c.id).find((x) => g in facilityDef(x.type).outputs && available(x, g) >= amount);

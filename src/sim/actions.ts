@@ -231,6 +231,7 @@ export function repairShip(w: World, companyId: string, shipId: string): Result<
   if (!paid.ok) return paid;
   r.value.phase = 'repair';
   r.value.waitDays = Math.max(1, Math.ceil((100 - r.value.condition) / 20));
+  r.value.repairAtTerra = false;
   return ok(undefined);
 }
 
@@ -332,6 +333,8 @@ export function postDemand(
   if (!(goodId in facilityDef(f.type).inputs)) return fail(`${good(goodId).name} wird in dieser Anlage nicht gebraucht.`);
   amount = Math.round(amount);
   if (amount <= 0) return fail('Menge muss positiv sein.');
+  const max = maxOrderAmount(w, companyId, goodId);
+  if (amount > max) return fail(`Höchstens ${max} FE pro Bestellung – mit einem größeren eigenen Schiff dieser Frachtart mehr.`);
   if (freeCapacity(f, goodId) - incoming(w, f.id, goodId) < amount) return fail('Nicht genug freier Lagerplatz.');
   const d: Demand = {
     id: newId(w, 'd'),
@@ -390,9 +393,13 @@ export function acceptDemand(w: World, companyId: string, demandId: string, supp
   return ok(d);
 }
 
+/** FE of an accepted demand that still need a transport (a demand can be split over several ships). */
+export const unshippedAmount = (d: Demand) => d.amount - (d.shipped ?? 0);
+
 /**
  * After accepting a demand the supplier must arrange the transport:
  * own (Eigen-Transport, fee 0) or public (Transport with a fee for whoever carries it).
+ * `amount` ships only part of the demand (e.g. one of several ships); default is everything not yet shipped.
  */
 export function postTransportForDemand(
   w: World,
@@ -400,13 +407,17 @@ export function postTransportForDemand(
   demandId: string,
   mode: 'own' | 'public',
   fee?: number,
+  amount?: number,
 ): Result<Transport> {
   const d = demand(w, demandId);
   if (!d || d.supplier !== companyId || d.status !== 'accepted') return fail('Kein passender angenommener Auftrag.');
   const f = facility(w, d.supplierFacility!);
   if (!f) return fail('Lieferwerk existiert nicht mehr.');
   const g = good(d.good);
-  const min = minTransportFee(w, d.good, d.amount, f.planet, d.toPlanet);
+  const rest = unshippedAmount(d);
+  const part = Math.round(amount ?? rest);
+  if (part <= 0 || part > rest) return fail(`Es sind nur noch ${rest} FE zu verschicken.`);
+  const min = minTransportFee(w, d.good, part, f.planet, d.toPlanet);
   if (mode === 'public' && fee !== undefined && fee < min) return fail(`Das Honorar muss mindestens ${min} Cr betragen.`);
   const t: Transport = {
     id: newId(w, 't'),
@@ -414,7 +425,7 @@ export function postTransportForDemand(
     kind: 'goods',
     good: d.good,
     asset: null,
-    amount: d.amount,
+    amount: part,
     cargo: g.cargo,
     fromPlanet: f.planet,
     fromFacility: f.id,
@@ -426,13 +437,40 @@ export function postTransportForDemand(
     ship: null,
     status: mode === 'own' ? 'accepted' : 'open',
     createdDay: w.day,
-    deadlineDay: transportDeadline(w, g.cargo, d.amount, f.planet, d.toPlanet),
+    deadlineDay: transportDeadline(w, g.cargo, part, f.planet, d.toPlanet),
     late: false,
   };
   w.transports.push(t);
   d.transport = t.id;
-  d.status = 'shipping';
+  d.shipped = (d.shipped ?? 0) + part;
+  if (unshippedAmount(d) <= 0) d.status = 'shipping';
   return ok(t);
+}
+
+/** Largest amount a company may order for a good: the standard maximum, or more if it owns a bigger ship of that cargo. */
+export function maxOrderAmount(w: World, companyId: string, goodId: string): number {
+  const cargo = good(goodId).cargo;
+  const biggest = Math.max(0, ...shipsOf(w, companyId).map((s) => shipDef(s.model)).filter((d) => d.cargo === cargo).map((d) => d.capacity));
+  return Math.max(CONFIG.orders.maxAmount, biggest);
+}
+
+/**
+ * Marks a ship for repair at its next stop on Terra (or repairs it right away if it is idle there).
+ * With `on` = false the mark is removed.
+ */
+export function setRepairAtTerra(w: World, companyId: string, shipId: string, on: boolean): Result<'now' | 'marked' | 'off'> {
+  const s = ship(w, shipId);
+  if (!s || s.owner !== companyId) return fail('Schiff nicht gefunden.');
+  if (!on) {
+    s.repairAtTerra = false;
+    return ok('off');
+  }
+  if (s.phase === 'idle' && s.at === TERRA) {
+    const r = repairShip(w, companyId, shipId);
+    return r.ok ? ok('now') : r;
+  }
+  s.repairAtTerra = true;
+  return ok('marked');
 }
 
 /** Turns an own transport (e.g. a facility delivery) into a public one with a fee. */

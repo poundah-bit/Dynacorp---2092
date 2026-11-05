@@ -47,7 +47,9 @@
     "demandDeadlineDays": 40,
     "openOrderExpiryDays": 30,
     "demandDaysOfOutput": [20, 30],
-    "minDemandAmount": 300
+    "minDemandAmount": 300,
+    "bigOrderChance": 0.1,
+    "bigOrderFactor": [2, 4]
   },
   "ships": {
     "wearPerTravelDay": 0.4,

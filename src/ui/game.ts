@@ -15,6 +15,7 @@ import {
   scrapFacility,
   sellShip,
   sendShipToTerra,
+  setRepairAtTerra,
   shipDef,
   startFacility,
   step,
@@ -67,6 +68,8 @@ let tab: Tab = 'terra';
 let speed = 0;
 let guideHidden = false;
 let marketAll = false;
+let marketGood = '';
+let marketSort: V.MarketSort = 'ready';
 let sheet: S.Sheet | null = null;
 let gameOverShown = false;
 const priceHistory: Record<string, number>[] = [];
@@ -140,6 +143,8 @@ function begin(world: World, hideGuide: boolean) {
   speed = 0;
   gameOverShown = false;
   priceHistory.length = 0;
+  marketGood = '';
+  marketSort = 'ready';
   $('start').hidden = true;
   $('game').hidden = false;
   persist();
@@ -191,7 +196,7 @@ function render() {
     return `<button data-act="tab" data-a="${t.id}" class="${t.id === tab ? 'on' : ''} ${hot ? 'hot' : ''}"><span class="ic">${t.icon}</span>${t.label}${n ? `<span class="count ${t.badge === 'fleet' ? 'soft' : ''}">${n}</span>` : ''}</button>`;
   }).join('');
 
-  $('view').innerHTML = VIEWS[tab]({ w, me, marketAll, priceTrend });
+  $('view').innerHTML = VIEWS[tab]({ w, me, marketAll, marketGood, marketSort, priceTrend });
 
   // the header is not re-rendered, so clear old highlights before setting the current one
   document.querySelectorAll('.pulse').forEach((el) => el.classList.remove('pulse'));
@@ -351,6 +356,14 @@ const ACTS: Record<string, (a: string) => void> = {
     marketAll = a === '1';
     render();
   },
+  'market-good'(a) {
+    marketGood = a;
+    render();
+  },
+  'market-sort'(a) {
+    marketSort = a as V.MarketSort;
+    render();
+  },
   menu() {
     openSheet({
       title: 'Menü',
@@ -406,6 +419,16 @@ const ACTS: Record<string, (a: string) => void> = {
   },
   'to-terra': (id) => result(sendShipToTerra(w!, me, id), 'Das Schiff fliegt nach Terra.'),
   'repair-ship': (id) => result(repairShip(w!, me, id), 'Das Schiff ist in der Werft.'),
+  'repair-mark'(a) {
+    const [id, on] = a.split('|') as [string, string];
+    const r = setRepairAtTerra(w!, me, id, on === '1');
+    result(r, r.ok ? { now: 'Das Schiff ist in der Werft.', marked: 'Reparatur vorgemerkt – beim nächsten Stopp auf Terra.', off: 'Vormerkung aufgehoben.' }[r.value] : '');
+  },
+  'repair-trip'(id) {
+    const r = sendShipToTerra(w!, me, id);
+    if (r.ok) setRepairAtTerra(w!, me, id, true);
+    result(r, 'Das Schiff fliegt zur Reparatur nach Terra.');
+  },
   'sell-ship'(id) {
     if (!confirm('Schiff wirklich verkaufen?')) return;
     const r = sellShip(w!, me, id);

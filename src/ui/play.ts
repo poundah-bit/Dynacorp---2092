@@ -12,13 +12,16 @@ import {
   assignShip,
   available,
   buyShip,
+  cargoName,
   company,
   createWorld,
   diff,
   distance,
   facilitiesOf,
+  facility,
   facilityDef,
   good,
+  minTransportFee,
   planet,
   planetsFor,
   postTransportForDemand,
@@ -29,6 +32,7 @@ import {
   storageCapacity,
   transport,
   transportDeadline,
+  unshippedAmount,
   type Asset,
   type Cargo,
   type Demand,
@@ -159,12 +163,26 @@ export function pendingAssets(w: World, me: string): PendingAsset[] {
 // ---------- combined moves (what one tap in the UI does) ----------
 
 /**
- * How a load gets moved: `ship:<id>` an own idle ship, `buy:<model>` buy a new ship at the
- * shipyard and send it, `public` post it on the exchange for a fee.
+ * How a single load gets moved (a facility from Terra, another company's transport):
+ * `ship:<id>` an own idle ship, `buy:<model>` buy a new ship and send it (only for facilities and
+ * storage bought at DYNATECH – everything else is bought in the shipyard), `public` post it on the exchange.
  */
 export type Choice = `ship:${string}` | `buy:${string}` | 'public';
 
+/** How a demand is shipped: one or several own idle ships; whatever they cannot carry goes public or is arranged later. */
+export interface ShipPlan {
+  ships: string[];
+  rest: 'public' | 'later';
+  /** fee for the public rest */
+  fee?: number;
+}
+
 const fail = (error: string): Result<never> => ({ ok: false, error });
+
+/** Idle own ships of a cargo type, any size (several of them can share a demand). */
+export function idleShipsOfCargo(w: World, me: string, cargo: Cargo): Ship[] {
+  return shipsOf(w, me).filter((s) => s.phase === 'idle' && shipDef(s.model).cargo === cargo && s.condition >= CONFIG.ships.scrapBelow);
+}
 
 function shipFor(w: World, me: string, choice: Choice): Result<string> {
   if (choice.startsWith('buy:')) {
@@ -184,37 +202,85 @@ function checkChoice(w: World, me: string, choice: Choice, cargo: Cargo, amount:
   return { ok: true, value: undefined };
 }
 
-/** Accept a demand from one of the player's facilities and arrange the transport in one go. */
-export function deliver(w: World, me: string, demandId: string, facilityId: string, choice: Choice, fee?: number): Result<Demand> {
+/** Checks a plan before anything is changed; returns the FE left for the public/later part. */
+function checkPlan(w: World, me: string, d: Demand, from: string, plan: ShipPlan, open: number): Result<number> {
+  const cargo = good(d.good).cargo;
+  let rest = open;
+  for (const id of new Set(plan.ships)) {
+    const s = w.ships.find((x) => x.id === id);
+    if (!s || s.owner !== me) return fail('Schiff nicht gefunden.');
+    if (s.phase !== 'idle') return fail(`${shipDef(s.model).name} ist nicht mehr frei.`);
+    if (shipDef(s.model).cargo !== cargo) return fail(`${shipDef(s.model).name} transportiert kein ${cargoName(cargo)}.`);
+    rest -= shipDef(s.model).capacity;
+  }
+  rest = Math.max(0, rest);
+  if (rest > 0 && plan.rest === 'public' && plan.fee !== undefined) {
+    const min = minTransportFee(w, d.good, rest, from, d.toPlanet);
+    if (plan.fee < min) return fail(`Das Honorar für die restlichen ${rest} FE muss mindestens ${min} Cr betragen.`);
+  }
+  return { ok: true, value: rest };
+}
+
+/** Ships an accepted demand by plan: biggest selected ships first, each takes what fits. */
+export function shipDemand(w: World, me: string, demandId: string, plan: ShipPlan): Result<Transport[]> {
+  const d = w.demands.find((x) => x.id === demandId);
+  if (!d || d.supplier !== me || d.status !== 'accepted') return fail('Kein passender angenommener Auftrag.');
+  const from = facility(w, d.supplierFacility!);
+  if (!from) return fail('Lieferwerk existiert nicht mehr.');
+  const pre = checkPlan(w, me, d, from.planet, plan, unshippedAmount(d));
+  if (!pre.ok) return pre;
+  const ships = [...new Set(plan.ships)]
+    .map((id) => w.ships.find((x) => x.id === id)!)
+    .sort((a, b) => shipDef(b.model).capacity - shipDef(a.model).capacity);
+  const out: Transport[] = [];
+  for (const s of ships) {
+    const open = unshippedAmount(d);
+    if (open <= 0) break;
+    const t = postTransportForDemand(w, me, demandId, 'own', undefined, Math.min(open, shipDef(s.model).capacity));
+    if (!t.ok) return t;
+    const a = assignShip(w, me, s.id, t.value.id);
+    if (!a.ok) return a;
+    out.push(t.value);
+  }
+  if (unshippedAmount(d) > 0 && plan.rest === 'public') {
+    const t = postTransportForDemand(w, me, demandId, 'public', plan.fee);
+    if (!t.ok) return t;
+    out.push(t.value);
+  }
+  return { ok: true, value: out };
+}
+
+/** Accept a demand from one of the player's facilities and ship it by plan in one go. */
+export function deliver(w: World, me: string, demandId: string, facilityId: string, plan: ShipPlan): Result<Demand> {
   const d = w.demands.find((x) => x.id === demandId);
   if (!d) return fail('Diese Nachfrage gibt es nicht mehr.');
-  const pre = checkChoice(w, me, choice, good(d.good).cargo, d.amount);
+  const f = facility(w, facilityId);
+  if (!f) return fail('Anlage nicht gefunden.');
+  const pre = checkPlan(w, me, d, f.planet, plan, d.amount);
   if (!pre.ok) return pre;
   const acc = acceptDemand(w, me, demandId, facilityId);
   if (!acc.ok) return acc;
-  const r = shipDemand(w, me, demandId, choice, fee);
+  const r = shipDemand(w, me, demandId, plan);
   return r.ok ? acc : r;
 }
 
-/** Arrange the transport for a demand the player has accepted as supplier. */
-export function shipDemand(w: World, me: string, demandId: string, choice: Choice, fee?: number): Result<Transport> {
-  const d = w.demands.find((x) => x.id === demandId);
-  if (!d) return fail('Diese Nachfrage gibt es nicht mehr.');
-  const pre = checkChoice(w, me, choice, good(d.good).cargo, d.amount);
-  if (!pre.ok) return pre;
-  if (choice === 'public') return postTransportForDemand(w, me, demandId, 'public', fee);
-  const s = shipFor(w, me, choice);
-  if (!s.ok) return s;
-  const t = postTransportForDemand(w, me, demandId, 'own');
-  if (!t.ok) return t;
-  const a = assignShip(w, me, s.value, t.value.id);
-  return a.ok ? t : a;
+/** Suggested plan: the nearest idle ships of the right cargo until the amount is covered. */
+export function defaultPlan(w: World, me: string, cargo: Cargo, amount: number, at: string): ShipPlan {
+  const ships: string[] = [];
+  let left = amount;
+  for (const s of idleShipsOfCargo(w, me, cargo).sort((a, b) => distance(a.at ?? TERRA, at) - distance(b.at ?? TERRA, at))) {
+    if (left <= 0) break;
+    ships.push(s.id);
+    left -= shipDef(s.model).capacity;
+  }
+  return { ships, rest: 'public' };
 }
 
 /** Fly a transport the player carries (e.g. a facility from Terra), or post it publicly if it is an own one. */
 export function moveTransport(w: World, me: string, transportId: string, choice: Choice, fee?: number): Result<Transport> {
   const t = transport(w, transportId);
   if (!t) return fail('Diesen Transport gibt es nicht mehr.');
+  if (choice.startsWith('buy:') && t.kind !== 'asset') return fail('Schiffe gibt es in der Werft auf Terra.');
   const pre = checkChoice(w, me, choice, t.cargo, t.amount);
   if (!pre.ok) return pre;
   if (choice === 'public') return releaseTransport(w, me, transportId, fee);
@@ -224,27 +290,26 @@ export function moveTransport(w: World, me: string, transportId: string, choice:
   return a.ok ? { ok: true, value: t } : a;
 }
 
-/** Take on another company's public transport and send a ship right away. */
+/** Take on another company's public transport and send an own idle ship right away. */
 export function carry(w: World, me: string, transportId: string, choice: Choice): Result<Transport> {
   const t = transport(w, transportId);
   if (!t || t.status !== 'open') return fail('Dieser Transport ist nicht mehr offen.');
-  if (choice === 'public') return fail('Einen fremden Transport kannst du nicht weiterreichen.');
-  const pre = checkChoice(w, me, choice, t.cargo, t.amount);
-  if (!pre.ok) return pre;
+  if (!choice.startsWith('ship:')) return fail('Bitte wähle eines deiner freien Schiffe.');
   const acc = acceptTransport(w, me, transportId);
   if (!acc.ok) return acc;
-  const s = shipFor(w, me, choice);
-  if (!s.ok) return s;
-  const a = assignShip(w, me, s.value, transportId);
+  const a = assignShip(w, me, choice.slice(5), transportId);
   return a.ok ? acc : a;
 }
 
-/** Sensible default choice for a load: an idle own ship, else buying the cheapest fitting one, else public. */
-export function defaultChoice(w: World, me: string, cargo: Cargo, amount: number, at: string): Choice {
+/**
+ * Sensible default for a single load: an idle own ship, else (only where buying is offered, i.e. for
+ * facilities from DYNATECH) the cheapest fitting new one, else public.
+ */
+export function defaultChoice(w: World, me: string, cargo: Cargo, amount: number, at: string, allowBuy = false): Choice {
   const idle = idleFittingShips(w, me, cargo, amount).sort((a, b) => distance(a.at ?? TERRA, at) - distance(b.at ?? TERRA, at))[0];
   if (idle) return `ship:${idle.id}`;
   const model = cheapestShipFor(cargo, amount);
-  if (model && company(w, me).cash >= model.price) return `buy:${model.id}`;
+  if (allowBuy && model && company(w, me).cash >= model.price) return `buy:${model.id}`;
   return 'public';
 }
 
@@ -397,11 +462,24 @@ export function guide(w: World, me: string): GuideStep {
     };
   }
   const options = deliverableDemands(w, me);
-  if (options.some((o) => o.ready)) {
+  const ready = options.find((o) => o.ready);
+  if (ready) {
+    // ships are bought in the shipyard, not in the delivery dialog
+    const cargo = good(ready.d.good).cargo;
+    if (!shipsOf(w, me).some((s) => shipDef(s.model).cargo === cargo)) {
+      const model = cheapestShipFor(cargo, 0)!;
+      return {
+        id: 'ship',
+        title: `Frachter für ${cargoName(cargo)} kaufen`,
+        text: `An der Börse wartet eine Nachfrage nach ${good(ready.d.good).name}, die du aus deinem Lager erfüllen kannst. Dafür brauchst du ein Schiff für ${cargoName(cargo)} – dein Stückgutfrachter passt nicht. Kaufe in der Werft auf Terra einen ${model.name}. (Ohne eigenes Schiff kannst du den Transport auch öffentlich ausschreiben.)`,
+        tab: 'terra',
+        target: `buy-ship-${model.id}`,
+      };
+    }
     return {
       id: 'deliver',
       title: 'Ersten Auftrag annehmen',
-      text: 'An der Börse wartet eine Nachfrage, die du aus deinem Lager erfüllen kannst. Tippe auf „Liefern“: Dort wählst du das Schiff – ohne eigenen Tanker kaufst du gleich einen dazu.',
+      text: 'An der Börse wartet eine Nachfrage, die du aus deinem Lager erfüllen kannst. Tippe auf „Liefern“ und wähle dein Schiff – bei großen Mengen auch mehrere.',
       tab: 'market',
       target: 'deliver',
     };

@@ -130,6 +130,10 @@ export interface Demand {
   createdDay: number;
   deadlineDay: number;
   late: boolean;
+  /** FE already covered by transports (a demand can be split over several ships) */
+  shipped?: number;
+  /** FE already delivered */
+  delivered?: number;
 }
 
 export type TransportStatus = 'open' | 'accepted' | 'assigned' | 'loaded' | 'done' | 'cancelled';
@@ -177,6 +181,7 @@ export interface Ship {
   phase: ShipPhase;
   transport: string | null;
   waitDays: number; // days left for loading/unloading/repair
+  repairAtTerra?: boolean; // repair automatically at the next stop on Terra
 }
 
 export interface LogEntry {

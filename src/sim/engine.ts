@@ -1,9 +1,9 @@
 // The daily tick. One call to step() advances the world by one game day.
 
-import { CONFIG, FACILITIES, GOODS, PLANETS, TERRA, distance, facilityDef, good, planet, shipDef, storageDef } from './data';
-import { companyValue, debt, diff, startRoute, transportDeadline } from './actions';
+import { CONFIG, FACILITIES, GOODS, PLANETS, SHIPS, TERRA, distance, facilityDef, good, planet, shipDef, storageDef } from './data';
+import { companyValue, debt, diff, repairShip, startRoute, transportDeadline } from './actions';
 import { runAi } from './ai';
-import type { Demand, Facility, Ship, Transport, World } from './types';
+import type { Cargo, Demand, Facility, Ship, Transport, World } from './types';
 import {
   asset,
   company,
@@ -152,6 +152,15 @@ function shipsTick(w: World) {
         }
       }
     }
+    // repair marked in advance: done automatically as soon as the ship stands idle on Terra
+    if (s.repairAtTerra && s.phase === 'idle' && s.at === TERRA) {
+      const r = repairShip(w, s.owner, s.id);
+      if (r.ok) log(w, s.owner, `${def.name} wird wie vorgemerkt auf Terra repariert.`);
+      else {
+        s.repairAtTerra = false;
+        log(w, s.owner, `Vorgemerkte Reparatur des ${def.name} nicht möglich: ${r.error}`, 2);
+      }
+    }
     if (s.condition < CONFIG.ships.scrapBelow && s.phase === 'idle') {
       w.ships = w.ships.filter((x) => x !== s);
       log(w, s.owner, `${def.name} von ${company(w, s.owner).name} landet in der Schrottpresse.`, 2);
@@ -226,24 +235,29 @@ function failTransport(w: World, t: Transport, s: Ship, why: string) {
 function deliverGoods(w: World, t: Transport) {
   const d = t.demand ? demand(w, t.demand) : undefined;
   if (!d) return;
-  const value = Math.round(d.amount * d.pricePerFe);
+  // a demand may be split over several ships: each part is stored and paid on its own
+  const part = t.amount;
+  const value = Math.round(part * d.pricePerFe);
   if (d.requester === 'terra') {
     pay(w, null, d.supplier, value);
   } else {
     const target = d.toFacility ? facility(w, d.toFacility) : undefined;
     if (target) {
       const room = freeCapacity(target, d.good);
-      const stored = Math.min(room, d.amount);
+      const stored = Math.min(room, part);
       target.stock[d.good] = (target.stock[d.good] ?? 0) + stored;
-      if (stored < d.amount) log(w, d.requester, `${d.amount - stored} FE ${good(d.good).name} gingen mangels Lagerplatz verloren.`, 2);
+      if (stored < part) log(w, d.requester, `${part - stored} FE ${good(d.good).name} gingen mangels Lagerplatz verloren.`, 2);
     }
     if (d.supplier !== d.requester) pay(w, d.requester, d.supplier, value);
   }
-  d.status = 'done';
+  d.delivered = (d.delivered ?? 0) + part;
+  const complete = d.delivered >= d.amount;
+  if (complete) d.status = 'done';
   if (d.supplier && d.supplier !== d.requester) {
-    reputation(w, d.supplier, d.late ? -2 : 1);
+    if (complete) reputation(w, d.supplier, d.late ? -2 : 1);
     const buyer = d.requester === 'terra' ? 'Terra' : company(w, d.requester).name;
-    log(w, d.supplier, `${company(w, d.supplier).name} liefert ${d.amount} FE ${good(d.good).name} an ${buyer} und erhält ${value} Cr.`);
+    const of = part < d.amount ? ` (Teillieferung, ${d.delivered} von ${d.amount} FE)` : '';
+    log(w, d.supplier, `${company(w, d.supplier).name} liefert ${part} FE ${good(d.good).name} an ${buyer} und erhält ${value} Cr${of}.`);
   }
 }
 
@@ -336,10 +350,13 @@ export function outputPerDay(goodId: string): number {
  * Terra orders as much as one plant produces in `days` days, so a pharma plant (25 FE/day) gets
  * orders of a few hundred FE and an oil well (350 FE/day) of several thousand. Rounded to 100 FE.
  */
-export function terraDemandAmount(goodId: string, days: number): number {
-  const raw = outputPerDay(goodId) * days;
-  return Math.min(CONFIG.orders.maxAmount, Math.max(CONFIG.terra.minDemandAmount, Math.round(raw / 100) * 100));
+export function terraDemandAmount(goodId: string, days: number, factor = 1): number {
+  const raw = outputPerDay(goodId) * days * factor;
+  return Math.min(largestShipCapacity(good(goodId).cargo), Math.max(CONFIG.terra.minDemandAmount, Math.round(raw / 100) * 100));
 }
+
+/** Capacity of the biggest ship type for a cargo – the upper limit for any single order. */
+export const largestShipCapacity = (cargo: Cargo) => Math.max(...SHIPS.filter((s) => s.cargo === cargo).map((s) => s.capacity));
 
 function terraDemands(w: World) {
   const tc = CONFIG.terra;
@@ -352,7 +369,9 @@ function terraDemands(w: World) {
     if (random(w) >= chance) continue;
     const open = w.demands.filter((d) => d.requester === 'terra' && d.good === g.id && d.status === 'open').length;
     if (open >= tc.maxOpenPerGood * Math.ceil(cheapness)) continue;
-    const amount = terraDemandAmount(g.id, randInt(w, tc.demandDaysOfOutput[0]!, tc.demandDaysOfOutput[1]!));
+    // now and then Terra places a big order (several plants' output) that fills a large ship
+    const big = random(w) < tc.bigOrderChance ? randInt(w, tc.bigOrderFactor[0]!, tc.bigOrderFactor[1]!) : 1;
+    const amount = terraDemandAmount(g.id, randInt(w, tc.demandDaysOfOutput[0]!, tc.demandDaysOfOutput[1]!), big);
     const factor = final ? tc.priceBonus : tc.baseDemandPriceFactor;
     const d: Demand = {
       id: newId(w, 'd'),

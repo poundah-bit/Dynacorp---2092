@@ -10,8 +10,12 @@ import {
   createWorld,
   creditLimit,
   facilitiesOf,
+  largestShipCapacity,
+  maxOrderAmount,
   postTransportForDemand,
   run,
+  sendShipToTerra,
+  setRepairAtTerra,
   startFacility,
   storageCapacity,
   takeLoan,
@@ -19,6 +23,7 @@ import {
   type Demand,
   type World,
 } from '../src/sim/index';
+import { deliver, shipDemand } from '../src/ui/play';
 import { player, runUntil, soloWorld } from './helpers';
 
 /** The manual's example: loan, oil well, piece-goods freighter, fly it out, start it. */
@@ -218,6 +223,89 @@ describe('Aufträge', () => {
     if (!tanker.ok || !small.ok) throw new Error('Kauf fehlgeschlagen');
     expect(assignShip(w, me, tanker.value.id, t.value.id).ok).toBe(false);
     expect(assignShip(w, me, small.value.id, t.value.id).ok).toBe(false);
+  });
+});
+
+describe('Große Lieferungen, Bestellmengen, Reparatur', () => {
+  const bigTerraDemand = (w: World, id: string, amount: number): Demand => {
+    const d: Demand = {
+      id, requester: 'terra', good: 'oil', amount, toPlanet: 'terra', toFacility: null, pricePerFe: 20,
+      own: false, status: 'open', supplier: null, supplierFacility: null, transport: null, createdDay: w.day,
+      deadlineDay: w.day + 60, late: false,
+    };
+    w.demands.push(d);
+    return d;
+  };
+
+  it('eine Lieferung kann auf mehrere Schiffe verteilt werden und wird in Teilen bezahlt', () => {
+    const w = soloWorld();
+    const me = player(w);
+    const well = setupOilWell(w);
+    company(w, me).cash += 1_000_000;
+    well.stock.oil = 30000;
+    const d = bigTerraDemand(w, 'dmulti', 30000);
+    const a = buyShip(w, me, 'tank-a'); // 16.000 FE
+    const b = buyShip(w, me, 'tank-b'); // 28.000 FE
+    if (!a.ok || !b.ok) throw new Error('Kauf fehlgeschlagen');
+    const r = deliver(w, me, 'dmulti', well.id, { ships: [a.value.id, b.value.id], rest: 'public' });
+    if (!r.ok) throw new Error(r.error);
+    const parts = w.transports.filter((t) => t.demand === 'dmulti');
+    // biggest ship first: 28.000 + the remaining 2.000
+    expect(parts.map((t) => t.amount).sort((x, y) => y - x)).toEqual([28000, 2000]);
+    expect(d.status).toBe('shipping');
+    const before = company(w, me).revenue;
+    runUntil(w, () => d.status === 'done', 40);
+    expect(d.delivered).toBe(30000);
+    expect(company(w, me).revenue - before).toBe(30000 * 20);
+  });
+
+  it('was die gewählten Schiffe nicht schaffen, kann später organisiert werden', () => {
+    const w = soloWorld();
+    const me = player(w);
+    const well = setupOilWell(w);
+    well.stock.oil = 30000;
+    const d = bigTerraDemand(w, 'dlater', 30000);
+    const a = buyShip(w, me, 'tank-a');
+    if (!a.ok) throw new Error(a.error);
+    expect(deliver(w, me, 'dlater', well.id, { ships: [a.value.id], rest: 'later' }).ok).toBe(true);
+    expect(d.status).toBe('accepted'); // 14.000 FE still need a transport
+    expect(d.shipped).toBe(16000);
+    expect(shipDemand(w, me, 'dlater', { ships: [], rest: 'public' }).ok).toBe(true);
+    expect(d.status).toBe('shipping');
+    expect(w.transports.find((t) => t.demand === 'dlater' && t.status === 'open')?.amount).toBe(14000);
+  });
+
+  it('eine vorgemerkte Reparatur passiert automatisch beim nächsten Stopp auf Terra', () => {
+    const w = soloWorld();
+    const me = player(w);
+    setupOilWell(w); // the piece-goods freighter waits worn on Vesta Nova
+    const ship = w.ships.find((s) => s.owner === me)!;
+    expect(ship.condition).toBeLessThan(100);
+    expect(sendShipToTerra(w, me, ship.id).ok).toBe(true);
+    const r = setRepairAtTerra(w, me, ship.id, true);
+    expect(r.ok && r.value).toBe('marked');
+    runUntil(w, () => ship.phase === 'repair', 10);
+    runUntil(w, () => ship.phase === 'idle', 5);
+    expect(ship.condition).toBe(100);
+    expect(ship.repairAtTerra).toBe(false);
+  });
+
+  it('die Bestellmenge richtet sich nach dem größten eigenen Schiff der Frachtart', () => {
+    const w = soloWorld();
+    const me = player(w);
+    company(w, me).cash = 10_000_000;
+    const t = buyFacility(w, me, 'refinery', 'pyros');
+    if (!t.ok) throw new Error(t.error);
+    expect(maxOrderAmount(w, me, 'oil')).toBe(CONFIG.orders.maxAmount);
+    expect(buyShip(w, me, 'tank-c').ok).toBe(true); // 45.000 FE
+    expect(maxOrderAmount(w, me, 'oil')).toBe(45000);
+    expect(maxOrderAmount(w, me, 'ore')).toBe(CONFIG.orders.maxAmount); // other cargo type
+  });
+
+  it('Terra-Großaufträge sind ein Vielfaches, aber nie größer als das größte Schiff', () => {
+    expect(terraDemandAmount('oil', 30, 4)).toBe(42000);
+    expect(terraDemandAmount('medicine', 30, 4)).toBe(3000);
+    expect(terraDemandAmount('water', 30, 100)).toBe(largestShipCapacity('tank'));
   });
 });
 

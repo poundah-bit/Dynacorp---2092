@@ -39,8 +39,10 @@ Non-commercial Android fan game inspired by Dynatech (1992). Owner: Rocco (GitHu
 - One facility type per planet; extending = bringing another unit of the same type to the same planet. Max 10 sites per company.
 - Facilities are bought at Terra and must be flown out as piece goods; then 5 days construction; maintenance costs from built, operating costs while running.
 - Every ship carries one cargo type (tank, bulk, piece, cooled, live); amount must fit the hold.
-- Demand flow: requester posts demand → supplier accepts (stock gets reserved; accepting more than is on stock is allowed as an entrepreneurial risk – the ship waits at the plant and a missed deadline costs a penalty – but the amount must fit the plant's storage) → supplier posts own or public transport → ship loads at supplier, unloads at requester → requester pays goods, issuer pays carrier fee.
+- Demand flow: requester posts demand → supplier accepts (stock gets reserved; accepting more than is on stock is allowed as an entrepreneurial risk – the ship waits at the plant and a missed deadline costs a penalty – but the amount must fit the plant's storage) → supplier posts own or public transports (a demand can be split over several ships via `postTransportForDemand(…, amount)`; `shipped`/`delivered` track the parts, each part is paid on arrival) → ship loads at supplier, unloads at requester → requester pays goods, issuer pays carrier fee.
 - Terra buys final goods always and other goods as base demand; the cheaper a good, the more Terra buys (price stabiliser).
+- Order size: at most `orders.maxAmount` (15,000 FE) per demand, or the capacity of the biggest own ship of that cargo (`maxOrderAmount`). Terra orders 20–30 days of one plant's output, sometimes a big order (×2–4), never more than the biggest ship of the cargo.
+- Ships are bought in the shipyard only; the delivery dialogs offer own idle ships or public posting (exception: flying a newly bought facility/storage). A ship can be marked `repairAtTerra` and is repaired automatically when it stands idle on Terra.
 - Difficulty tightens credit and interest for the player only; AI reaction speed, deadlines and penalties apply to everyone.
 
 ## Commands

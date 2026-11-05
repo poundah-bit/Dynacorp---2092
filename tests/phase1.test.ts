@@ -11,6 +11,7 @@ import {
   step,
   takeLoan,
   buyFacility,
+  buyShip,
   type World,
 } from '../src/sim/index';
 import {
@@ -18,6 +19,7 @@ import {
   AI_MAX,
   AI_MIN,
   deliver,
+  defaultPlan,
   deliverableDemands,
   defaultChoice,
   guide,
@@ -47,7 +49,7 @@ function playManualExample(seed: number, ai = AI_DEFAULT) {
 
   expect(note()).toBe('asset-transport');
   const t = pendingAssets(w, me)[0]!.transport!;
-  const choice = defaultChoice(w, me, t.cargo, t.amount, t.fromPlanet);
+  const choice = defaultChoice(w, me, t.cargo, t.amount, t.fromPlanet, true);
   expect(choice).toBe('buy:piece-a');
   const moved = moveTransport(w, me, t.id, choice);
   if (!moved.ok) throw new Error(moved.error);
@@ -60,11 +62,14 @@ function playManualExample(seed: number, ai = AI_DEFAULT) {
   const well = facilitiesOf(w, me)[0]!;
   expect(startFacility(w, me, well.id).ok).toBe(true);
 
-  // wait for stock and a matching demand, then deliver with a newly bought tanker
-  runUntil(w, () => note() === 'deliver', 150);
+  // wait for stock and a matching demand; the guide sends the player to the shipyard for a tanker first
+  runUntil(w, () => note() === 'ship', 150);
+  expect(buyShip(w, me, 'tank-a').ok).toBe(true);
+  expect(note()).toBe('deliver');
   const option = deliverableDemands(w, me).find((o) => o.ready)!;
-  const how = defaultChoice(w, me, 'tank', option.d.amount, well.planet);
-  const done = deliver(w, me, option.d.id, option.facilities[0]!.id, how);
+  const plan = defaultPlan(w, me, 'tank', option.d.amount, well.planet);
+  expect(plan.ships).toHaveLength(1);
+  const done = deliver(w, me, option.d.id, option.facilities[0]!.id, plan);
   if (!done.ok) throw new Error(done.error);
 
   expect(note()).toBe('wait-delivery');
@@ -86,7 +91,7 @@ describe('Phase 1: Handbuch-Beispiel gegen KI-Firmen', () => {
     expect(company(w, me).revenue).toBeGreaterThan(0);
     expect(company(w, me).bankrupt).toBe(false);
     expect(seen.slice(0, 7)).toEqual(['loan', 'facility', 'asset-transport', 'wait-flight', 'wait-build', 'start', 'wait-stock']);
-    expect(seen.slice(-3)).toEqual(['deliver', 'wait-delivery', 'done']);
+    expect(seen.slice(-4)).toEqual(['ship', 'deliver', 'wait-delivery', 'done']);
     // the whole example should fit into the first ~2 months of play
     expect(w.day).toBeLessThan(80);
   });
@@ -120,7 +125,7 @@ describe('Liefern vor voller Produktion', () => {
     expect(o.ready).toBe(false);
     expect(o.tooBig).toBe(false);
     expect(o.daysToReady).toBeGreaterThan(0);
-    const r = deliver(w, me, 'early', well.id, 'public');
+    const r = deliver(w, me, 'early', well.id, { ships: [], rest: 'public' });
     expect(r.ok).toBe(true);
   });
 });
