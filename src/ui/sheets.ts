@@ -3,8 +3,10 @@
 
 import {
   CONFIG,
+  STORAGES,
   TERRA,
   available,
+  buyStorage,
   company,
   creditLimit,
   demand,
@@ -20,6 +22,8 @@ import {
   postDemand,
   repayLoan,
   shipDef,
+  storageCapacity,
+  storageDef,
   takeLoan,
   transport,
   type Cargo,
@@ -27,8 +31,11 @@ import {
   type World,
 } from '../sim/index';
 import {
+  acceptDeadline,
   carry,
   cheapestShipFor,
+  latePenalty,
+  readiness,
   defaultChoice,
   deliver,
   idleFittingShips,
@@ -37,7 +44,7 @@ import {
   tripDays,
   type Choice,
 } from './play';
-import { cargoName, cr, days, fe, gName, pName, pc, perFe, shipStatus, who } from './format';
+import { cargoName, cr, days, fe, gName, inDays, loadName, pName, pc, perFe, shipStatus, who } from './format';
 
 export interface SheetResult {
   error?: string;
@@ -66,6 +73,8 @@ interface Load {
   to: string;
   good: string | null;
   allowPublic: boolean;
+  /** days until the goods are produced (accepted early) */
+  readyIn?: number;
 }
 
 function choiceBlock(w: World, me: string, l: Load): string {
@@ -73,16 +82,16 @@ function choiceBlock(w: World, me: string, l: Load): string {
   const radio = (value: string, label: string, disabled = false) =>
     `<label class="opt${disabled ? ' dim' : ''}"><input type="radio" name="how" value="${value}" ${value === pick ? 'checked' : ''} ${disabled ? 'disabled' : ''}><span>${label}</span></label>`;
   const own = idleFittingShips(w, me, l.cargo, l.amount)
-    .map((s) => ({ s, d: tripDays(shipDef(s.model).speed, s.at ?? TERRA, l.from, l.to) }))
+    .map((s) => ({ s, d: tripDays(shipDef(s.model).speed, s.at ?? TERRA, l.from, l.to, l.readyIn) }))
     .sort((a, b) => a.d - b.d)
-    .map(({ s, d }) => radio(`ship:${s.id}`, `<b>${shipDef(s.model).name} #${s.id.slice(1)}</b> – ${shipStatus(w, s).text}<br><small>Ankunft am Ziel in ~${days(d)}</small>`))
+    .map(({ s, d }) => radio(`ship:${s.id}`, `<b>${shipDef(s.model).name} #${s.id.slice(1)}</b> – ${shipStatus(w, s).text}<br><small>Ankunft am Ziel ${inDays(d)}</small>`))
     .join('');
   const model = cheapestShipFor(l.cargo, l.amount);
   const cash = company(w, me).cash;
   const buy = model
     ? radio(
         `buy:${model.id}`,
-        `<b>Neuen ${model.name} kaufen</b> (${cr(model.price)}) und losschicken<br><small>${cash < model.price ? '<span class="bad">nicht genug Barkapital</span>' : `startet auf Terra, Ankunft am Ziel in ~${days(tripDays(model.speed, TERRA, l.from, l.to))}`}</small>`,
+        `<b>Neuen ${model.name} kaufen</b> (${cr(model.price)}) und losschicken<br><small>${cash < model.price ? '<span class="bad">nicht genug Barkapital</span>' : `startet auf Terra, Ankunft am Ziel ${inDays(tripDays(model.speed, TERRA, l.from, l.to, l.readyIn))}`}</small>`,
         cash < model.price,
       )
     : '';
@@ -158,7 +167,7 @@ export function repaySheet(w: World, me: string, loanId: string): Sheet {
 export function moveSheet(w: World, me: string, transportId: string): Sheet {
   const t = transport(w, transportId);
   if (!t) return { title: 'Transport', body: '<p>Diesen Transport gibt es nicht mehr.</p>' };
-  const what = t.kind === 'asset' ? 'Anlage' : `${fe(t.amount)} ${gName(t.good!)}`;
+  const what = loadName(w, t);
   return {
     title: `${what} nach ${pName(t.toPlanet)}`,
     body: `${t.kind === 'asset' ? '<p class="hint">Anlagen reisen als Stückgut. Ohne eigenen Stückgutfrachter kannst du einen kaufen oder den Flug an der Börse ausschreiben.</p>' : ''}
@@ -175,21 +184,33 @@ export function moveSheet(w: World, me: string, transportId: string): Sheet {
 export function deliverSheet(w: World, me: string, demandId: string): Sheet {
   const d = demand(w, demandId);
   if (!d || d.status !== 'open') return { title: 'Liefern', body: '<p>Diese Nachfrage ist nicht mehr offen – jemand war schneller.</p>' };
-  const facs = facilitiesOf(w, me).filter((f) => d.good in facilityDef(f.type).outputs && available(f, d.good) >= d.amount);
-  if (!facs.length) return { title: 'Liefern', body: '<p>Keine deiner Anlagen hat genug davon auf Lager.</p>' };
+  const facs = facilitiesOf(w, me)
+    .filter((f) => d.good in facilityDef(f.type).outputs && readiness(f, d.good, d.amount).fits)
+    .sort((a, b) => readiness(a, d.good, d.amount).daysToReady - readiness(b, d.good, d.amount).daysToReady);
+  if (!facs.length) return { title: 'Liefern', body: '<p>Die Menge passt in keines deiner Anlagenlager. Mit einem Zusatzlager unter „Anlagen“ geht es.</p>' };
   const from = facs[0]!;
+  const stockText = (f: (typeof facs)[number]) => {
+    const r = readiness(f, d.good, d.amount);
+    if (!r.missing) return `${fe(r.free)} frei – sofort ladbar`;
+    return `${fe(Math.max(0, r.free))} frei, es fehlen ${fe(r.missing)}${r.daysToReady < Infinity ? ` (~${days(r.daysToReady)} Produktion)` : ' – die Anlage produziert gerade nicht'}`;
+  };
   const facChoice =
     facs.length > 1
       ? `<div class="opts">${facs
-          .map((f, i) => `<label class="opt"><input type="radio" name="fac" value="${f.id}" ${i === 0 ? 'checked' : ''}><span>aus ${pName(f.planet)} (${fe(available(f, d.good))} frei)</span></label>`)
+          .map((f, i) => `<label class="opt"><input type="radio" name="fac" value="${f.id}" ${i === 0 ? 'checked' : ''}><span>aus ${pName(f.planet)}: ${stockText(f)}</span></label>`)
           .join('')}</div>`
-      : `<input type="hidden" name="fac" value="${from.id}">`;
+      : `<input type="hidden" name="fac" value="${from.id}"><p>Aus ${pName(from.planet)}: ${stockText(from)}.</p>`;
+  const r = readiness(from, d.good, d.amount);
+  const risk = r.missing
+    ? `<p class="warn-box"><b>Risiko:</b> Die Ware ist noch nicht komplett. Dein Schiff wartet an der Anlage, bis genug produziert ist – solange laufen seine Betriebskosten.
+       Frist nach Annahme: etwa Tag ${acceptDeadline(w, d, from)} (heute Tag ${w.day}). Wird sie überschritten, zahlst du rund ${cr(latePenalty(w, d))} Strafe an ${who(w, d.requester)}.</p>`
+    : '';
   return {
     title: `${fe(d.amount)} ${gName(d.good)} an ${who(w, d.requester)}`,
     body: `<p>Erlös bei Ankunft: <b>${cr(d.amount * d.pricePerFe)}</b> (${perFe(d.pricePerFe)}). Wer zu spät liefert, zahlt eine Strafe von ${Math.round(diff(w).penaltyRate * 100)} % des Warenwerts.</p>
-      ${facChoice}
+      ${facChoice}${risk}
       <h3>Wie kommt die Ware hin?</h3>
-      ${choiceBlock(w, me, { cargo: good(d.good).cargo, amount: d.amount, from: from.planet, to: d.toPlanet, good: d.good, allowPublic: true })}`,
+      ${choiceBlock(w, me, { cargo: good(d.good).cargo, amount: d.amount, from: from.planet, to: d.toPlanet, good: d.good, allowPublic: true, readyIn: Number.isFinite(r.daysToReady) ? r.daysToReady : 0 })}`,
     confirm: 'Annehmen',
     run(form) {
       const c = readChoice(form);
@@ -219,7 +240,7 @@ export function arrangeSheet(w: World, me: string, demandId: string): Sheet {
 export function carrySheet(w: World, me: string, transportId: string): Sheet {
   const t = transport(w, transportId);
   if (!t || t.status !== 'open') return { title: 'Transport', body: '<p>Dieser Transport ist nicht mehr offen – jemand war schneller.</p>' };
-  const what = t.kind === 'asset' ? 'Anlage' : `${fe(t.amount)} ${gName(t.good!)}`;
+  const what = loadName(w, t);
   return {
     title: `${what} für ${who(w, t.issuer)}`,
     body: `<p>Honorar bei Ankunft: <b>${cr(t.fee)}</b>. Frist bis Tag ${t.deadlineDay} – wer sie überzieht, zahlt Strafe.</p>
@@ -229,6 +250,42 @@ export function carrySheet(w: World, me: string, transportId: string): Sheet {
       const c = readChoice(form);
       if (!c) return { error: 'Bitte wähle ein Schiff.' };
       return done(carry(w, me, transportId, c), 'Transport übernommen. Das Schiff ist unterwegs.');
+    },
+  };
+}
+
+// ---------- extra storage ----------
+
+export function storageSheet(w: World, me: string, facilityId: string): Sheet {
+  const f = facility(w, facilityId);
+  if (!f) return { title: 'Lager erweitern', body: '<p>Die Anlage gibt es nicht mehr.</p>' };
+  const def = facilityDef(f.type);
+  const goods = [...Object.keys(def.inputs), ...Object.keys(def.outputs)];
+  const cargos = [...new Set(goods.map((g) => good(g).cargo))];
+  const cash = company(w, me).cash;
+  const groups = cargos
+    .map((cargo) => {
+      const its = goods.filter((g) => good(g).cargo === cargo);
+      const now = its.map((g) => `${gName(g)} ${fe(storageCapacity(f, g))}`).join(', ');
+      const opts = STORAGES.filter((s) => s.cargo === cargo)
+        .map(
+          (s) => `<label class="opt${cash < s.price ? ' dim' : ''}"><input type="radio" name="storage" value="${s.id}" ${cash < s.price ? 'disabled' : ''}>
+            <span><b>${s.name}</b> +${fe(s.capacity)} · ${cr(s.price)}<br><small>Kosten ${cr(s.maintenance + s.operation)} pro Tag · reist als Stückgut ${fe(s.size)}</small></span></label>`,
+        )
+        .join('');
+      return `<h3>${cargoName(cargo)} <span class="small muted">– heute: ${now}</span></h3><div class="opts">${opts}</div>`;
+    })
+    .join('');
+  return {
+    title: `Lager erweitern: ${pName(f.planet)}`,
+    body: `<p class="hint">Ein Zusatzlager vergrößert das Lager für alle Waren seiner Frachtart an dieser Anlage. Es wird bei DYNATECH gekauft und wie eine Anlage als Stückgut hingeflogen.</p>${groups}`,
+    confirm: 'Kaufen',
+    run(form) {
+      const id = val(form, 'storage');
+      if (!id) return { error: 'Bitte wähle ein Lager.' };
+      const r = buyStorage(w, me, id, facilityId);
+      if (!r.ok) return { error: r.error };
+      return { message: `${storageDef(id).name} gekauft. Jetzt muss es noch hingeflogen werden.`, next: moveSheet(w, me, r.value.id) };
     },
   };
 }

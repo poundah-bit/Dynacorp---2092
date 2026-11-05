@@ -107,6 +107,24 @@ describe('Phase 1: Handbuch-Beispiel gegen KI-Firmen', () => {
   });
 });
 
+describe('Liefern vor voller Produktion', () => {
+  it('die Börse bietet eine Nachfrage schon an, bevor die Ware da ist, und „Liefern“ klappt', () => {
+    const { w, me } = playManualExample(7);
+    const well = facilitiesOf(w, me)[0]!;
+    w.demands.push({
+      id: 'early', requester: 'terra', good: 'oil', amount: 15000, toPlanet: 'terra', toFacility: null, pricePerFe: 20,
+      own: false, status: 'open', supplier: null, supplierFacility: null, transport: null, createdDay: w.day,
+      deadlineDay: w.day + 40, late: false,
+    });
+    const o = deliverableDemands(w, me).find((x) => x.d.id === 'early')!;
+    expect(o.ready).toBe(false);
+    expect(o.tooBig).toBe(false);
+    expect(o.daysToReady).toBeGreaterThan(0);
+    const r = deliver(w, me, 'early', well.id, 'public');
+    expect(r.ok).toBe(true);
+  });
+});
+
 describe('Spielstand', () => {
   it('ein gespeicherter und geladener Spielstand läuft genauso weiter', () => {
     const a = newGame('Testfirma', 'hard', 9);

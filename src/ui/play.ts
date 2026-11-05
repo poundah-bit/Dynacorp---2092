@@ -14,6 +14,7 @@ import {
   buyShip,
   company,
   createWorld,
+  diff,
   distance,
   facilitiesOf,
   facilityDef,
@@ -25,7 +26,9 @@ import {
   shipDef,
   shipSpeed,
   shipsOf,
+  storageCapacity,
   transport,
+  transportDeadline,
   type Asset,
   type Cargo,
   type Demand,
@@ -60,9 +63,12 @@ export function shipLegDays(s: Ship): number {
   return s.waitDays;
 }
 
-/** Rough days for an idle ship (or a new one at Terra) to pick up at `from` and deliver at `to`. */
-export function tripDays(speed: number, at: string, from: string, to: string): number {
-  return Math.ceil(distance(at, from) / speed) + Math.ceil(distance(from, to) / speed) + 2 * CONFIG.loadDays;
+/**
+ * Rough days for an idle ship (or a new one at Terra) to pick up at `from` and deliver at `to`.
+ * `readyIn`: days until the goods are produced – the ship waits at the plant until then.
+ */
+export function tripDays(speed: number, at: string, from: string, to: string, readyIn = 0): number {
+  return Math.max(Math.ceil(distance(at, from) / speed), readyIn) + Math.ceil(distance(from, to) / speed) + 2 * CONFIG.loadDays;
 }
 
 export function idleFittingShips(w: World, me: string, cargo: Cargo, amount: number): Ship[] {
@@ -85,27 +91,44 @@ export function carryState(w: World, me: string, t: Transport): 'idle' | 'busy' 
 
 // ---------- orders ----------
 
-export interface DeliverOption {
-  d: Demand;
-  facilities: Facility[]; // own facilities producing the good, best first
-  ready: boolean; // enough unreserved stock right now
-  daysToReady: number; // Infinity if nothing running produces it
+/** How far a facility is from having `amount` FE of a good free for a new order. */
+export function readiness(f: Facility, goodId: string, amount: number) {
+  const free = available(f, goodId);
+  const missing = Math.max(0, amount - free);
+  const perDay = f.status === 'running' ? (facilityDef(f.type).outputs[goodId] ?? 0) * f.units : 0;
+  const daysToReady = missing <= 0 ? 0 : perDay > 0 ? Math.ceil(missing / perDay) : Infinity;
+  return { free, missing, daysToReady, fits: amount <= storageCapacity(f, goodId) };
 }
 
-/** Open demands for goods one of the player's facilities produces. */
+/** Deadline a demand would get if the player accepted it now from facility f (as acceptDemand sets it). */
+export const acceptDeadline = (w: World, d: Demand, f: Facility) =>
+  transportDeadline(w, good(d.good).cargo, d.amount, f.planet, d.toPlanet) + CONFIG.orders.demandExtraDays;
+
+/** Penalty for missing a demand's deadline, at today's price. */
+export const latePenalty = (w: World, d: Demand) => Math.round(d.amount * (w.prices[d.good] ?? 0) * diff(w).penaltyRate);
+
+export interface DeliverOption {
+  d: Demand;
+  facilities: Facility[]; // own facilities producing the good whose storage can hold the amount, best first
+  ready: boolean; // enough unreserved stock right now
+  daysToReady: number; // Infinity if nothing running produces it
+  /** the amount is larger than any own facility's storage – it can never be loaded */
+  tooBig: boolean;
+}
+
+/** Open demands for goods one of the player's facilities produces. Accepting them early is allowed (at a risk). */
 export function deliverableDemands(w: World, me: string): DeliverOption[] {
   const mine = facilitiesOf(w, me);
   const out: DeliverOption[] = [];
   for (const d of w.demands) {
     if (d.status !== 'open' || d.requester === me || d.own) continue;
-    const facs = mine.filter((f) => d.good in facilityDef(f.type).outputs);
-    if (!facs.length) continue;
-    facs.sort((a, b) => available(b, d.good) - available(a, d.good));
-    const best = facs[0]!;
-    const missing = d.amount - available(best, d.good);
-    const perDay = best.status === 'running' ? (facilityDef(best.type).outputs[d.good] ?? 0) * best.units : 0;
-    const daysToReady = missing <= 0 ? 0 : perDay > 0 ? Math.ceil(missing / perDay) : Infinity;
-    out.push({ d, facilities: facs, ready: missing <= 0, daysToReady });
+    const producers = mine.filter((f) => d.good in facilityDef(f.type).outputs);
+    if (!producers.length) continue;
+    const facs = producers.filter((f) => readiness(f, d.good, d.amount).fits);
+    facs.sort((a, b) => readiness(a, d.good, d.amount).daysToReady - readiness(b, d.good, d.amount).daysToReady);
+    const best = facs[0];
+    const daysToReady = best ? readiness(best, d.good, d.amount).daysToReady : Infinity;
+    out.push({ d, facilities: facs, ready: !!best && daysToReady === 0, daysToReady, tooBig: !best });
   }
   return out.sort((a, b) => a.daysToReady - b.daysToReady || b.d.amount * b.d.pricePerFe - a.d.amount * a.d.pricePerFe);
 }
@@ -388,7 +411,7 @@ export function guide(w: World, me: string): GuideStep {
     id: 'wait-stock',
     title: 'Lager füllt sich',
     text: next
-      ? `Die nächste passende Nachfrage will ${next.d.amount.toLocaleString('de-DE')} FE ${good(next.d.good).name} – in etwa ${next.daysToReady} ${next.daysToReady === 1 ? 'Tag' : 'Tagen'} hast du genug auf Lager. Lass die Zeit laufen.`
+      ? `Die nächste passende Nachfrage will ${next.d.amount.toLocaleString('de-DE')} FE ${good(next.d.good).name} – in etwa ${next.daysToReady} ${next.daysToReady === 1 ? 'Tag' : 'Tagen'} hast du genug auf Lager. Lass die Zeit laufen. Du kannst auch jetzt schon annehmen, um sie der Konkurrenz wegzuschnappen – wird die Ware nicht rechtzeitig fertig, zahlst du Strafe.`
       : 'Gerade fragt niemand nach deiner Ware. Terra und die anderen Firmen stellen laufend neue Nachfragen ein – lass die Zeit laufen, die Börse meldet sich mit einer Zahl am Tab.',
     tab: 'market',
     target: 'time',

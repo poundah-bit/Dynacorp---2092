@@ -174,6 +174,7 @@ function render() {
   const step = guide(w, me);
   const g = $('guide');
   g.hidden = guideHidden;
+  $('game').classList.toggle('no-guide', guideHidden);
   if (!guideHidden) {
     const waitBtn = step.wait && speed === 0 ? `<button class="primary" data-act="speed" data-a="1">▶ Zeit laufen lassen</button>` : '';
     const showBtn = !step.wait && step.target ? `<button class="primary" data-act="guide-go">Zeigen</button>` : '';
@@ -388,7 +389,7 @@ const ACTS: Record<string, (a: string) => void> = {
 
   // facilities
   move: (id) => openSheet(S.moveSheet(w!, me, id)),
-  unrelease: (id) => result(cancelTransport(w!, me, id), 'Ausschreibung zurückgezogen.'),
+  unrelease: (id) => result(cancelTransport(w!, me, id), 'Ausschreibung zurückgezogen – weise jetzt ein eigenes Schiff zu.'),
   start: (id) => result(startFacility(w!, me, id), 'Die Anlage läuft.'),
   stop: (id) => result(stopFacility(w!, me, id), 'Die Anlage ist stillgelegt.'),
   'repair-facility': (id) => result(repairFacility(w!, me, id), 'Ein DYNATECH-Wartungsschiff hat die Anlage repariert.'),
@@ -396,6 +397,7 @@ const ACTS: Record<string, (a: string) => void> = {
     if (confirm('Anlage wirklich verschrotten? Das lässt sich nicht rückgängig machen.')) result(scrapFacility(w!, me, id), 'Verschrottet.');
   },
   order: (id) => openSheet(S.orderSheet(w!, me, id)),
+  storage: (id) => openSheet(S.storageSheet(w!, me, id)),
 
   // fleet
   assign(a) {

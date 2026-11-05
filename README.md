@@ -20,7 +20,7 @@ Im Jahr 2092 sind die Rohstoffe der Erde erschöpft. Als Unternehmer kaufst du b
 
 Was bisher drin ist:
 
-- **Spiel** (`index.html`, `src/ui/`): Du gegen 1 bis 20 KI-Firmen (Standard 10). Sechs Tabs – Terra (Bank, DYNATECH, Werft), Anlagen, Flotte, Börse, Aufträge, Statistik –, Zeitsteuerung (Pause, 1×, 2×, 4×), Autosave. Ein Hinweiskasten „Nächster Schritt“ führt durch das Handbuch-Beispiel: Kredit → Ölförderanlage → Frachter → erster Auftrag.
+- **Spiel** (`index.html`, `src/ui/`): Du gegen 1 bis 20 KI-Firmen (Standard 10). Sechs Tabs – Terra (Bank, DYNATECH, Werft), Anlagen, Flotte, Börse, Aufträge, Statistik –, Zeitsteuerung (Pause, 1×, 2×, 4×), Zusatzlager, Autosave. Ein Hinweiskasten „Nächster Schritt“ führt durch das Handbuch-Beispiel: Kredit → Ölförderanlage → Frachter → erster Auftrag.
 - **Daten** (`src/data/`): 18 Waren, 17 Anlagen, 19 Frachter, 21 Welten, 15 Lager, Kredit- und Balancing-Parameter, 20 KI-Firmen.
 - **Simulation** (`src/sim/`): Produktion mit Lagergrenzen und Verschleiß, Markt nach Angebot und Nachfrage, Warennachfragen und Transportaufträge (eigen und öffentlich), Flotte mit Flugzeiten und Zustand, Bank mit Verzug und Pfändung, Gravo-Stürme, Firmenindex, Bankrott und Wirtschaftskollaps, KI-Firmen.
 - **Tests** (`tests/`): Datenprüfung, Handbuch-Ablauf, Aufträge, Bank, Determinismus, das Balancing-Tor (200 Tage ohne Kollaps auf allen Schwierigkeitsgraden), das Phase-1-Tor (die Hilfe im Spiel führt mit 1, 10 und 20 Gegnern bis zum ersten bezahlten Auftrag) und das Phase-2-Tor (1.000 Tage Endlosspiel ohne Kollaps, alle 17 Anlagenarten gebaut).

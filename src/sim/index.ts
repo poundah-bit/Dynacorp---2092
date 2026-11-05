@@ -3,4 +3,4 @@ export * from './types';
 export * from './data';
 export * from './world';
 export * from './actions';
-export { step, run, ranking, companyIndex, priceIndex, marketBalance, productionEfficiency } from './engine';
+export { step, run, ranking, companyIndex, priceIndex, marketBalance, productionEfficiency, outputPerDay, terraDemandAmount } from './engine';

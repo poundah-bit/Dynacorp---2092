@@ -291,6 +291,16 @@ function goodsValue(w: World, goodId: string | null, amount: number) {
 
 function ordersTick(w: World) {
   const rate = diff(w).penaltyRate;
+  // A public transport nobody took before its deadline is re-posted with a fresh deadline and a higher fee
+  // (paid by the issuer). Otherwise nobody would ever take it – a carrier would owe the penalty at once –
+  // and the goods would stay reserved at the plant forever.
+  for (const t of w.transports) {
+    if (t.status === 'open' && !t.own && w.day > t.deadlineDay) {
+      t.deadlineDay = transportDeadline(w, t.cargo, t.amount, t.fromPlanet, t.toPlanet);
+      t.fee = Math.round(t.fee * (1 + CONFIG.orders.reofferFeeIncrease));
+      log(w, t.issuer, `Niemand hat Transport ${t.id} nach ${planet(t.toPlanet).name} übernommen – neu ausgeschrieben für ${t.fee} Cr.`, 2);
+    }
+  }
   for (const t of w.transports) {
     if (['accepted', 'assigned', 'loaded'].includes(t.status) && !t.own && t.carrier && !t.late && w.day > t.deadlineDay) {
       t.late = true;
@@ -317,6 +327,20 @@ function ordersTick(w: World) {
 
 // ---------- Terra: buyer of final goods and base demand for everything else ----------
 
+/** Daily output of one unit of the best facility producing a good. */
+export function outputPerDay(goodId: string): number {
+  return Math.max(0, ...FACILITIES.map((f) => f.outputs[goodId] ?? 0));
+}
+
+/**
+ * Terra orders as much as one plant produces in `days` days, so a pharma plant (25 FE/day) gets
+ * orders of a few hundred FE and an oil well (350 FE/day) of several thousand. Rounded to 100 FE.
+ */
+export function terraDemandAmount(goodId: string, days: number): number {
+  const raw = outputPerDay(goodId) * days;
+  return Math.min(CONFIG.orders.maxAmount, Math.max(CONFIG.terra.minDemandAmount, Math.round(raw / 100) * 100));
+}
+
 function terraDemands(w: World) {
   const tc = CONFIG.terra;
   for (const g of GOODS) {
@@ -328,7 +352,7 @@ function terraDemands(w: World) {
     if (random(w) >= chance) continue;
     const open = w.demands.filter((d) => d.requester === 'terra' && d.good === g.id && d.status === 'open').length;
     if (open >= tc.maxOpenPerGood * Math.ceil(cheapness)) continue;
-    const amount = Math.round(randInt(w, CONFIG.orders.minAmount, CONFIG.orders.maxAmount) / 500) * 500;
+    const amount = terraDemandAmount(g.id, randInt(w, tc.demandDaysOfOutput[0]!, tc.demandDaysOfOutput[1]!));
     const factor = final ? tc.priceBonus : tc.baseDemandPriceFactor;
     const d: Demand = {
       id: newId(w, 'd'),

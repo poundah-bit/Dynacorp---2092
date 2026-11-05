@@ -35,7 +35,8 @@
     "deadlineExtraDays": 2,
     "demandExtraDays": 5,
     "minAmount": 2000,
-    "maxAmount": 15000
+    "maxAmount": 15000,
+    "reofferFeeIncrease": 0.2
   },
   "terra": {
     "demandChancePerGoodPerDay": 0.25,
@@ -44,7 +45,9 @@
     "baseDemandChancePerGoodPerDay": 0.15,
     "baseDemandPriceFactor": 0.85,
     "demandDeadlineDays": 40,
-    "openOrderExpiryDays": 30
+    "openOrderExpiryDays": 30,
+    "demandDaysOfOutput": [20, 30],
+    "minDemandAmount": 300
   },
   "ships": {
     "wearPerTravelDay": 0.4,

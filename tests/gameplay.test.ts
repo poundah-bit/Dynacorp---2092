@@ -15,6 +15,7 @@ import {
   startFacility,
   storageCapacity,
   takeLoan,
+  terraDemandAmount,
   type Demand,
   type World,
 } from '../src/sim/index';
@@ -109,6 +110,101 @@ describe('Aufträge', () => {
     // Terra pays exactly 8.000 FE × 20 Cr
     expect(company(w, me).revenue - revenueBefore).toBe(160000);
     expect(well.reserved.oil).toBe(0);
+  });
+
+  const terraDemand = (w: World, id: string, amount: number): Demand => {
+    const d: Demand = {
+      id, requester: 'terra', good: 'oil', amount, toPlanet: 'terra', toFacility: null, pricePerFe: 20,
+      own: false, status: 'open', supplier: null, supplierFacility: null, transport: null, createdDay: w.day,
+      deadlineDay: w.day + 40, late: false,
+    };
+    w.demands.push(d);
+    return d;
+  };
+
+  it('Annehmen ohne genug Ware ist erlaubt: das Schiff wartet, bis produziert ist', () => {
+    const w = soloWorld();
+    const me = player(w);
+    const well = setupOilWell(w);
+    expect(well.stock.oil ?? 0).toBe(0);
+    const d = terraDemand(w, 'dx', 7000);
+    expect(acceptDemand(w, me, 'dx', well.id).ok).toBe(true);
+    expect(well.reserved.oil).toBe(7000); // more promised than on stock
+    const tanker = buyShip(w, me, 'tank-a');
+    if (!tanker.ok) throw new Error(tanker.error);
+    const t = postTransportForDemand(w, me, 'dx', 'own');
+    if (!t.ok) throw new Error(t.error);
+    expect(assignShip(w, me, tanker.value.id, t.value.id).ok).toBe(true);
+    // ~4 days to Vesta Nova, then it waits there for 20 days of production
+    runUntil(w, () => tanker.value.phase === 'loading', 10);
+    run(w, 5);
+    expect(tanker.value.phase).toBe('loading');
+    expect(t.value.status).toBe('assigned');
+    runUntil(w, () => d.status === 'done', 60);
+    expect(well.reserved.oil).toBe(0);
+  });
+
+  it('wer zu viel annimmt und die Frist verpasst, zahlt Strafe und verliert Ruf', () => {
+    const w = soloWorld();
+    const me = player(w);
+    const well = setupOilWell(w);
+    const d = terraDemand(w, 'dbig', 30000); // ~86 days of production
+    expect(acceptDemand(w, me, 'dbig', well.id).ok).toBe(true);
+    const rep = company(w, me).reputation;
+    let penalty = 0;
+    let spentThatDay = 0;
+    for (let i = 0; i < 120 && !d.late; i++) {
+      const before = company(w, me).expenses;
+      penalty = Math.round(d.amount * w.prices.oil! * CONFIG.difficulties.med.penaltyRate);
+      run(w, 1);
+      spentThatDay = company(w, me).expenses - before;
+    }
+    expect(d.late).toBe(true);
+    expect(spentThatDay).toBeGreaterThanOrEqual(penalty); // penalty on top of the daily running costs
+    expect(company(w, me).reputation).toBe(rep - 3);
+  });
+
+  it('mehr als ins Anlagenlager passt, kann nicht angenommen werden – ein Zusatzlager hilft', () => {
+    const w = soloWorld();
+    const me = player(w);
+    const well = setupOilWell(w);
+    terraDemand(w, 'dhuge', 40000); // base storage is 30.000 FE
+    const r = acceptDemand(w, me, 'dhuge', well.id);
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.error).toContain('passt nicht ins Lager');
+    const t = buyStorage(w, me, 'tank-m', well.id);
+    if (!t.ok) throw new Error(t.error);
+    const ship = w.ships.find((s) => s.owner === me)!;
+    runUntil(w, () => ship.phase === 'idle');
+    expect(assignShip(w, me, ship.id, t.value.id).ok).toBe(true);
+    runUntil(w, () => well.storages.length === 1);
+    expect(acceptDemand(w, me, 'dhuge', well.id).ok).toBe(true);
+  });
+
+  it('eine Ausschreibung, die niemand bis zur Frist übernimmt, wird teurer neu ausgeschrieben', () => {
+    const w = soloWorld();
+    const me = player(w);
+    const well = setupOilWell(w);
+    run(w, 25);
+    terraDemand(w, 'dpub', 8000);
+    expect(acceptDemand(w, me, 'dpub', well.id).ok).toBe(true);
+    const t = postTransportForDemand(w, me, 'dpub', 'public');
+    if (!t.ok) throw new Error(t.error);
+    const { fee, deadlineDay } = t.value;
+    runUntil(w, () => w.day > deadlineDay);
+    expect(t.value.status).toBe('open'); // no AI in this world, nobody took it
+    expect(t.value.fee).toBe(Math.round(fee * (1 + CONFIG.orders.reofferFeeIncrease)));
+    expect(t.value.deadlineDay).toBeGreaterThan(w.day);
+  });
+
+  it('Terra fragt Mengen nach, die zum Produktionstempo passen', () => {
+    const [lo, hi] = CONFIG.terra.demandDaysOfOutput as [number, number];
+    // pharma plant: 25 FE medicine per day → 500–800 FE (rounded to 100), oil well: 350 FE per day → 7.000–10.500 FE
+    expect(terraDemandAmount('medicine', lo)).toBe(500);
+    expect(terraDemandAmount('medicine', hi)).toBe(800);
+    expect(terraDemandAmount('oil', lo)).toBe(7000);
+    expect(terraDemandAmount('oil', hi)).toBe(10500);
+    expect(terraDemandAmount('water', hi)).toBe(12000);
   });
 
   it('falsche Frachtart oder zu kleiner Laderaum wird abgelehnt', () => {

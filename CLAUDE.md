@@ -39,13 +39,13 @@ Non-commercial Android fan game inspired by Dynatech (1992). Owner: Rocco (GitHu
 - One facility type per planet; extending = bringing another unit of the same type to the same planet. Max 10 sites per company.
 - Facilities are bought at Terra and must be flown out as piece goods; then 5 days construction; maintenance costs from built, operating costs while running.
 - Every ship carries one cargo type (tank, bulk, piece, cooled, live); amount must fit the hold.
-- Demand flow: requester posts demand → supplier accepts (stock gets reserved) → supplier posts own or public transport → ship loads at supplier, unloads at requester → requester pays goods, issuer pays carrier fee.
+- Demand flow: requester posts demand → supplier accepts (stock gets reserved; accepting more than is on stock is allowed as an entrepreneurial risk – the ship waits at the plant and a missed deadline costs a penalty – but the amount must fit the plant's storage) → supplier posts own or public transport → ship loads at supplier, unloads at requester → requester pays goods, issuer pays carrier fee.
 - Terra buys final goods always and other goods as base demand; the cheaper a good, the more Terra buys (price stabiliser).
 - Difficulty tightens credit and interest for the player only; AI reaction speed, deadlines and penalties apply to everyone.
 
 ## Commands
 
-- `npm test` must stay green. `tests/balance.test.ts` is the Phase-0 gate (200 days, no collapse, ≤3 bankruptcies, processing plants appear); `tests/phase1.test.ts` is the Phase-1 gate (following only `guide()` leads from loan to the first paid order with 1, 10 and 20 AI firms); `tests/endless.test.ts` is the Phase-2 gate (1,000 days, no collapse, ≤3 bankruptcies, all 17 facility types built).
+- `npm test` must stay green. `tests/balance.test.ts` is the Phase-0 gate (200 days, no collapse, ≤3 bankruptcies, processing plants appear); `tests/phase1.test.ts` is the Phase-1 gate (following only `guide()` leads from loan to the first paid order with 1, 10 and 20 AI firms); `tests/endless.test.ts` is the Phase-2 gate (1,000 days, no collapse, ≤3 bankruptcies, all 17 facility types built, every final good reaches Terra).
 - `npm run typecheck` before committing.
 - `npm run dev` serves the game at `/` and the observation page at `/observe.html`.
 

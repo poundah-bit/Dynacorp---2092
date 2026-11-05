@@ -5,7 +5,7 @@
 import { CONFIG, SHIPS, TERRA, distance, facilityDef, good, planet, shipDef, storageDef } from './data';
 import type { Cargo, Demand, Difficulty, Facility, Ship, Transport, World } from './types';
 import {
-  available,
+  storageCapacity,
   company,
   demand,
   facility,
@@ -372,7 +372,11 @@ export function acceptDemand(w: World, companyId: string, demandId: string, supp
   if (!r.ok) return r;
   const f = r.value;
   if (!(d.good in facilityDef(f.type).outputs)) return fail('Diese Anlage liefert die Ware nicht.');
-  if (available(f, d.good) < d.amount) return fail('Nicht genug Ware auf Lager.');
+  // Accepting more than is on stock is allowed – an entrepreneurial risk: the ship waits at the plant
+  // until production has caught up, and a missed deadline costs a penalty. The amount must fit into
+  // the plant's storage, though, or the load could never be completed.
+  const cap = storageCapacity(f, d.good);
+  if (d.amount > cap) return fail(`Die Menge passt nicht ins Lager der Anlage (höchstens ${cap} FE).`);
   f.reserved[d.good] = (f.reserved[d.good] ?? 0) + d.amount;
   d.status = 'accepted';
   d.supplier = companyId;
@@ -491,7 +495,7 @@ export function cancelDemand(w: World, companyId: string, demandId: string): Res
 export function cancelTransport(w: World, companyId: string, transportId: string): Result<undefined> {
   const t = transport(w, transportId);
   if (!t || t.issuer !== companyId) return fail('Transport nicht gefunden.');
-  if (t.status !== 'open' || t.kind !== 'asset') return fail('Nur offene Anlagentransporte können zurückgezogen werden.');
+  if (t.status !== 'open') return fail('Nur offene Ausschreibungen können zurückgezogen werden.');
   t.status = 'accepted';
   t.own = true;
   t.fee = 0;

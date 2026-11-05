@@ -100,6 +100,7 @@ output { color: var(--accent); }
 .opt:has(input:checked) { border-color: var(--accent); background: #10283a; }
 .opt input[type='radio'] { width: 22px; height: 22px; margin: 1px 0 0; accent-color: var(--accent); flex: none; }
 .preview { background: var(--bg); border-radius: 10px; padding: 10px 12px; }
+.warn-box { background: #2e2710; border: 1px solid #6b5a1e; border-radius: 10px; padding: 10px 12px; }
 
 /* ---------- game frame ---------- */
 .top {
@@ -125,6 +126,7 @@ output { color: var(--accent); }
 main { display: grid; gap: 12px; min-width: 0; align-content: start; }
 @media (min-width: 1000px) {
   .layout { grid-template-columns: 320px minmax(0, 1fr); align-items: start; }
+  .no-guide .layout { grid-template-columns: minmax(0, 1fr); }
   .guide { position: sticky; top: 132px; }
 }
 

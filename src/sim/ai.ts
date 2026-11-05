@@ -46,6 +46,7 @@ function turn(w: World, c: Company) {
   deliverOwnAssets(w, c);
   sellOutputs(w, c);
   orderInputs(w, c);
+  takeBackOwnFreight(w, c);
   haulFreight(w, c);
   buyShipsForOutputs(w, c);
   expand(w, c);
@@ -150,7 +151,8 @@ function orderInputs(w: World, c: Company) {
       const have = (f.stock[g] ?? 0) + incoming(w, f.id, g);
       if (have >= daily * 15) continue;
       const room = freeCapacity(f, g) - incoming(w, f.id, g);
-      let amount = Math.min(maxAmount, room, daily * 20);
+      // small plants (e.g. pharma: 60 FE chemicals/day) still order at least the minimum amount
+      let amount = Math.min(maxAmount, room, Math.max(minAmount, daily * 20));
       amount = Math.floor(amount / 500) * 500;
       if (amount < minAmount) continue;
       const ownSupplier = facilitiesOf(w, c.id).find((x) => g in facilityDef(x.type).outputs && available(x, g) >= amount);
@@ -161,6 +163,17 @@ function orderInputs(w: World, c: Company) {
         postDemand(w, c.id, f.id, g, amount);
       }
     }
+  }
+}
+
+/** Own freight still waiting on the exchange goes with an own ship as soon as one is free. */
+function takeBackOwnFreight(w: World, c: Company) {
+  for (const t of w.transports) {
+    if (t.issuer !== c.id || t.status !== 'open' || t.kind !== 'goods') continue;
+    const s = idleShips(w, c, t.cargo)
+      .filter((x) => shipDef(x.model).capacity >= t.amount)
+      .sort((a, b) => distance(a.at ?? TERRA, t.fromPlanet) - distance(b.at ?? TERRA, t.fromPlanet))[0];
+    if (s && cancelTransport(w, c.id, t.id).ok) assignShip(w, c.id, s.id, t.id);
   }
 }
 
@@ -186,14 +199,19 @@ function haulFreight(w: World, c: Company) {
 const cheapestShip = (cargo: Cargo) =>
   SHIPS.filter((m) => m.cargo === cargo && m.capacity >= CONFIG.orders.maxAmount).sort((a, b) => a.price - b.price)[0];
 
-/** One ship per output cargo type, once the company can afford it. */
+/**
+ * One ship per output cargo type, once the company can afford it. More while every ship is busy –
+ * up to 3, or one more per own shipment that is stuck on the exchange (at most 8).
+ */
 function buyShipsForOutputs(w: World, c: Company) {
   const cargos = new Set<Cargo>();
   for (const f of facilitiesOf(w, c.id)) for (const g of Object.keys(facilityDef(f.type).outputs)) cargos.add(good(g).cargo);
   for (const cargo of cargos) {
     const fleet = shipsOf(w, c.id).filter((s) => shipDef(s.model).cargo === cargo);
     const busy = fleet.every((s) => s.phase !== 'idle');
-    if (fleet.length > 0 && !(busy && fleet.length < 3)) continue;
+    const backlog = w.transports.filter((t) => t.issuer === c.id && t.status === 'open' && t.kind === 'goods' && t.cargo === cargo).length;
+    const cap = Math.min(8, 3 + backlog);
+    if (fleet.length > 0 && !(busy && fleet.length < cap)) continue;
     const model = cheapestShip(cargo);
     if (!model) continue;
     // the first ship for an output is essential: borrow for it if needed
