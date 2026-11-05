@@ -473,3 +473,14 @@ Bei der Umsetzung des Wirtschaftskerns kamen diese Festlegungen hinzu. Sie stehe
 | Auftrag auf Schiff ziehen | nicht umgesetzt | der Liefern-Dialog wählt die Schiffe bereits in einem Schritt; Ziehen wäre auf dem Smartphone eher hinderlich |
 | Tutorial | kurze Einführung beim neuen Spiel (Ziel, Zeit, Hilfe, langes Drücken, Karte) mit der Wahl „mit Hilfe“ oder „ohne Hilfe“; danach führt „Nächster Schritt“ durch das Handbuch-Beispiel. Die Einführung ist im Menü jederzeit wieder abrufbar | der Hinweiskasten aus Phase 1 war schon das geführte Tutorial |
 | 10 Speicherplätze | in IndexedDB, Laden auch vom Startbildschirm; das Autosave bleibt in localStorage | ein Spielstand ist nach 1.000 Tagen etwa 0,5 MB – zehn davon sprengen localStorage |
+
+## Entscheidungen nach dem Spieltest zu Phase 3
+
+| Thema | Entscheidung | Warum |
+| --- | --- | --- |
+| Flotte nach Frachtart | der Tab Flotte gruppiert die Schiffe in Tanker, Schüttgut-, Stückgut-, Kühl- und Viehfrachter; jede Gruppe hat ein Symbol (🛢 ⛰ 📦 ❄ 🐄), eine Farbe und eine Zeile mit Anzahl, freien und kritischen Schiffen. Die Werft nutzt dieselben Symbole | bei vielen Schiffen musste man jeden Namen lesen (Spieltest) |
+| Einheiten | Flüssigkeiten in Litern (l), Schüttgut in Tonnen (t), Stückgut, Kühlware und Vieh in FE; Preise je Einheit (Cr/l, Cr/t, Cr/FE). Anlagen und Lager reisen weiter in FE | Lager und Frachtarten auf einen Blick unterscheiden (Spieltest) |
+| Eigenbestellung vor der Produktion | „Ware bestellen“ aus der eigenen Anlage geht auch, wenn die Menge noch nicht auf Lager ist; der Dialog zeigt, was fehlt und wann es reicht. Die Menge muss ins Lager der liefernden Anlage passen | wie beim Annehmen von Nachfragen: unternehmerisches Risiko statt ausgegrauter Option (Spieltest) |
+| Mehrere Aufträge in einem Flug | ein Schiff, das schon zum selben Abholort mit demselben Ziel fliegt oder dort lädt, nimmt weitere Ladungen mit, solange Platz ist („Zuladen“). Liefern- und Übernehmen-Dialog schlagen es zuerst vor; im Tab Flotte gibt es Zuladen-Knöpfe. Nach dem Beladen ist das Schiff zu | ein 45.000-l-Tanker soll mehrere 5.000-l-Aufträge auf einmal fliegen (Spieltest) |
+| Kritischer Zustand statt Schrottpresse | Schiffe werden nicht mehr verschrottet. Unter 30 % Zustand fliegen sie mit 30 % Tempo weiter, melden das einmal, nehmen keine neuen Aufträge an und blinken rot auf der Karte und im Tab Flotte, bis sie auf Terra repariert sind (bei „weniger Bewegung“ im System: fester roter Rahmen) | Schiffe sollen nicht mitten im Spiel verschwinden (Spieltest) |
+| KI-Nachschub in langen Ketten | die KI beliefert bei Zwischenprodukten lieber andere Firmen als Terras Grundnachfrage und zieht eigene Bestellungen, die nach 12 Tagen niemand angenommen hat, zurück und bestellt kleiner neu | im Endlostest blieb Nahrung je nach Spielverlauf ganz aus: zu große Chemikalien-Bestellungen blieben liegen, Dünger fehlte, Agrarprodukte und Vieh auch |

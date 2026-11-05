@@ -1,7 +1,7 @@
 // The daily tick. One call to step() advances the world by one game day.
 
-import { CONFIG, FACILITIES, GOODS, PLANETS, SHIPS, TERRA, distance, facilityDef, good, planet, shipDef, storageDef } from './data';
-import { companyValue, debt, diff, repairShip, startRoute, transportDeadline } from './actions';
+import { CONFIG, FACILITIES, GOODS, PLANETS, SHIPS, TERRA, distance, facilityDef, good, planet, shipDef, storageDef, unitOf } from './data';
+import { companyValue, debt, diff, repairShip, shipLoads, startRoute, transportDeadline } from './actions';
 import { runAi } from './ai';
 import type { Cargo, Demand, Facility, Ship, Transport, World } from './types';
 import {
@@ -10,6 +10,7 @@ import {
   demand,
   facility,
   freeCapacity,
+  isCritical,
   log,
   newId,
   pay,
@@ -140,6 +141,10 @@ function shipsTick(w: World) {
     if (s.route) {
       s.route.traveled += shipSpeed(s);
       s.condition = Math.max(0, s.condition - CONFIG.ships.wearPerTravelDay);
+      if (isCritical(s) && !s.critical) {
+        s.critical = true;
+        log(w, s.owner, `${def.name} ist in kritischem Zustand und fliegt nur noch mit ${Math.round(CONFIG.ships.criticalSpeedFactor * 100)} % Tempo weiter – danach zur Reparatur nach Terra.`, 2);
+      }
       if (s.route.traveled >= s.route.distance) arrive(w, s);
     } else if (s.phase === 'loading' || s.phase === 'unloading' || s.phase === 'repair') {
       s.waitDays -= 1;
@@ -148,6 +153,7 @@ function shipsTick(w: World) {
         else if (s.phase === 'unloading') unload(w, s);
         else {
           s.condition = 100;
+          s.critical = false;
           s.phase = 'idle';
         }
       }
@@ -160,10 +166,6 @@ function shipsTick(w: World) {
         s.repairAtTerra = false;
         log(w, s.owner, `Vorgemerkte Reparatur des ${def.name} nicht möglich: ${r.error}`, 2);
       }
-    }
-    if (s.condition < CONFIG.ships.scrapBelow && s.phase === 'idle') {
-      w.ships = w.ships.filter((x) => x !== s);
-      log(w, s.owner, `${def.name} von ${company(w, s.owner).name} landet in der Schrottpresse.`, 2);
     }
   }
 }
@@ -183,53 +185,73 @@ function arrive(w: World, s: Ship) {
   }
 }
 
+/** Drops cancelled loads from a ship; the first live one becomes the main transport. False if nothing is left. */
+function pruneLoads(w: World, s: Ship): Transport[] {
+  const live = shipLoads(w, s);
+  s.transport = live[0]?.id ?? null;
+  s.joined = live.slice(1).map((t) => t.id);
+  if (!live.length) releaseShip(s);
+  return live;
+}
+
 function load(w: World, s: Ship) {
-  const t = transport(w, s.transport!);
-  if (!t) return releaseShip(s);
-  if (t.kind === 'goods') {
-    const f = facility(w, t.fromFacility!);
-    if (!f) return failTransport(w, t, s, 'Das Lieferwerk existiert nicht mehr.');
-    const onStock = f.stock[t.good!] ?? 0;
-    if (onStock < t.amount) {
+  for (const t of shipLoads(w, s)) {
+    if (t.kind === 'goods' && !facility(w, t.fromFacility!)) cancelTransport(w, t, 'Das Lieferwerk existiert nicht mehr.');
+  }
+  const loads = pruneLoads(w, s);
+  if (!loads.length) return;
+  // all loads of the trip must be on stock; several may come from the same plant
+  const need = new Map<string, { f: Facility; good: string; amount: number }>();
+  for (const t of loads) {
+    if (t.kind !== 'goods') continue;
+    const key = `${t.fromFacility}|${t.good}`;
+    const n = need.get(key) ?? { f: facility(w, t.fromFacility!)!, good: t.good!, amount: 0 };
+    n.amount += t.amount;
+    need.set(key, n);
+  }
+  for (const n of need.values()) {
+    if ((n.f.stock[n.good] ?? 0) < n.amount) {
       s.waitDays = 1; // wait for production
       return;
     }
-    f.stock[t.good!] = onStock - t.amount;
-    f.reserved[t.good!] = Math.max(0, (f.reserved[t.good!] ?? 0) - t.amount);
   }
-  t.status = 'loaded';
-  startRoute(s, t.toPlanet, 'toDelivery');
+  for (const n of need.values()) {
+    n.f.stock[n.good] = (n.f.stock[n.good] ?? 0) - n.amount;
+    n.f.reserved[n.good] = Math.max(0, (n.f.reserved[n.good] ?? 0) - n.amount);
+  }
+  for (const t of loads) t.status = 'loaded';
+  startRoute(s, loads[0]!.toPlanet, 'toDelivery');
 }
 
 function unload(w: World, s: Ship) {
-  const t = transport(w, s.transport!);
-  if (!t) return releaseShip(s);
-  if (t.kind === 'asset') deliverAsset(w, t);
-  else deliverGoods(w, t);
-  if (!t.own && t.carrier) {
-    pay(w, t.issuer, t.carrier, t.fee);
-    reputation(w, t.carrier, t.late ? -2 : 1);
-    log(w, t.carrier, `${company(w, t.carrier).name} erhält ${t.fee} Cr Transporthonorar (${planet(t.toPlanet).name}).`);
+  for (const t of shipLoads(w, s)) {
+    if (t.kind === 'asset') deliverAsset(w, t);
+    else deliverGoods(w, t);
+    if (!t.own && t.carrier) {
+      pay(w, t.issuer, t.carrier, t.fee);
+      reputation(w, t.carrier, t.late ? -2 : 1);
+      log(w, t.carrier, `${company(w, t.carrier).name} erhält ${t.fee} Cr Transporthonorar (${planet(t.toPlanet).name}).`);
+    }
+    t.status = 'done';
+    t.doneDay = w.day;
   }
-  t.status = 'done';
-  t.doneDay = w.day;
   releaseShip(s);
 }
 
 function releaseShip(s: Ship) {
   s.transport = null;
+  s.joined = [];
   s.phase = 'idle';
   s.waitDays = 0;
 }
 
-function failTransport(w: World, t: Transport, s: Ship, why: string) {
+function cancelTransport(w: World, t: Transport, why: string) {
   t.status = 'cancelled';
   if (t.demand) {
     const d = demand(w, t.demand);
     if (d) d.status = 'cancelled';
   }
   log(w, t.issuer, `Transport ${t.id} abgebrochen: ${why}`, 2);
-  releaseShip(s);
 }
 
 function deliverGoods(w: World, t: Transport) {
@@ -246,7 +268,7 @@ function deliverGoods(w: World, t: Transport) {
       const room = freeCapacity(target, d.good);
       const stored = Math.min(room, part);
       target.stock[d.good] = (target.stock[d.good] ?? 0) + stored;
-      if (stored < part) log(w, d.requester, `${part - stored} FE ${good(d.good).name} gingen mangels Lagerplatz verloren.`, 2);
+      if (stored < part) log(w, d.requester, `${part - stored} ${unitOf(d.good)} ${good(d.good).name} gingen mangels Lagerplatz verloren.`, 2);
     }
     if (d.supplier !== d.requester) pay(w, d.requester, d.supplier, value);
   }
@@ -256,8 +278,8 @@ function deliverGoods(w: World, t: Transport) {
   if (d.supplier && d.supplier !== d.requester) {
     if (complete) reputation(w, d.supplier, d.late ? -2 : 1);
     const buyer = d.requester === 'terra' ? 'Terra' : company(w, d.requester).name;
-    const of = part < d.amount ? ` (Teillieferung, ${d.delivered} von ${d.amount} FE)` : '';
-    log(w, d.supplier, `${company(w, d.supplier).name} liefert ${part} FE ${good(d.good).name} an ${buyer} und erhält ${value} Cr${of}.`);
+    const of = part < d.amount ? ` (Teillieferung, ${d.delivered} von ${d.amount} ${unitOf(d.good)})` : '';
+    log(w, d.supplier, `${company(w, d.supplier).name} liefert ${part} ${unitOf(d.good)} ${good(d.good).name} an ${buyer} und erhält ${value} Cr${of}.`);
   }
 }
 
@@ -460,10 +482,8 @@ function checkBankruptcies(w: World) {
     for (const t of w.transports) {
       if ((t.issuer === c.id || t.carrier === c.id) && !['done', 'cancelled'].includes(t.status)) t.status = 'cancelled';
     }
-    for (const s of w.ships) {
-      const t = s.transport ? transport(w, s.transport) : undefined;
-      if (t && t.status === 'cancelled') releaseShip(s);
-    }
+    // ships carrying cancelled loads drop them; a ship with nothing left is free again
+    for (const s of w.ships) if (s.transport) pruneLoads(w, s);
     log(w, c.id, `${c.name} ist bankrott und scheidet aus.`, 3);
   }
 }

@@ -25,7 +25,7 @@ import {
   type Result,
   type World,
 } from '../sim/index';
-import { cr, esc, logText } from './format';
+import { cr, esc, isCriticalShip, logText } from './format';
 import { AI_DEFAULT, AI_MAX, AI_MIN, clampAi, fittingOffers, guide, newGame, newOffers, type GuideTab } from './play';
 import { clearSave, loadGame, saveGame, type SaveData } from './save';
 import { SLOT_COUNT, deleteSlot, listSlots, loadSlot, saveSlot, type SlotMeta } from './slots';
@@ -267,6 +267,7 @@ function checkGameOver() {
 // ---------- time ----------
 
 let acc = 0;
+let lastBlink = 0;
 let last = performance.now();
 
 function frame(now: number) {
@@ -278,6 +279,10 @@ function frame(now: number) {
       acc -= 1;
       advance();
     } else if (map.el.isConnected) map.draw(w, me, acc);
+  } else if (w && map.el.isConnected && now - lastBlink > 175 && w.ships.some((s) => s.owner === me && isCriticalShip(s))) {
+    // paused: keep critical ships blinking on the map
+    lastBlink = now;
+    map.draw(w, me, acc);
   }
   requestAnimationFrame(frame);
 }

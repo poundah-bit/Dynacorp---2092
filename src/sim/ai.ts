@@ -3,6 +3,7 @@
 // order what their plants need, haul freight with idle ships, then expand along their preferences.
 
 import {
+  cancelDemand,
   acceptDemand,
   acceptTransport,
   assignShip,
@@ -30,6 +31,8 @@ import type { Cargo, Company, Facility, World } from './types';
 import { available, facilitiesOf, facilityCount, freeCapacity, random, shipsOf } from './world';
 
 const RESERVE = 120000;
+/** days an own order may stay open without a supplier before the AI orders a smaller amount instead */
+const STALE_ORDER_DAYS = 12;
 const RAW_TYPES = ['oilwell', 'waterstation', 'mine'];
 
 export function runAi(w: World) {
@@ -116,7 +119,9 @@ function sellOutputs(w: World, c: Company) {
     for (const g of Object.keys(facilityDef(f.type).outputs)) {
       const options = w.demands
         .filter((d) => d.status === 'open' && d.good === g && !d.own && d.requester !== c.id && d.amount <= available(f, g))
-        .map((d) => ({ d, score: d.pricePerFe * d.amount - minTransportFee(w, g, d.amount, f.planet, d.toPlanet) }))
+        // Terra's demand for intermediate goods is only a price buffer: other companies' plants come first, or
+        // whole chains (e.g. chemicals → fertilizer → agro → food) starve while refineries sell to Terra
+        .map((d) => ({ d, score: (d.pricePerFe * d.amount - minTransportFee(w, g, d.amount, f.planet, d.toPlanet)) * (d.requester === 'terra' && good(g).tier !== 'final' ? 0.5 : 1) }))
         .sort((a, b) => b.score - a.score);
       const best = options[0];
       if (!best || best.score <= 0) continue;
@@ -149,11 +154,17 @@ function orderInputs(w: World, c: Company) {
     if (f.status !== 'running') continue;
     for (const [g, need] of Object.entries(facilityDef(f.type).inputs)) {
       const daily = need * f.units;
+      // an order nobody takes (too big for what the suppliers have free) blocks every new one:
+      // withdraw it after a while and order the minimum instead
+      const stale = w.demands.filter(
+        (d) => d.requester === c.id && d.toFacility === f.id && d.good === g && d.status === 'open' && w.day - d.createdDay > STALE_ORDER_DAYS,
+      );
+      for (const d of stale) cancelDemand(w, c.id, d.id);
       const have = (f.stock[g] ?? 0) + incoming(w, f.id, g);
       if (have >= daily * 15) continue;
       const room = freeCapacity(f, g) - incoming(w, f.id, g);
       // small plants (e.g. pharma: 60 FE chemicals/day) still order at least the minimum amount
-      let amount = Math.min(maxOrderAmount(w, c.id, g), room, Math.max(minAmount, daily * 20));
+      let amount = stale.length ? minAmount : Math.min(maxOrderAmount(w, c.id, g), room, Math.max(minAmount, daily * 20));
       amount = Math.floor(amount / 500) * 500;
       if (amount < minAmount) continue;
       const ownSupplier = facilitiesOf(w, c.id).find((x) => g in facilityDef(x.type).outputs && available(x, g) >= amount);

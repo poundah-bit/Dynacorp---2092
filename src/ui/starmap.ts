@@ -240,8 +240,18 @@ export function createStarMap(): StarMap {
         ctx.save();
         ctx.translate(x, y);
         ctx.rotate(angle);
-        ctx.fillStyle = s.condition < 50 ? col.bad : col.accent;
-        ctx.strokeStyle = col.bg;
+        // critical ships blink red until they are repaired
+        const critical = s.condition < CONFIG.ships.criticalBelow;
+        const on = Math.floor(performance.now() / 350) % 2 === 0;
+        ctx.fillStyle = critical ? (on ? col.bad : col.bg) : s.condition < 50 ? col.warn : col.accent;
+        if (critical && on) {
+          ctx.strokeStyle = col.bad;
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.arc(0, 0, 13, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+        ctx.strokeStyle = critical ? col.bad : col.bg;
         ctx.lineWidth = 1.5;
         ctx.beginPath();
         ctx.moveTo(8, 0);

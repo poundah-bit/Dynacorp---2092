@@ -3,7 +3,7 @@
 // below says who produces it, who needs it and how the market stands. Pure HTML/SVG strings, no DOM.
 
 import { FACILITIES, GOODS, PLANETS, facilitiesOf, facilityDef, good, type World } from '../sim/index';
-import { cr, dec, esc, fe, gName, num, perFe, pName } from './format';
+import { amt, cr, dec, esc, gName, num, perUnit, pName } from './format';
 
 export interface ChainNode {
   id: string;
@@ -168,7 +168,7 @@ export function chainDetail(w: World, me: string, goodId: string): string {
     const def = facilityDef(type);
     const other = io === 'out' ? def.inputs : def.outputs;
     const what = Object.entries(other)
-      .map(([id, n]) => `${fe(n)} ${gName(id)}`)
+      .map(([id, n]) => `${amt(n, id)} ${gName(id)}`)
       .join(' + ');
     return `<li><b>${def.name}</b> ${io === 'out' ? (what ? `aus ${what}` : '(Rohstoff)') : what ? `→ ${what}` : ''}<div class="small muted">${where(type)}</div></li>`;
   };
@@ -176,7 +176,7 @@ export function chainDetail(w: World, me: string, goodId: string): string {
   const openFe = open.reduce((s, d) => s + d.amount, 0);
   const myStock = facilitiesOf(w, me).reduce((s, f) => s + (f.stock[goodId] ?? 0), 0);
   return `<h3>${esc(g.name)} <span class="muted small">${g.tier === 'raw' ? 'Rohstoff' : g.tier === 'final' ? 'Endprodukt – Terra kauft es immer' : 'Zwischenprodukt'}</span></h3>
-    <p>Kurs <b>${perFe(price)}</b> <span class="muted">(Basis ${num(g.basePrice)})</span> · offene Nachfragen ${num(open.length)} über ${fe(openFe)}${open.length ? ` · Wert ${cr(open.reduce((s, d) => s + d.amount * d.pricePerFe, 0))}` : ''}${myStock ? ` · in deinen Lagern ${fe(myStock)}` : ''}</p>
+    <p>Kurs <b>${perUnit(price, goodId)}</b> <span class="muted">(Basis ${num(g.basePrice)})</span> · offene Nachfragen ${num(open.length)} über ${amt(openFe, goodId)}${open.length ? ` · Wert ${cr(open.reduce((s, d) => s + d.amount * d.pricePerFe, 0))}` : ''}${myStock ? ` · in deinen Lagern ${amt(myStock, goodId)}` : ''}</p>
     <div class="chain-io">
       <div><h4>Hergestellt von</h4><ul>${producers.map((f) => line(f.id, 'out')).join('') || '<li class="muted">–</li>'}</ul></div>
       <div><h4>Gebraucht von</h4><ul>${consumers.map((f) => line(f.id, 'in')).join('') || (g.tier === 'final' ? '<li>Terra</li>' : '<li class="muted">–</li>')}</ul></div>

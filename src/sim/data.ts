@@ -6,6 +6,7 @@ import storagesJson from '../data/storages.json';
 import companiesJson from '../data/companies.json';
 import configJson from '../data/config.json';
 import type {
+  Cargo,
   CompanyDef,
   FacilityDef,
   GoodDef,
@@ -38,6 +39,10 @@ function must<T>(map: Map<string, T>, id: string, what: string): T {
 }
 
 export const good = (id: string) => must(goodMap, id, 'Ware');
+
+/** Unit of measure per cargo: liquids in litres, bulk goods in tonnes, everything else in FE (Frachteinheiten). */
+export const CARGO_UNIT: Record<Cargo, string> = { tank: 'l', bulk: 't', piece: 'FE', cooled: 'FE', live: 'FE' };
+export const unitOf = (goodId: string) => CARGO_UNIT[good(goodId).cargo];
 export const facilityDef = (id: string) => must(facilityMap, id, 'Anlage');
 export const shipDef = (id: string) => must(shipMap, id, 'Schiff');
 export const planet = (id: string) => must(planetMap, id, 'Planet');

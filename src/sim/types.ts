@@ -182,6 +182,10 @@ export interface Ship {
   transport: string | null;
   waitDays: number; // days left for loading/unloading/repair
   repairAtTerra?: boolean; // repair automatically at the next stop on Terra
+  /** further transports on board, same pickup and destination as `transport` (one trip, several orders) */
+  joined?: string[];
+  /** the ship has already reported its critical condition */
+  critical?: boolean;
 }
 
 export interface LogEntry {

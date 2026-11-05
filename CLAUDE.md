@@ -40,11 +40,15 @@ Non-commercial Android fan game inspired by Dynatech (1992). Owner: Rocco (GitHu
 
 - One facility type per planet; extending = bringing another unit of the same type to the same planet. Max 10 sites per company.
 - Facilities are bought at Terra and must be flown out as piece goods; then 5 days construction; maintenance costs from built, operating costs while running.
-- Every ship carries one cargo type (tank, bulk, piece, cooled, live); amount must fit the hold.
+- Every ship carries one cargo type (tank, bulk, piece, cooled, live); amount must fit the hold. Units shown to the player follow the cargo (`CARGO_UNIT`): tank in litres (l), bulk in tonnes (t), piece/cooled/live in FE; internally all amounts are plain numbers.
+- Several transports with the same pickup and destination can share one trip: `assignShip` on a ship that is still flying to the pickup or loading adds the transport to `ship.joined` if it fits (`canJoin`, `shipRoom`, `shipLoads`). All loads are loaded together, delivered and paid one by one.
+- Ships are never scrapped. Below `ships.criticalBelow` (30 %) a ship flies at `criticalSpeedFactor` (30 %) of its speed, logs a warning once, takes no new orders and blinks red on the map and in the fleet tab until it is repaired on Terra.
 - Demand flow: requester posts demand → supplier accepts (stock gets reserved; accepting more than is on stock is allowed as an entrepreneurial risk – the ship waits at the plant and a missed deadline costs a penalty – but the amount must fit the plant's storage) → supplier posts own or public transports (a demand can be split over several ships via `postTransportForDemand(…, amount)`; `shipped`/`delivered` track the parts, each part is paid on arrival) → ship loads at supplier, unloads at requester → requester pays goods, issuer pays carrier fee.
 - Terra buys final goods always and other goods as base demand; the cheaper a good, the more Terra buys (price stabiliser).
 - Order size: at most `orders.maxAmount` (15,000 FE) per demand, or the capacity of the biggest own ship of that cargo (`maxOrderAmount`). Terra orders 20–30 days of one plant's output, sometimes a big order (×2–4), never more than the biggest ship of the cargo.
-- Ships are bought in the shipyard only; the delivery dialogs offer own idle ships or public posting (exception: flying a newly bought facility/storage). A ship can be marked `repairAtTerra` and is repaired automatically when it stands idle on Terra.
+- Ships are bought in the shipyard only; the delivery dialogs offer own idle ships, own ships already flying the same route ("zuladen") or public posting (exception: flying a newly bought facility/storage). A ship can be marked `repairAtTerra` and is repaired automatically when it stands idle on Terra.
+- An order from an own plant (Eigen-Nachfrage) may be placed before the goods exist, like accepting a demand early; the amount must fit the supplier's storage.
+- AI: prefers other companies' demands over Terra's base demand for intermediate goods (score × 0.5 for Terra), and withdraws an own order nobody took within 12 days, then orders the minimum amount – both keep long chains (chemicals → fertilizer → agro → food) from starving.
 - Difficulty tightens credit and interest for the player only; AI reaction speed, deadlines and penalties apply to everyone.
 
 ## Commands

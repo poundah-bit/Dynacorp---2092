@@ -2,7 +2,7 @@
 // these functions, so both play by the same rules. Actions never throw for game-rule violations;
 // they return { ok: false, error } with a German message the UI can show directly.
 
-import { CONFIG, SHIPS, TERRA, distance, facilityDef, good, planet, shipDef, storageDef } from './data';
+import { CONFIG, SHIPS, TERRA, distance, facilityDef, good, planet, shipDef, storageDef, unitOf } from './data';
 import type { Cargo, Demand, Difficulty, Facility, Ship, Transport, World } from './types';
 import {
   storageCapacity,
@@ -13,6 +13,7 @@ import {
   facilityValue,
   facilitiesOf,
   freeCapacity,
+  isCritical,
   log,
   newId,
   pay,
@@ -334,7 +335,7 @@ export function postDemand(
   amount = Math.round(amount);
   if (amount <= 0) return fail('Menge muss positiv sein.');
   const max = maxOrderAmount(w, companyId, goodId);
-  if (amount > max) return fail(`Höchstens ${max} FE pro Bestellung – mit einem größeren eigenen Schiff dieser Frachtart mehr.`);
+  if (amount > max) return fail(`Höchstens ${max} ${unitOf(goodId)} pro Bestellung – mit einem größeren eigenen Schiff dieser Frachtart mehr.`);
   if (freeCapacity(f, goodId) - incoming(w, f.id, goodId) < amount) return fail('Nicht genug freier Lagerplatz.');
   const d: Demand = {
     id: newId(w, 'd'),
@@ -379,7 +380,7 @@ export function acceptDemand(w: World, companyId: string, demandId: string, supp
   // until production has caught up, and a missed deadline costs a penalty. The amount must fit into
   // the plant's storage, though, or the load could never be completed.
   const cap = storageCapacity(f, d.good);
-  if (d.amount > cap) return fail(`Die Menge passt nicht ins Lager der Anlage (höchstens ${cap} FE).`);
+  if (d.amount > cap) return fail(`Die Menge passt nicht ins Lager der Anlage (höchstens ${cap} ${unitOf(d.good)}).`);
   f.reserved[d.good] = (f.reserved[d.good] ?? 0) + d.amount;
   d.status = 'accepted';
   d.supplier = companyId;
@@ -388,7 +389,7 @@ export function acceptDemand(w: World, companyId: string, demandId: string, supp
   d.deadlineDay =
     transportDeadline(w, good(d.good).cargo, d.amount, f.planet, d.toPlanet) + CONFIG.orders.demandExtraDays;
   if (d.requester !== 'terra' && d.requester !== companyId) {
-    log(w, d.requester, `${company(w, companyId).name} liefert ${d.amount} FE ${good(d.good).name} nach ${planet(d.toPlanet).name}.`);
+    log(w, d.requester, `${company(w, companyId).name} liefert ${d.amount} ${unitOf(d.good)} ${good(d.good).name} nach ${planet(d.toPlanet).name}.`);
   }
   return ok(d);
 }
@@ -416,7 +417,7 @@ export function postTransportForDemand(
   const g = good(d.good);
   const rest = unshippedAmount(d);
   const part = Math.round(amount ?? rest);
-  if (part <= 0 || part > rest) return fail(`Es sind nur noch ${rest} FE zu verschicken.`);
+  if (part <= 0 || part > rest) return fail(`Es sind nur noch ${rest} ${unitOf(d.good)} zu verschicken.`);
   const min = minTransportFee(w, d.good, part, f.planet, d.toPlanet);
   if (mode === 'public' && fee !== undefined && fee < min) return fail(`Das Honorar muss mindestens ${min} Cr betragen.`);
   const t: Transport = {
@@ -499,15 +500,50 @@ export function acceptTransport(w: World, companyId: string, transportId: string
   return ok(t);
 }
 
-/** Sends one of the carrier's ships to execute an accepted transport. */
+/** Transports on board or booked for this trip: the main one plus those that joined it. */
+export function shipLoads(w: World, s: Ship): Transport[] {
+  return [s.transport, ...(s.joined ?? [])]
+    .map((id) => (id ? transport(w, id) : undefined))
+    .filter((t): t is Transport => !!t && t.status !== 'cancelled' && t.status !== 'done');
+}
+
+/** Free hold of a ship for this trip. */
+export const shipRoom = (w: World, s: Ship) => shipDef(s.model).capacity - shipLoads(w, s).reduce((sum, t) => sum + t.amount, 0);
+
+/**
+ * Can this load ride along on a ship that is already booked? Only before loading is done, only for the same
+ * pickup and destination, the same cargo and if it fits the free hold.
+ */
+export function canJoin(w: World, s: Ship, t: Pick<Transport, 'cargo' | 'amount' | 'fromPlanet' | 'toPlanet'>): boolean {
+  if (s.phase !== 'toPickup' && s.phase !== 'loading') return false;
+  if (isCritical(s)) return false;
+  const main = s.transport ? transport(w, s.transport) : undefined;
+  if (!main || main.status === 'loaded') return false;
+  return main.fromPlanet === t.fromPlanet && main.toPlanet === t.toPlanet && shipDef(s.model).cargo === t.cargo && shipRoom(w, s) >= t.amount;
+}
+
+/**
+ * Sends one of the carrier's ships to execute an accepted transport. A ship that is already on its way to
+ * the same pickup with the same destination takes the load along if there is room.
+ */
 export function assignShip(w: World, companyId: string, shipId: string, transportId: string): Result<undefined> {
   const s = ship(w, shipId);
   if (!s || s.owner !== companyId) return fail('Schiff nicht gefunden.');
-  if (s.phase !== 'idle') return fail('Das Schiff ist beschäftigt.');
   const t = transport(w, transportId);
   if (!t || t.carrier !== companyId || t.status !== 'accepted' || t.ship) return fail('Kein passender übernommener Auftrag.');
   const def = shipDef(s.model);
   if (def.cargo !== t.cargo) return fail(`Das Schiff transportiert kein ${cargoName(t.cargo)}.`);
+  if (isCritical(s)) return fail('Das Schiff ist in kritischem Zustand – erst auf Terra reparieren.');
+  if (s.phase !== 'idle') {
+    if (!canJoin(w, s, t)) {
+      return fail(shipRoom(w, s) < t.amount && s.phase !== 'toDelivery' ? 'Für diese Ladung ist auf dem Schiff kein Platz mehr.' : 'Das Schiff ist beschäftigt.');
+    }
+    t.ship = s.id;
+    t.status = 'assigned';
+    t.assignedDay = w.day;
+    s.joined = [...(s.joined ?? []), t.id];
+    return ok(undefined);
+  }
   if (def.capacity < t.amount) return fail('Der Laderaum ist zu klein.');
   t.ship = s.id;
   t.status = 'assigned';

@@ -281,3 +281,27 @@ svg.chain .price { fill: var(--muted); font-size: 11px; }
 @keyframes blink { 50% { background: rgba(242, 204, 96, 0.22); } }
 @media (prefers-reduced-motion: reduce) { .nav button.blink { animation: none; background: rgba(242, 204, 96, 0.22); } }
 [data-tip] { -webkit-touch-callout: none; }
+
+/* ---------- fleet: grouped by cargo, symbol and colour per cargo type ---------- */
+:root { --c-tank: #6fa8ff; --c-bulk: #d2a86a; --c-piece: #f2cc60; --c-cooled: #7fdbff; --c-live: #9be38b; }
+.cargo-ic {
+  display: inline-grid; place-items: center; width: 30px; height: 30px; border-radius: 8px; flex: none;
+  font-size: 17px; line-height: 1; background: var(--panel-2); border: 2px solid currentColor;
+}
+.cargo-tank { color: var(--c-tank); }
+.cargo-bulk { color: var(--c-bulk); }
+.cargo-piece { color: var(--c-piece); }
+.cargo-cooled { color: var(--c-cooled); }
+.cargo-live { color: var(--c-live); }
+.fleet-head { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; margin: 10px 2px 0; font-size: 17px; }
+.fleet-head .muted { color: var(--muted); font-weight: 400; }
+.ship-card { border-left: 5px solid currentColor; color: var(--text); }
+.ship-card.cargo-tank { border-left-color: var(--c-tank); }
+.ship-card.cargo-bulk { border-left-color: var(--c-bulk); }
+.ship-card.cargo-piece { border-left-color: var(--c-piece); }
+.ship-card.cargo-cooled { border-left-color: var(--c-cooled); }
+.ship-card.cargo-live { border-left-color: var(--c-live); }
+.ship-card h2 .cargo-ic { width: 26px; height: 26px; font-size: 15px; }
+.ship-card.critical { border-color: var(--bad); animation: critical 0.9s ease-in-out infinite; }
+@keyframes critical { 50% { box-shadow: 0 0 0 3px var(--bad); background: #3a1414; } }
+@media (prefers-reduced-motion: reduce) { .ship-card.critical { animation: none; box-shadow: 0 0 0 3px var(--bad); } }

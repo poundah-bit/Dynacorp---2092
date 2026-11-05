@@ -12,6 +12,7 @@ import {
   assignShip,
   available,
   buyShip,
+  canJoin,
   cargoName,
   company,
   createWorld,
@@ -27,6 +28,7 @@ import {
   postTransportForDemand,
   releaseTransport,
   shipDef,
+  shipRoom,
   shipSpeed,
   shipsOf,
   storageCapacity,
@@ -78,7 +80,7 @@ export function tripDays(speed: number, at: string, from: string, to: string, re
 export function idleFittingShips(w: World, me: string, cargo: Cargo, amount: number): Ship[] {
   return shipsOf(w, me).filter((s) => {
     const def = shipDef(s.model);
-    return s.phase === 'idle' && def.cargo === cargo && def.capacity >= amount && s.condition >= CONFIG.ships.scrapBelow;
+    return s.phase === 'idle' && def.cargo === cargo && def.capacity >= amount && s.condition >= CONFIG.ships.criticalBelow;
   });
 }
 
@@ -86,10 +88,19 @@ export function cheapestShipFor(cargo: Cargo, amount: number): ShipDef | undefin
   return SHIPS.filter((m) => m.cargo === cargo && m.capacity >= amount).sort((a, b) => a.price - b.price)[0];
 }
 
+/**
+ * Own ships already booked for the same pickup and destination that still have room – a load can ride along
+ * on the same trip (e.g. several small orders from one plant to Terra on one big tanker).
+ */
+export function joinableShips(w: World, me: string, cargo: Cargo, from: string, to: string, amount = 1): Ship[] {
+  return shipsOf(w, me).filter((s) => canJoin(w, s, { cargo, amount, fromPlanet: from, toPlanet: to }));
+}
+
 /** Can the player carry this transport: with an idle ship now, a busy one later, or not at all? */
 export function carryState(w: World, me: string, t: Transport): 'idle' | 'busy' | 'none' {
   const fit = shipsOf(w, me).filter((s) => shipDef(s.model).cargo === t.cargo && shipDef(s.model).capacity >= t.amount);
-  if (fit.some((s) => s.phase === 'idle')) return 'idle';
+  if (fit.some((s) => s.phase === 'idle' && s.condition >= CONFIG.ships.criticalBelow)) return 'idle';
+  if (joinableShips(w, me, t.cargo, t.fromPlanet, t.toPlanet, t.amount).length) return 'idle';
   return fit.length ? 'busy' : 'none';
 }
 
@@ -179,9 +190,12 @@ export interface ShipPlan {
 
 const fail = (error: string): Result<never> => ({ ok: false, error });
 
+/** Hold a ship offers for a new load: all of it when idle, the rest when it is already booked for the trip. */
+export const tripRoom = (w: World, s: Ship) => (s.phase === 'idle' ? shipDef(s.model).capacity : shipRoom(w, s));
+
 /** Idle own ships of a cargo type, any size (several of them can share a demand). */
 export function idleShipsOfCargo(w: World, me: string, cargo: Cargo): Ship[] {
-  return shipsOf(w, me).filter((s) => s.phase === 'idle' && shipDef(s.model).cargo === cargo && s.condition >= CONFIG.ships.scrapBelow);
+  return shipsOf(w, me).filter((s) => s.phase === 'idle' && shipDef(s.model).cargo === cargo && s.condition >= CONFIG.ships.criticalBelow);
 }
 
 function shipFor(w: World, me: string, choice: Choice): Result<string> {
@@ -209,9 +223,9 @@ function checkPlan(w: World, me: string, d: Demand, from: string, plan: ShipPlan
   for (const id of new Set(plan.ships)) {
     const s = w.ships.find((x) => x.id === id);
     if (!s || s.owner !== me) return fail('Schiff nicht gefunden.');
-    if (s.phase !== 'idle') return fail(`${shipDef(s.model).name} ist nicht mehr frei.`);
     if (shipDef(s.model).cargo !== cargo) return fail(`${shipDef(s.model).name} transportiert kein ${cargoName(cargo)}.`);
-    rest -= shipDef(s.model).capacity;
+    if (s.phase !== 'idle' && !canJoin(w, s, { cargo, amount: 1, fromPlanet: from, toPlanet: d.toPlanet })) return fail(`${shipDef(s.model).name} ist nicht mehr frei.`);
+    rest -= tripRoom(w, s);
   }
   rest = Math.max(0, rest);
   if (rest > 0 && plan.rest === 'public' && plan.fee !== undefined) {
@@ -231,12 +245,13 @@ export function shipDemand(w: World, me: string, demandId: string, plan: ShipPla
   if (!pre.ok) return pre;
   const ships = [...new Set(plan.ships)]
     .map((id) => w.ships.find((x) => x.id === id)!)
-    .sort((a, b) => shipDef(b.model).capacity - shipDef(a.model).capacity);
+    .map((s) => ({ s, room: tripRoom(w, s) }))
+    .sort((a, b) => b.room - a.room);
   const out: Transport[] = [];
-  for (const s of ships) {
+  for (const { s, room } of ships) {
     const open = unshippedAmount(d);
-    if (open <= 0) break;
-    const t = postTransportForDemand(w, me, demandId, 'own', undefined, Math.min(open, shipDef(s.model).capacity));
+    if (open <= 0 || room <= 0) continue;
+    const t = postTransportForDemand(w, me, demandId, 'own', undefined, Math.min(open, room));
     if (!t.ok) return t;
     const a = assignShip(w, me, s.id, t.value.id);
     if (!a.ok) return a;
@@ -264,14 +279,16 @@ export function deliver(w: World, me: string, demandId: string, facilityId: stri
   return r.ok ? acc : r;
 }
 
-/** Suggested plan: the nearest idle ships of the right cargo until the amount is covered. */
-export function defaultPlan(w: World, me: string, cargo: Cargo, amount: number, at: string): ShipPlan {
+/** Suggested plan: ships already going the same way first, then the nearest idle ships, until the amount is covered. */
+export function defaultPlan(w: World, me: string, cargo: Cargo, amount: number, at: string, to?: string): ShipPlan {
   const ships: string[] = [];
   let left = amount;
-  for (const s of idleShipsOfCargo(w, me, cargo).sort((a, b) => distance(a.at ?? TERRA, at) - distance(b.at ?? TERRA, at))) {
+  const joining = to ? joinableShips(w, me, cargo, at, to) : [];
+  const idle = idleShipsOfCargo(w, me, cargo).sort((a, b) => distance(a.at ?? TERRA, at) - distance(b.at ?? TERRA, at));
+  for (const s of [...joining, ...idle]) {
     if (left <= 0) break;
     ships.push(s.id);
-    left -= shipDef(s.model).capacity;
+    left -= tripRoom(w, s);
   }
   return { ships, rest: 'public' };
 }
@@ -305,7 +322,9 @@ export function carry(w: World, me: string, transportId: string, choice: Choice)
  * Sensible default for a single load: an idle own ship, else (only where buying is offered, i.e. for
  * facilities from Dynacore) the cheapest fitting new one, else public.
  */
-export function defaultChoice(w: World, me: string, cargo: Cargo, amount: number, at: string, allowBuy = false): Choice {
+export function defaultChoice(w: World, me: string, cargo: Cargo, amount: number, at: string, allowBuy = false, to?: string): Choice {
+  const joining = to ? joinableShips(w, me, cargo, at, to, amount)[0] : undefined;
+  if (joining) return `ship:${joining.id}`;
   const idle = idleFittingShips(w, me, cargo, amount).sort((a, b) => distance(a.at ?? TERRA, at) - distance(b.at ?? TERRA, at))[0];
   if (idle) return `ship:${idle.id}`;
   const model = cheapestShipFor(cargo, amount);
@@ -512,7 +531,9 @@ export interface Offer {
 export function fittingOffers(w: World, me: string): Offer[] {
   const out: Offer[] = [];
   for (const o of deliverableDemands(w, me)) {
-    if (!o.ready || !idleShipsOfCargo(w, me, good(o.d.good).cargo).length) continue;
+    const cargo = good(o.d.good).cargo;
+    const from = o.facilities[0]?.planet;
+    if (!o.ready || !from || !(idleShipsOfCargo(w, me, cargo).length || joinableShips(w, me, cargo, from, o.d.toPlanet).length)) continue;
     out.push({ id: o.d.id, kind: 'demand', text: `${good(o.d.good).name} für ${companyName(w, o.d.requester)}` });
   }
   for (const t of openTransports(w, me)) {

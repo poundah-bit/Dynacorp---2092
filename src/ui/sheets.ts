@@ -23,6 +23,7 @@ import {
   postDemand,
   repayLoan,
   shipDef,
+  shipRoom,
   storageCapacity,
   storageDef,
   takeLoan,
@@ -43,13 +44,15 @@ import {
   deliver,
   idleFittingShips,
   idleShipsOfCargo,
+  joinableShips,
   moveTransport,
   shipDemand,
   tripDays,
+  tripRoom,
   type Choice,
   type ShipPlan,
 } from './play';
-import { cargoName, cr, days, deadlineIn, fe, gName, inDays, loadName, pName, pc, perFe, shipStatus, who } from './format';
+import { amt, cargoName, cr, days, deadlineIn, fe, gName, inDays, loadName, pName, pc, perUnit, qty, shipStatus, who } from './format';
 
 export interface SheetResult {
   error?: string;
@@ -84,17 +87,20 @@ interface Load {
   readyIn?: number;
 }
 
-const route = (l: Load) => `<p class="small muted">${cargoName(l.cargo)}, ${fe(l.amount)} · ${pName(l.from)} → ${pName(l.to)} (${pc(distance(l.from, l.to))})</p>`;
+const route = (l: Load) => `<p class="small muted">${cargoName(l.cargo)}, ${qty(l.amount, l.cargo)} · ${pName(l.from)} → ${pName(l.to)} (${pc(distance(l.from, l.to))})</p>`;
 const feeInput = (min: number) =>
   `Honorar <input type="number" name="fee" min="${min}" step="100" value="${Math.ceil((min * 1.2) / 100) * 100}" inputmode="numeric"> Cr (mindestens <span data-fee-min>${cr(min)}</span>)`;
 const noShipHint = (cargo: Cargo) => `Kein freies eigenes Schiff für ${cargoName(cargo)}. Schiffe gibt es in der Werft auf Terra.`;
 
 /** One ship for one load (a facility from Terra, another company's transport). */
 function choiceBlock(w: World, me: string, l: Load): string {
-  const pick = defaultChoice(w, me, l.cargo, l.amount, l.from, l.allowBuy);
+  const pick = defaultChoice(w, me, l.cargo, l.amount, l.from, l.allowBuy, l.to);
   const radio = (value: string, label: string, disabled = false) =>
     `<label class="opt${disabled ? ' dim' : ''}"><input type="radio" name="how" value="${value}" ${value === pick ? 'checked' : ''} ${disabled ? 'disabled' : ''}><span>${label}</span></label>`;
-  const own = idleFittingShips(w, me, l.cargo, l.amount)
+  const along = joinableShips(w, me, l.cargo, l.from, l.to, l.amount)
+    .map((s) => radio(`ship:${s.id}`, `<b>${shipDef(s.model).name} #${s.id.slice(1)}</b> – fliegt diese Strecke schon, noch ${qty(shipRoom(w, s), l.cargo)} frei<br><small>Die Ladung kommt dazu – ein Flug für mehrere Aufträge</small>`))
+    .join('');
+  const own = along + idleFittingShips(w, me, l.cargo, l.amount)
     .map((s) => ({ s, d: tripDays(shipDef(s.model).speed, s.at ?? TERRA, l.from, l.to, l.readyIn) }))
     .sort((a, b) => a.d - b.d)
     .map(({ s, d }) => radio(`ship:${s.id}`, `<b>${shipDef(s.model).name} #${s.id.slice(1)}</b> – ${shipStatus(w, s).text}<br><small>Ankunft am Ziel ${inDays(d)}</small>`))
@@ -119,15 +125,23 @@ function choiceBlock(w: World, me: string, l: Load): string {
  * publicly or arranged later under "Aufträge". The live() part keeps the summary and fee current.
  */
 function planBlock(w: World, me: string, l: Load): string {
-  const pick = new Set(defaultPlan(w, me, l.cargo, l.amount, l.from).ships);
-  const ships = idleShipsOfCargo(w, me, l.cargo)
-    .map((s) => ({ s, d: tripDays(shipDef(s.model).speed, s.at ?? TERRA, l.from, l.to, l.readyIn) }))
-    .sort((a, b) => a.d - b.d)
+  const pick = new Set(defaultPlan(w, me, l.cargo, l.amount, l.from, l.to).ships);
+  const along = joinableShips(w, me, l.cargo, l.from, l.to)
     .map(
-      ({ s, d }) => `<label class="opt"><input type="checkbox" name="ship" value="${s.id}" data-cap="${shipDef(s.model).capacity}" ${pick.has(s.id) ? 'checked' : ''}>
-        <span><b>${shipDef(s.model).name} #${s.id.slice(1)}</b> – ${fe(shipDef(s.model).capacity)} Laderaum – ${shipStatus(w, s).text}<br><small>Ankunft am Ziel ${inDays(d)}</small></span></label>`,
+      (s) => `<label class="opt"><input type="checkbox" name="ship" value="${s.id}" data-cap="${tripRoom(w, s)}" ${pick.has(s.id) ? 'checked' : ''}>
+        <span><b>${shipDef(s.model).name} #${s.id.slice(1)}</b> – fliegt diese Strecke schon, noch ${qty(tripRoom(w, s), l.cargo)} frei<br><small>Die Ladung kommt dazu – ein Flug für mehrere Aufträge</small></span></label>`,
     )
     .join('');
+  const ships =
+    along +
+    idleShipsOfCargo(w, me, l.cargo)
+      .map((s) => ({ s, d: tripDays(shipDef(s.model).speed, s.at ?? TERRA, l.from, l.to, l.readyIn) }))
+      .sort((a, b) => a.d - b.d)
+      .map(
+        ({ s, d }) => `<label class="opt"><input type="checkbox" name="ship" value="${s.id}" data-cap="${shipDef(s.model).capacity}" ${pick.has(s.id) ? 'checked' : ''}>
+        <span><b>${shipDef(s.model).name} #${s.id.slice(1)}</b> – ${qty(shipDef(s.model).capacity, l.cargo)} Laderaum – ${shipStatus(w, s).text}<br><small>Ankunft am Ziel ${inDays(d)}</small></span></label>`,
+      )
+      .join('');
   return `${route(l)}
     ${ships ? `<div class="opts">${ships}</div>` : `<p class="hint">${noShipHint(l.cargo)}</p>`}
     <p class="preview" data-plan-summary></p>
@@ -146,8 +160,8 @@ function planLive(w: World, l: Load, form: HTMLFormElement) {
   const rest = Math.max(0, l.amount - cap);
   const summary = form.querySelector<HTMLElement>('[data-plan-summary]')!;
   summary.innerHTML = boxes.length
-    ? `${boxes.length === 1 ? '1 Schiff' : `${boxes.length} Schiffe`} mit ${fe(cap)} Laderaum – ${rest ? `es bleiben <b>${fe(rest)}</b>.` : 'das reicht für die ganze Menge.'}`
-    : `Kein eigenes Schiff gewählt – die ganzen ${fe(l.amount)} gehen an die Börse oder warten.`;
+    ? `${boxes.length === 1 ? '1 Schiff' : `${boxes.length} Schiffe`} mit ${qty(cap, l.cargo)} Laderaum – ${rest ? `es bleiben <b>${qty(rest, l.cargo)}</b>.` : 'das reicht für die ganze Menge.'}`
+    : `Kein eigenes Schiff gewählt – die ganzen ${qty(l.amount, l.cargo)} gehen an die Börse oder warten.`;
   form.querySelector<HTMLElement>('[data-rest]')!.hidden = rest === 0;
   const fee = form.elements.namedItem('fee') as HTMLInputElement | null;
   if (fee && rest > 0 && fee.dataset.rest !== String(rest)) {
@@ -255,8 +269,8 @@ export function deliverSheet(w: World, me: string, demandId: string): Sheet {
   const from = facs[0]!;
   const stockText = (f: (typeof facs)[number]) => {
     const r = readiness(f, d.good, d.amount);
-    if (!r.missing) return `${fe(r.free)} frei – sofort ladbar`;
-    return `${fe(Math.max(0, r.free))} frei, es fehlen ${fe(r.missing)}${r.daysToReady < Infinity ? ` (~${days(r.daysToReady)} Produktion)` : ' – die Anlage produziert gerade nicht'}`;
+    if (!r.missing) return `${amt(r.free, d.good)} frei – sofort ladbar`;
+    return `${amt(Math.max(0, r.free), d.good)} frei, es fehlen ${amt(r.missing, d.good)}${r.daysToReady < Infinity ? ` (~${days(r.daysToReady)} Produktion)` : ' – die Anlage produziert gerade nicht'}`;
   };
   const facChoice =
     facs.length > 1
@@ -272,8 +286,8 @@ export function deliverSheet(w: World, me: string, demandId: string): Sheet {
     : `<p class="small muted">Nach der Annahme bleiben etwa ${days(deadline)} bis zur Frist.</p>`;
   const load: Load = { cargo: good(d.good).cargo, amount: d.amount, from: from.planet, to: d.toPlanet, good: d.good, allowPublic: true, readyIn: Number.isFinite(r.daysToReady) ? r.daysToReady : 0 };
   return {
-    title: `${fe(d.amount)} ${gName(d.good)} an ${who(w, d.requester)}`,
-    body: `<p>Erlös bei Ankunft: <b>${cr(d.amount * d.pricePerFe)}</b> (${perFe(d.pricePerFe)}). Wer zu spät liefert, zahlt eine Strafe von ${Math.round(diff(w).penaltyRate * 100)} % des Warenwerts.</p>
+    title: `${amt(d.amount, d.good)} ${gName(d.good)} an ${who(w, d.requester)}`,
+    body: `<p>Erlös bei Ankunft: <b>${cr(d.amount * d.pricePerFe)}</b> (${perUnit(d.pricePerFe, d.good)}). Wer zu spät liefert, zahlt eine Strafe von ${Math.round(diff(w).penaltyRate * 100)} % des Warenwerts.</p>
       ${facChoice}${risk}
       <h3>Wie kommt die Ware hin?</h3>
       ${planBlock(w, me, load)}`,
@@ -294,8 +308,8 @@ export function arrangeSheet(w: World, me: string, demandId: string): Sheet {
   const open = unshippedAmount(d);
   const load: Load = { cargo: good(d.good).cargo, amount: open, from: from.planet, to: d.toPlanet, good: d.good, allowPublic: true };
   return {
-    title: `${fe(open)} ${gName(d.good)} nach ${pName(d.toPlanet)}`,
-    body: `${open < d.amount ? `<p>Von ${fe(d.amount)} sind ${fe(d.amount - open)} schon unterwegs.</p>` : ''}<p class="small">${deadlineIn(w, d.deadlineDay)}</p>${planBlock(w, me, load)}`,
+    title: `${amt(open, d.good)} ${gName(d.good)} nach ${pName(d.toPlanet)}`,
+    body: `${open < d.amount ? `<p>Von ${amt(d.amount, d.good)} sind ${amt(d.amount - open, d.good)} schon unterwegs.</p>` : ''}<p class="small">${deadlineIn(w, d.deadlineDay)}</p>${planBlock(w, me, load)}`,
     confirm: 'Los',
     live: (form) => planLive(w, load, form),
     run(form) {
@@ -334,11 +348,11 @@ export function storageSheet(w: World, me: string, facilityId: string): Sheet {
   const groups = cargos
     .map((cargo) => {
       const its = goods.filter((g) => good(g).cargo === cargo);
-      const now = its.map((g) => `${gName(g)} ${fe(storageCapacity(f, g))}`).join(', ');
+      const now = its.map((g) => `${gName(g)} ${amt(storageCapacity(f, g), g)}`).join(', ');
       const opts = STORAGES.filter((s) => s.cargo === cargo)
         .map(
           (s) => `<label class="opt${cash < s.price ? ' dim' : ''}"><input type="radio" name="storage" value="${s.id}" ${cash < s.price ? 'disabled' : ''}>
-            <span><b>${s.name}</b> +${fe(s.capacity)} · ${cr(s.price)}<br><small>Kosten ${cr(s.maintenance + s.operation)} pro Tag · reist als Stückgut ${fe(s.size)}</small></span></label>`,
+            <span><b>${s.name}</b> +${qty(s.capacity, s.cargo)} · ${cr(s.price)}<br><small>Kosten ${cr(s.maintenance + s.operation)} pro Tag · reist als Stückgut ${fe(s.size)}</small></span></label>`,
         )
         .join('');
       return `<h3>${cargoName(cargo)} <span class="small muted">– heute: ${now}</span></h3><div class="opts">${opts}</div>`;
@@ -370,7 +384,7 @@ export function orderSheet(w: World, me: string, facilityId: string): Sheet {
   const goodOpts = goods
     .map(
       (g) =>
-        `<label class="opt"><input type="radio" name="good" value="${g}" ${g === first ? 'checked' : ''}><span><b>${gName(g)}</b> – Lager ${fe(f.stock[g] ?? 0)}, bestellt ${fe(incoming(w, f.id, g))}, Platz für ${fe(room(g))} · Kurs ${perFe(w.prices[g] ?? 0)}</span></label>`,
+        `<label class="opt"><input type="radio" name="good" value="${g}" ${g === first ? 'checked' : ''}><span><b>${gName(g)}</b> – Lager ${amt(f.stock[g] ?? 0, g)}, bestellt ${amt(incoming(w, f.id, g), g)}, Platz für ${amt(room(g), g)} · Kurs ${perUnit(w.prices[g] ?? 0, g)}</span></label>`,
     )
     .join('');
   const { minAmount } = CONFIG.orders;
@@ -388,11 +402,11 @@ export function orderSheet(w: World, me: string, facilityId: string): Sheet {
       const g = val(form, 'good');
       const range = form.elements.namedItem('amount') as HTMLInputElement;
       const max = Math.max(minAmount, Math.min(maxFor(g), Math.floor(room(g) / 500) * 500));
-      form.querySelector('[data-max-hint]')!.textContent = `Höchstens ${fe(maxFor(g))} pro Bestellung – mit einem größeren eigenen Schiff für ${cargoName(good(g).cargo)} mehr. Platz im Lager: ${fe(room(g))}.`;
+      form.querySelector('[data-max-hint]')!.textContent = `Höchstens ${amt(maxFor(g), g)} pro Bestellung – mit einem größeren eigenen Schiff für ${cargoName(good(g).cargo)} mehr. Platz im Lager: ${amt(room(g), g)}.`;
       range.max = String(max);
       if (Number(range.value) > max) range.value = String(max);
       const amount = Number(range.value);
-      (form.elements.namedItem('amountOut') as HTMLOutputElement).value = `${fe(amount)} (≈ ${cr(amount * (w.prices[g] ?? 0))})`;
+      (form.elements.namedItem('amountOut') as HTMLOutputElement).value = `${amt(amount, g)} (≈ ${cr(amount * (w.prices[g] ?? 0))})`;
       const own = facilitiesOf(w, me).filter((x) => g in facilityDef(x.type).outputs);
       const box = form.querySelector('[data-sources]')!;
       const current = val(form, 'src') || 'public';
@@ -400,8 +414,15 @@ export function orderSheet(w: World, me: string, facilityId: string): Sheet {
         `<label class="opt"><input type="radio" name="src" value="public" ${current === 'public' ? 'checked' : ''}><span>Öffentlich an der Börse</span></label>` +
         own
           .map((x) => {
-            const ok = available(x, g) >= amount;
-            return `<label class="opt${ok ? '' : ' dim'}"><input type="radio" name="src" value="${x.id}" ${ok ? '' : 'disabled'} ${current === x.id && ok ? 'checked' : ''}><span>Aus eigener Anlage auf ${pName(x.planet)} (${fe(available(x, g))} frei)</span></label>`;
+            // like a delivery: allowed before the goods exist, as long as the amount fits the supplier's storage
+            const fits = amount <= storageCapacity(x, g);
+            const r = readiness(x, g, amount);
+            const state = !fits
+              ? `<span class="bad">passt nicht ins Lager dort (höchstens ${amt(storageCapacity(x, g), g)})</span>`
+              : r.missing
+                ? `<span class="warn">${amt(Math.max(0, r.free), g)} frei, es fehlen ${amt(r.missing, g)}${r.daysToReady < Infinity ? ` – genug ${inDays(r.daysToReady)}` : ' – die Anlage produziert gerade nicht'}. Das Schiff wartet dort, bis genug produziert ist.</span>`
+                : `<span class="good">${amt(r.free, g)} frei – sofort ladbar</span>`;
+            return `<label class="opt${fits ? '' : ' dim'}"><input type="radio" name="src" value="${x.id}" ${fits ? '' : 'disabled'} ${current === x.id && fits ? 'checked' : ''}><span>Aus eigener Anlage auf ${pName(x.planet)}<br><small>${state}</small></span></label>`;
           })
           .join('');
     },

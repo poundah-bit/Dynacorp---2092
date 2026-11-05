@@ -53,7 +53,8 @@
   },
   "ships": {
     "wearPerTravelDay": 0.4,
-    "scrapBelow": 30,
+    "criticalBelow": 30,
+    "criticalSpeedFactor": 0.3,
     "minSpeedFactor": 0.6,
     "repairCostPerPercent": 0.004
   },

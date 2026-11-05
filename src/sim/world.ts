@@ -112,10 +112,15 @@ export function freeCapacity(f: Facility, goodId: string): number {
 }
 
 /** Speed in Parsec/day, reduced linearly by wear (100 % → 1.0, scrap limit → minSpeedFactor). */
+/** Below this condition a ship flies at a crawl and takes no new orders until it is repaired. */
+export const isCritical = (s: Ship) => s.condition < CONFIG.ships.criticalBelow;
+
 export function shipSpeed(s: Ship): number {
   const def = shipDef(s.model);
-  const { scrapBelow, minSpeedFactor } = CONFIG.ships;
-  const k = Math.max(0, Math.min(1, (s.condition - scrapBelow) / (100 - scrapBelow)));
+  const { criticalBelow, minSpeedFactor, criticalSpeedFactor } = CONFIG.ships;
+  // a ship in critical condition limps on instead of breaking apart
+  if (s.condition < criticalBelow) return def.speed * criticalSpeedFactor;
+  const k = Math.max(0, Math.min(1, (s.condition - criticalBelow) / (100 - criticalBelow)));
   return def.speed * (minSpeedFactor + (1 - minSpeedFactor) * k);
 }
 
