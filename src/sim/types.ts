@@ -154,6 +154,8 @@ export interface Transport {
   createdDay: number;
   deadlineDay: number;
   late: boolean;
+  assignedDay?: number; // a ship was sent (for balancing statistics)
+  doneDay?: number; // delivered
 }
 
 export interface ShipRoute {

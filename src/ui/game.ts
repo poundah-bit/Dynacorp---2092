@@ -24,7 +24,7 @@ import {
   type World,
 } from '../sim/index';
 import { cr, esc, logText } from './format';
-import { guide, newGame, type GuideTab } from './play';
+import { AI_DEFAULT, AI_MAX, AI_MIN, clampAi, guide, newGame, type GuideTab } from './play';
 import { clearSave, loadGame, saveGame } from './save';
 import * as S from './sheets';
 import * as V from './views';
@@ -49,8 +49,8 @@ const VIEWS: Record<Tab, (ctx: V.ViewCtx) => string> = {
   stats: V.statsView,
 };
 
-/** Game days per real second at 1×, 2×, 4×. */
-const DAYS_PER_SECOND: Record<number, number> = { 1: 0.5, 2: 1, 4: 2 };
+/** Game days per real second at 1×, 2×, 4×: 1× is one day every 6 seconds. */
+const DAYS_PER_SECOND: Record<number, number> = { 1: 1 / 6, 2: 2 / 6, 4: 4 / 6 };
 
 const DIFFICULTIES: { id: Difficulty; name: string; text: string }[] = [
   { id: 'easy', name: 'Leicht', text: 'günstigere Kredite, lange Fristen, die KI reagiert langsam' },
@@ -97,16 +97,38 @@ function showStart() {
         <div class="opts">${DIFFICULTIES.map(
           (d) => `<label class="opt"><input type="radio" name="diff" value="${d.id}" ${d.id === 'med' ? 'checked' : ''}><span><b>${d.name}</b> – ${d.text}</span></label>`,
         ).join('')}</div>
+        <div class="field">Gegner: <output name="aiOut">${AI_DEFAULT} KI-Firmen</output>
+          <div class="stepper">
+            <button type="button" data-step="-1" aria-label="Ein Gegner weniger">−</button>
+            <input type="range" name="ai" min="${AI_MIN}" max="${AI_MAX}" step="1" value="${AI_DEFAULT}" aria-label="Anzahl der KI-Firmen">
+            <button type="button" data-step="1" aria-label="Ein Gegner mehr">+</button>
+          </div>
+          <span class="small muted">${AI_MIN} bis ${AI_MAX}. Mehr Gegner heißt mehr Nachfrage und mehr Konkurrenz um Aufträge.</span>
+        </div>
         <button type="submit" class="primary big">Spiel starten</button>
       </form>
-      <p class="small muted">Du spielst gegen 3 KI-Firmen. Das Spiel beginnt pausiert; ein Hinweiskasten führt dich durch die ersten Schritte. Der Spielstand wird automatisch gespeichert.</p>
+      <p class="small muted">Das Spiel beginnt pausiert; ein Hinweiskasten führt dich durch die ersten Schritte. Der Spielstand wird automatisch gespeichert.</p>
       <p class="small"><a href="./observe.html">Beobachtungsmodus: 20 KI-Firmen spielen allein</a></p>
     </div>`;
-  start.querySelector('form')!.addEventListener('submit', (e) => {
+  const form = start.querySelector('form')!;
+  const ai = form.elements.namedItem('ai') as HTMLInputElement;
+  const showAi = () => {
+    const n = clampAi(Number(ai.value));
+    (form.elements.namedItem('aiOut') as HTMLOutputElement).value = n === 1 ? '1 KI-Firma' : `${n} KI-Firmen`;
+  };
+  ai.addEventListener('input', showAi);
+  form.querySelectorAll<HTMLButtonElement>('[data-step]').forEach((b) =>
+    b.addEventListener('click', () => {
+      ai.value = String(clampAi(Number(ai.value) + Number(b.dataset.step)));
+      showAi();
+    }),
+  );
+  form.addEventListener('submit', (e) => {
     e.preventDefault();
-    const data = new FormData(e.target as HTMLFormElement);
+    const data = new FormData(form);
     if (save && !confirm('Der gespeicherte Spielstand wird dabei überschrieben. Neues Spiel starten?')) return;
-    begin(newGame(String(data.get('name') ?? ''), String(data.get('diff') ?? 'med') as Difficulty, Date.now() % 1_000_000), false);
+    const difficulty = String(data.get('diff') ?? 'med') as Difficulty;
+    begin(newGame(String(data.get('name') ?? ''), difficulty, Date.now() % 1_000_000, clampAi(Number(data.get('ai')))), false);
   });
 }
 

@@ -3,6 +3,7 @@
 // Pure functions on the world – no DOM – so tests can drive them like the UI does.
 
 import {
+  COMPANIES,
   CONFIG,
   SHIPS,
   TERRA,
@@ -37,11 +38,15 @@ import {
   type World,
 } from '../sim/index';
 
-/** Number of AI competitors in the Phase-1 prototype. */
-export const PROTOTYPE_AI = 3;
+/** AI competitors: chosen on the start screen, 10 by default, at most as many as companies.json lists. */
+export const AI_DEFAULT = 10;
+export const AI_MIN = 1;
+export const AI_MAX = COMPANIES.length;
 
-export function newGame(name: string, difficulty: Difficulty, seed: number): World {
-  return createWorld({ seed, difficulty, playerName: name.trim() || 'Meine Firma', aiCompanies: PROTOTYPE_AI });
+export const clampAi = (n: number) => Math.max(AI_MIN, Math.min(AI_MAX, Math.round(Number.isFinite(n) ? n : AI_DEFAULT)));
+
+export function newGame(name: string, difficulty: Difficulty, seed: number, aiCompanies = AI_DEFAULT): World {
+  return createWorld({ seed, difficulty, playerName: name.trim() || 'Meine Firma', aiCompanies: clampAi(aiCompanies) });
 }
 
 export const companyName = (w: World, id: string | null) =>

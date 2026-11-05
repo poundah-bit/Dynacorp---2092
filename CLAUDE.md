@@ -10,7 +10,7 @@ Non-commercial Android fan game inspired by Dynatech (1992). Owner: Rocco (GitHu
 
 - No assets, code, texts or names from the original Dynatech. Planets, companies and values are our own design.
 - No combat, sabotage or piracy. Cooperation via the order exchange is the core idea.
-- Single player against 20 AI companies. No split-screen / local multiplayer (decided). Online multiplayer is a maybe-later.
+- Single player against 1–20 AI companies (chosen before the game, default 10). No split-screen / local multiplayer (decided). Online multiplayer is a maybe-later.
 - Target: Android tablet first, then phone. Delivered as PWA (GitHub Pages) and later APK via Capacitor.
 
 ## Architecture
@@ -24,13 +24,15 @@ Non-commercial Android fan game inspired by Dynatech (1992). Owner: Rocco (GitHu
   - `engine.ts` `step(world)` = one game day: bank → facilities → ships → orders → Terra demand → prices → storms → AI → bankruptcy → collapse
   - `ai.ts` rule-based AI companies
   - `report.ts` balancing report for headless runs
-- `src/ui/` – the Phase-1 game (`index.html`): one player vs. 3 AI companies, plain list UI. The real touch UI (star map, tutorial, 10 save slots) comes in Phase 3.
+  - `metrics.ts` Phase-2 checks against the concept's target values (amortisation, transport days, loan share, storage share, loss-making planets) plus run statistics
+- `src/ui/` – the game (`index.html`): one player vs. 1–20 AI companies (default 10, `AI_DEFAULT` in `play.ts`), plain list UI. The real touch UI (star map, tutorial, 10 save slots) comes in Phase 3.
   - `play.ts` pure player-side logic, no DOM: queries (deliverable demands, waiting transports), combined one-tap moves (`deliver`, `moveTransport`, `carry`, `shipDemand` with a `Choice` of own ship / buy ship / public) and `guide()`, the "Nächster Schritt" hint derived from world state. Tests drive the game through this module.
-  - `game.ts` start screen, time loop (paused, 1× = 2 s/day, 2×, 4×), click dispatch via `data-act`, sheets, toasts, autosave
+  - `game.ts` start screen, time loop (paused, 1× = 6 s/day, 2×, 4×), click dispatch via `data-act`, sheets, toasts, autosave
   - `views.ts` HTML of the six tabs (Terra, Anlagen, Flotte, Börse, Aufträge, Statistik); `data-guide` attributes mark what the guide highlights
   - `sheets.ts` dialogs (loan, repay, deliver, transport, order goods); `format.ts` German number formatting and labels; `save.ts` one autosave slot in localStorage
   - `debug.ts` + `observe.html` – observation page where 20 AI companies play alone
 - `tools/simulate.ts` – headless run: `npm run sim -- <days> <seed> <difficulty>`
+- `tools/balance.ts` – balancing report against the target values: `npm run balance -- <days> <seeds,comma> <difficulty>` (default 1000 days, seeds 1,2,3, med)
 
 ## Key game rules (as implemented)
 
@@ -43,10 +45,10 @@ Non-commercial Android fan game inspired by Dynatech (1992). Owner: Rocco (GitHu
 
 ## Commands
 
-- `npm test` must stay green. `tests/balance.test.ts` is the Phase-0 gate (200 days, no collapse, ≤3 bankruptcies, processing plants appear); `tests/phase1.test.ts` is the Phase-1 gate (following only `guide()` leads from loan to the first paid order against 3 AI firms).
+- `npm test` must stay green. `tests/balance.test.ts` is the Phase-0 gate (200 days, no collapse, ≤3 bankruptcies, processing plants appear); `tests/phase1.test.ts` is the Phase-1 gate (following only `guide()` leads from loan to the first paid order with 1, 10 and 20 AI firms); `tests/endless.test.ts` is the Phase-2 gate (1,000 days, no collapse, ≤3 bankruptcies, all 17 facility types built).
 - `npm run typecheck` before committing.
 - `npm run dev` serves the game at `/` and the observation page at `/observe.html`.
 
 ## Status
 
-Phase 1 (playable prototype) is built and played through in the browser at tablet size; a test on a real Android tablet is still open. Next is Phase 2: 20 AI companies, balancing against the target values in the concept. Known: with only 3 AI firms the economy stays stable but thin (4–8 facilities after 200 days).
+Phase 1 is done (short test on a real tablet by Rocco). Phase 2 is in progress: the 1,000-day gate passes since the AI fix (AI now buys a piece-goods ship big enough for large facilities). Open: tune `src/data/*.json` until `npm run balance` meets the targets – see "Entscheidungen aus der Umsetzung (Phase 2)" in the concept for the current numbers.

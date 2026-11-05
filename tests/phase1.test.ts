@@ -14,7 +14,9 @@ import {
   type World,
 } from '../src/sim/index';
 import {
-  PROTOTYPE_AI,
+  AI_DEFAULT,
+  AI_MAX,
+  AI_MIN,
   deliver,
   deliverableDemands,
   defaultChoice,
@@ -25,8 +27,8 @@ import {
 } from '../src/ui/play';
 import { runUntil } from './helpers';
 
-function playManualExample(seed: number) {
-  const w = newGame('Testfirma', 'med', seed);
+function playManualExample(seed: number, ai = AI_DEFAULT) {
+  const w = newGame('Testfirma', 'med', seed, ai);
   const me = w.playerId!;
   const seen: string[] = [];
   const note = () => {
@@ -70,10 +72,17 @@ function playManualExample(seed: number) {
   return { w, me, seen };
 }
 
-describe('Phase 1: Handbuch-Beispiel gegen 3 KI-Firmen', () => {
-  it.each([1, 2, 3])('Seed %i: die Anleitung im Spiel führt bis zum ersten bezahlten Auftrag', (seed) => {
-    const { w, me, seen } = playManualExample(seed);
-    expect(w.companies.filter((c) => !c.isPlayer)).toHaveLength(PROTOTYPE_AI);
+describe('Phase 1: Handbuch-Beispiel gegen KI-Firmen', () => {
+  const cases: [number, number][] = [
+    [1, AI_DEFAULT],
+    [2, AI_DEFAULT],
+    [3, AI_DEFAULT],
+    [4, AI_MIN],
+    [5, AI_MAX],
+  ];
+  it.each(cases)('Seed %i, %i Gegner: die Anleitung im Spiel führt bis zum ersten bezahlten Auftrag', (seed, ai) => {
+    const { w, me, seen } = playManualExample(seed, ai);
+    expect(w.companies.filter((c) => !c.isPlayer)).toHaveLength(ai);
     expect(company(w, me).revenue).toBeGreaterThan(0);
     expect(company(w, me).bankrupt).toBe(false);
     expect(seen.slice(0, 7)).toEqual(['loan', 'facility', 'asset-transport', 'wait-flight', 'wait-build', 'start', 'wait-stock']);
@@ -87,6 +96,14 @@ describe('Phase 1: Handbuch-Beispiel gegen 3 KI-Firmen', () => {
     run(w, 200 - w.day);
     expect(w.collapsed).toBe(false);
     expect(company(w, me).bankrupt).toBe(false);
+  });
+
+  it('die Gegnerzahl bleibt zwischen 1 und 20', () => {
+    const count = (n: number) => newGame('Testfirma', 'med', 1, n).companies.filter((c) => !c.isPlayer).length;
+    expect(count(0)).toBe(AI_MIN);
+    expect(count(7)).toBe(7);
+    expect(count(99)).toBe(AI_MAX);
+    expect(newGame('Testfirma', 'med', 1).companies.filter((c) => !c.isPlayer)).toHaveLength(10);
   });
 });
 

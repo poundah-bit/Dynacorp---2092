@@ -203,6 +203,7 @@ function unload(w: World, s: Ship) {
     log(w, t.carrier, `${company(w, t.carrier).name} erhält ${t.fee} Cr Transporthonorar (${planet(t.toPlanet).name}).`);
   }
   t.status = 'done';
+  t.doneDay = w.day;
   releaseShip(s);
 }
 

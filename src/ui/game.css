@@ -88,6 +88,8 @@ input[type='text'], input:not([type]), input[type='number'] {
 input[type='number'] { width: 9em; min-height: 40px; text-align: right; }
 input[type='range'] { width: 100%; min-height: var(--tap); accent-color: var(--accent); }
 output { color: var(--accent); }
+.stepper { display: flex; gap: 10px; align-items: center; }
+.stepper button { width: var(--tap); padding: 0; font-size: 22px; flex: none; }
 .opts { display: grid; gap: 8px; margin: 8px 0; }
 .opt {
   display: flex; gap: 12px; align-items: flex-start;

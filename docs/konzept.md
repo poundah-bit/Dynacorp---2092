@@ -9,7 +9,7 @@ Stand: 5. November 2026 · Autor: Rocco (poundah-bit)
 Ziel ist eine kostenlose, werbefreie Neuinterpretation des Echtzeit-Wirtschaftsspiels Dynatech (1992) für Android-Tablets und -Smartphones. Übernommen wird das Spielprinzip – Produktionsketten, öffentliche Auftragsbörse, Wettlauf um Aufträge in Echtzeit –, nicht aber Code, Grafik, Musik, Texte oder der Name des Originals.
 
 - **Plattform:** Android (Tablet zuerst, dann Smartphone), technisch als PWA mit optionalem APK – derselbe Stack wie bei Scorched Earth Revival.
-- **Modus:** Einzelspieler gegen 20 KI-Firmen. Kein geteilter Bildschirm; ein Online-Mehrspielermodus bleibt eine spätere Option.
+- **Modus:** Einzelspieler gegen 1 bis 20 KI-Firmen (Standard 10). Kein geteilter Bildschirm; ein Online-Mehrspielermodus bleibt eine spätere Option.
 - **Lizenz:** Open Source auf GitHub, keine Einnahmen, keine In-App-Käufe.
 - **Name:** „Dynacorp 2092“ – 2092 liegt genau 100 Jahre nach dem Erscheinen von Dynatech (1992). Das Original wird nur im Hinweis „inspiriert von Dynatech (1992)“ genannt.
 
@@ -377,8 +377,8 @@ Die Reihenfolge folgt dem Architektur-Grundsatz: Erst muss die Wirtschaft ohne G
 | Phase | Inhalt | Tor zum Abschluss | Status |
 | --- | --- | --- | --- |
 | 0 · Spieldaten und Wirtschaftskern | Waren, Anlagen, Schiffe, Planeten, Lager, Kredit als JSON; Produktion, Markt, Auftragsbörse; headless mit Tests | 200 Spieltage im Test ohne Wirtschaftskollaps | ✅ fertig |
-| 1 · Spielbarer Prototyp | Ein Spieler gegen 3 KI-Firmen; Kredit, Anlagenkauf, Börse, Eigen- und Fremdtransport; schlichte Listen-Oberfläche, auf dem Tablet getestet | Handbuch-Beispiel (Kredit, Ölanlage, Frachter, erster Auftrag) durchspielbar | ✅ gebaut, im Browser in Tablet-Größe durchgespielt; Test auf echtem Tablet offen |
-| 2 · Volle Wirtschaft und Balancing | 20 KI-Firmen, alle 17 Anlagen und 19 Schiffe, 21 Welten, Terra-Nachfrage; Firmenindex, Gravo-Stürme, Wirtschaftskrise; Werte gegen die Zielwerte justiert | KI-Firmen halten die Wirtschaft im Endlosspiel stabil | offen |
+| 1 · Spielbarer Prototyp | Ein Spieler gegen 3 KI-Firmen; Kredit, Anlagenkauf, Börse, Eigen- und Fremdtransport; schlichte Listen-Oberfläche, auf dem Tablet getestet | Handbuch-Beispiel (Kredit, Ölanlage, Frachter, erster Auftrag) durchspielbar | ✅ fertig (kurzer Test auf echtem Tablet) |
+| 2 · Volle Wirtschaft und Balancing | 20 KI-Firmen, alle 17 Anlagen und 19 Schiffe, 21 Welten, Terra-Nachfrage; Firmenindex, Gravo-Stürme, Wirtschaftskrise; Werte gegen die Zielwerte justiert | KI-Firmen halten die Wirtschaft im Endlosspiel stabil (1.000 Tage) | in Arbeit |
 | 3 · Touch-Oberfläche | sechs Tabs, Sternkarte, Ketten-Graph, Auftrags-Benachrichtigung, Zeitsteuerung, Tutorial, Autosave, 10 Speicherplätze | Testrunde auf Tablet und Smartphone ohne Handbuch | offen |
 | 4 · Veröffentlichung | PWA über GitHub Pages, APK über Capacitor in GitHub Releases, optional F-Droid; danach Szenarien, Daueraufträge, ggf. Online-Mehrspieler | – | offen |
 
@@ -420,8 +420,29 @@ Bei der Umsetzung des Wirtschaftskerns kamen diese Festlegungen hinzu. Sie stehe
 | Tabs | Terra (Bank, DYNATECH, Werft), Anlagen, Flotte, Börse, Aufträge, Statistik; „Ware bestellen“ sitzt an der Anlage statt in einem eigenen Tab „Auftrag geben“ | man bestellt immer für eine bestimmte Anlage |
 | Einstiegshilfe | Hinweiskasten „Nächster Schritt“, der sich aus dem Spielstand ergibt, hebt den passenden Knopf hervor; kein festes Skript | übersteht Umwege des Spielers; das geführte Tutorial kommt in Phase 3 |
 | Ein Tap statt Menü-Kette | nach dem Anlagenkauf öffnet sich gleich der Transport; „Liefern“ = annehmen + Schiff wählen, kaufen oder öffentlich ausschreiben | wichtigste Aktion in höchstens zwei Taps |
-| Zeit | Spiel startet pausiert; 1× = 2 Sekunden pro Spieltag, dazu 2× und 4× | Einsteiger lesen erst, Profis spulen vor |
+| Zeit | Spiel startet pausiert; 1× = 6 Sekunden pro Spieltag, dazu 2× und 4× | 2 Sekunden wirkten beim Tablet-Test zu schnell |
 | Spielstand | ein Autosave-Platz im Browser (localStorage) | 10 Speicherplätze mit IndexedDB folgen in Phase 3 |
 | Beobachtungsmodus | die Phase-0-Seite liegt jetzt unter `observe.html` | `index.html` ist das Spiel |
 | Ticker | der Kern meldet jetzt auch bezahlte Lieferungen, Honorare und übernommene Aufträge | sonst erfährt der Spieler nicht, dass Geld kam |
-| Wirtschaft mit 3 KI-Firmen | bleibt in Tests stabil, ist aber dünn (4–8 Anlagen nach 200 Tagen) | Phase 2 bringt 20 KI-Firmen und das Balancing |
+| Gegnerzahl | vor Spielstart frei wählbar von 1 bis 20, Standard 10 (der Prototyp startete mit 3) | mit 3 KI-Firmen blieb die Wirtschaft stabil, aber dünn (4–8 Anlagen nach 200 Tagen) |
+| Tor im Endlosspiel | 1.000 Spieltage ohne Kollaps (Tor von Phase 2) | entspricht bei 1× knapp 2 Stunden Spielzeit |
+
+## Entscheidungen aus der Umsetzung (Phase 2)
+
+| Thema | Entscheidung | Warum |
+| --- | --- | --- |
+| Tor im Endlosspiel | Test `tests/endless.test.ts`: 1.000 Tage mit 20 KI-Firmen auf allen Schwierigkeitsgraden ohne Kollaps, höchstens 3 Bankrotte, alle 17 Anlagenarten gebaut; dazu das Standardspiel (Spieler + 10 KI-Firmen) | „stabil“ allein reichte nicht – die Wirtschaft blieb vorher bei Rohstoffen stecken |
+| KI-Fehler behoben | die KI kauft für große Anlagen (über 15.000 FE) einen Stückgutfrachter, der groß genug ist, und zieht Ausschreibungen zurück, die niemand fliegen kann | vorher warteten Stahlwerke und alle Endprodukt-Werke für immer auf Terra und blockierten die Firma |
+| Messwerkzeug | `npm run balance` prüft die Balancing-Zielwerte gegen die Daten und gegen Headless-Läufe | Grundlage für das Justieren der Werte |
+
+**Messstand nach dem KI-Fix** (1.000 Tage, Seeds 1–3, Mittel, 20 KI-Firmen): stabil, 0–1 Bankrotte, alle Anlagenarten gebaut (≈ 170 Einheiten), Preisindex 1,05–1,68.
+
+| Zielwert | Stand | Befund |
+| --- | --- | --- |
+| Rohstoffanlage amortisiert sich in 60–100 Tagen | bei Basiskursen Öl 40, Erz 51–54, Wasser 73–78 Tage; bei Marktkursen 61–180 | Öl und Erz zu lukrativ, Wasser verfällt im Kurs |
+| Endprodukt-Anlage in 120–180 Tagen | bei Basiskursen 192–1.859 Tage; bei Marktkursen 56–193 | Basiskurse der Endprodukte zu niedrig, der Markt gleicht über Knappheit aus |
+| Typischer Transport 3–9 Tage | Median 14 Tage, nur 2 % im Ziel | Entfernungen zu groß für die Schiffstempi – Koordinaten oder Tempi anpassen |
+| Kreditrate ≤ 60 % der Tageseinnahmen | Öl 50 %, Erz 54 %, Wasser 74 % | Wasserstation liefert zu wenig Wert |
+| Lagerkosten < 5 % der Anlagenkosten | alle 15 Lager darüber, schlimmster Fall 118 % | die Lagerwerte im Konzept selbst verfehlen das Ziel – Ziel oder Lagerkosten ändern |
+| Kein Planet mit Dauerverlust | Plantage auf Liora macht bei Basiskursen Verlust | Webstoff zu billig oder Plantage zu teuer im Betrieb |
+| Terra kauft Endprodukte | Plastikwaren, Textilien, Maschinen werden geliefert; Roboter, Medikamente, Nahrung, Getränke nie | Terra fragt 2.000–15.000 FE nach; ein Pharmawerk braucht für 2.000 FE 80 Tage – die Mengen müssen zum Produktionstempo passen |

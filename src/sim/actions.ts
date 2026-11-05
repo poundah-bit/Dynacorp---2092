@@ -469,6 +469,7 @@ export function assignShip(w: World, companyId: string, shipId: string, transpor
   if (def.capacity < t.amount) return fail('Der Laderaum ist zu klein.');
   t.ship = s.id;
   t.status = 'assigned';
+  t.assignedDay = w.day;
   s.transport = t.id;
   if (s.at === t.fromPlanet) {
     s.phase = 'loading';

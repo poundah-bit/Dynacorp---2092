@@ -8,6 +8,7 @@ import {
   assignShip,
   buyFacility,
   buyShip,
+  cancelTransport,
   creditLimit,
   diff,
   incoming,
@@ -77,21 +78,33 @@ function finance(_w: World, _c: Company) {
   // loans are taken on demand in expand()
 }
 
-/** Purchased facilities/storage waiting at Terra: fly them with an own piece-goods ship, buy one, or pay someone. */
+/** Cheapest piece-goods ship that can carry `size` FE (facilities bigger than 15.000 FE need B–E). */
+const pieceShipFor = (size: number) =>
+  SHIPS.filter((m) => m.cargo === 'piece' && m.capacity >= size).sort((a, b) => a.price - b.price)[0];
+
+const ownsPieceShipFor = (w: World, c: Company, size: number) =>
+  shipsOf(w, c.id).some((x) => shipDef(x.model).cargo === 'piece' && shipDef(x.model).capacity >= size);
+
+/** Purchased facilities/storage waiting at Terra: fly them with an own piece-goods ship, buy one big enough, or pay someone. */
 function deliverOwnAssets(w: World, c: Company) {
+  // a public offer nobody takes (e.g. no one has a ship that big) is withdrawn and retried with an own ship
+  for (const t of w.transports) {
+    if (t.issuer === c.id && t.kind === 'asset' && t.status === 'open' && w.day - t.createdDay > 15) cancelTransport(w, c.id, t.id);
+  }
   const waiting = w.transports.filter((t) => t.issuer === c.id && t.kind === 'asset' && t.own && t.status === 'accepted' && !t.ship);
   for (const t of waiting) {
     let s = idleShips(w, c, 'piece').find((x) => shipDef(x.model).capacity >= t.amount);
-    if (!s) {
-      const model = SHIPS.filter((m) => m.cargo === 'piece' && m.capacity >= t.amount).sort((a, b) => a.price - b.price)[0];
-      const hasPieceShip = shipsOf(w, c.id).some((x) => shipDef(x.model).cargo === 'piece');
-      if (model && !hasPieceShip && c.cash >= model.price + RESERVE / 2) {
+    if (!s && !ownsPieceShipFor(w, c, t.amount)) {
+      const model = pieceShipFor(t.amount);
+      if (model && borrowFor(w, c, model.price) && c.cash >= model.price) {
         const r = buyShip(w, c.id, model.id);
         if (r.ok) s = r.value;
       }
     }
     if (s) assignShip(w, c.id, s.id, t.id);
-    else if (w.day - t.createdDay > 3) releaseTransport(w, c.id, t.id, Math.round(minTransportFee(w, null, t.amount, TERRA, t.toPlanet) * 1.2));
+    else if (w.day - t.createdDay > 3 && !ownsPieceShipFor(w, c, t.amount)) {
+      releaseTransport(w, c.id, t.id, Math.round(minTransportFee(w, null, t.amount, TERRA, t.toPlanet) * 1.2));
+    }
   }
 }
 
@@ -239,11 +252,12 @@ function expand(w: World, c: Company) {
     const sites = planetsFor(type).sort((a, b) => distance(TERRA, a.id) - distance(TERRA, b.id));
     const site = existing ? existing.planet : sites[0]?.id;
     if (!site) continue;
-    // a first plant also needs a piece-goods ship to get there, and ships for what it produces
+    // a plant also needs a piece-goods ship big enough to get there, and ships for what it produces
     const fleetCargos = new Set(shipsOf(w, c.id).map((s) => shipDef(s.model).cargo));
-    const needed = new Set<Cargo>(['piece', ...Object.keys(def.outputs).map((g) => good(g).cargo)]);
-    let extra = 0;
-    for (const cargo of needed) if (!fleetCargos.has(cargo)) extra += cheapestShip(cargo)?.price ?? 0;
+    let extra = ownsPieceShipFor(w, c, def.size) ? 0 : (pieceShipFor(def.size)?.price ?? 0);
+    for (const cargo of new Set(Object.keys(def.outputs).map((g) => good(g).cargo))) {
+      if (cargo !== 'piece' && !fleetCargos.has(cargo)) extra += cheapestShip(cargo)?.price ?? 0;
+    }
     if (!borrowFor(w, c, def.price + extra)) continue;
     if (c.cash < def.price + extra) continue;
     const r = buyFacility(w, c.id, type, site);
