@@ -134,6 +134,8 @@ export interface Demand {
   shipped?: number;
   /** FE already delivered */
   delivered?: number;
+  /** a rare big order from Terra (several plants' output) */
+  big?: boolean;
 }
 
 export type TransportStatus = 'open' | 'accepted' | 'assigned' | 'loaded' | 'done' | 'cancelled';

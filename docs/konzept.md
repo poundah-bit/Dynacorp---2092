@@ -484,3 +484,13 @@ Bei der Umsetzung des Wirtschaftskerns kamen diese Festlegungen hinzu. Sie stehe
 | Mehrere Aufträge in einem Flug | ein Schiff, das schon zum selben Abholort mit demselben Ziel fliegt oder dort lädt, nimmt weitere Ladungen mit, solange Platz ist („Zuladen“). Liefern- und Übernehmen-Dialog schlagen es zuerst vor; im Tab Flotte gibt es Zuladen-Knöpfe. Nach dem Beladen ist das Schiff zu | ein 45.000-l-Tanker soll mehrere 5.000-l-Aufträge auf einmal fliegen (Spieltest) |
 | Kritischer Zustand statt Schrottpresse | Schiffe werden nicht mehr verschrottet. Unter 30 % Zustand fliegen sie mit 30 % Tempo weiter, melden das einmal, nehmen keine neuen Aufträge an und blinken rot auf der Karte und im Tab Flotte, bis sie auf Terra repariert sind (bei „weniger Bewegung“ im System: fester roter Rahmen) | Schiffe sollen nicht mitten im Spiel verschwinden (Spieltest) |
 | KI-Nachschub in langen Ketten | die KI beliefert bei Zwischenprodukten lieber andere Firmen als Terras Grundnachfrage und zieht eigene Bestellungen, die nach 12 Tagen niemand angenommen hat, zurück und bestellt kleiner neu | im Endlostest blieb Nahrung je nach Spielverlauf ganz aus: zu große Chemikalien-Bestellungen blieben liegen, Dünger fehlte, Agrarprodukte und Vieh auch |
+
+## Entscheidungen zu den Tönen
+
+| Thema | Entscheidung | Warum |
+| --- | --- | --- |
+| Erzeugte statt fremder Töne | alle Töne entstehen im Browser (Web Audio): weiche Sinus- und Dreieckstöne, gedämpfte Höhen, etwas Hall – wie Glas, Marimba oder eine kleine Glocke. Keine Sounddateien | keine Lizenzfragen, ein paar KB statt MP3s, offline, Klang in Zahlen einstellbar |
+| Wenige Anlässe | Großauftrag von Terra für eine eigene Ware, Anlage produziert nichts mehr, Schiff kritisch, Anlage fertig gebaut, Schiff wieder frei, Reparatur beauftragt oder vorgemerkt | beruhigend statt hektisch |
+| Börse bleibt still | normale neue Angebote machen keinen Ton (die Börse blinkt weiter), nur die seltenen Großaufträge von Terra (etwa jeder zehnte Terra-Auftrag) | ständig neue Angebote würden zu oft klingen (Rocco) |
+| Kein Dauerbimmeln | höchstens zwei Töne pro Spieltag, jeder Ton hat eine Pause, bevor er wieder klingt | bei 4× Tempo |
+| Einstellungen | Menü → Töne: an/aus, Lautstärke, jeder Ton einzeln abschaltbar, Probehören | |

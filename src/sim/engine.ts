@@ -412,6 +412,7 @@ function terraDemands(w: World) {
       deadlineDay: w.day + tc.demandDeadlineDays,
       late: false,
     };
+    if (big > 1) d.big = true;
     w.demands.push(d);
   }
 }

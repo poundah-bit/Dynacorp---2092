@@ -25,12 +25,14 @@ import {
   type Result,
   type World,
 } from '../sim/index';
+import { cueTracker, type Cue, type CueTracker } from './cues';
 import { cr, esc, isCriticalShip, logText } from './format';
 import { AI_DEFAULT, AI_MAX, AI_MIN, clampAi, fittingOffers, guide, newGame, newOffers, type GuideTab } from './play';
 import { clearSave, loadGame, saveGame, type SaveData } from './save';
 import { SLOT_COUNT, deleteSlot, listSlots, loadSlot, saveSlot, type SlotMeta } from './slots';
 import { createStarMap } from './starmap';
 import * as S from './sheets';
+import { CUE_INFO, play, playDay, preview, setSoundSettings, soundSettings, unlockSound } from './sound';
 import * as V from './views';
 
 type Tab = GuideTab | 'map';
@@ -79,6 +81,8 @@ let chainGood = '';
 /** offers the player was already told about; new fitting ones make the exchange tab blink */
 const seenOffers = new Set<string>();
 let marketAlert = 0;
+/** finds the sound cues of each game day */
+let cues: CueTracker | null = null;
 const map = createStarMap();
 /** tablet in landscape: the map sits in the side column next to the lists */
 const wide = window.matchMedia('(min-width: 1100px) and (orientation: landscape)');
@@ -165,6 +169,7 @@ function begin(world: World, hideGuide: boolean) {
   seenOffers.clear();
   for (const o of fittingOffers(world, me)) seenOffers.add(o.id);
   marketAlert = 0;
+  cues = cueTracker(world, me);
   $('start').hidden = true;
   $('game').hidden = false;
   persist();
@@ -292,6 +297,7 @@ function advance() {
   priceHistory.push({ ...w.prices });
   if (priceHistory.length > 6) priceHistory.shift();
   step(w);
+  if (cues) playDay(cues.next(w));
   notifyOffers();
   persist();
   // don't swap the buttons away under a finger that is just tapping
@@ -364,8 +370,11 @@ function toast(text: string, bad = false) {
   toastTimer = window.setTimeout(() => (el.hidden = true), bad ? 4500 : 2500);
 }
 
-function result(r: Result<unknown>, message: string) {
-  if (r.ok) toast(message);
+function result(r: Result<unknown>, message: string, cue?: Cue) {
+  if (r.ok) {
+    toast(message);
+    if (cue) play(cue);
+  }
   else toast(r.error, true);
   persist();
   render();
@@ -466,6 +475,7 @@ const ACTS: Record<string, (a: string) => void> = {
       body: `<p>Das Spiel wird automatisch gespeichert. Dazu gibt es ${SLOT_COUNT} Speicherplätze für eigene Spielstände.</p><div class="acts col">
         <button type="button" data-act="slots-save">Spiel speichern…</button>
         <button type="button" data-act="slots-load">Spielstand laden…</button>
+        <button type="button" data-act="sound">Töne…</button>
         <button type="button" data-act="guide-show">Hilfe einblenden</button>
         <button type="button" data-act="intro">Einführung zeigen</button>
         <button type="button" data-act="to-start">Zum Startbildschirm</button></div>`,
@@ -473,6 +483,12 @@ const ACTS: Record<string, (a: string) => void> = {
   },
   intro() {
     openSheet(introSheet());
+  },
+  sound() {
+    openSheet(soundSheet());
+  },
+  'sound-test'(cue) {
+    preview(cue as Cue);
   },
   'to-start'() {
     persist();
@@ -507,7 +523,7 @@ const ACTS: Record<string, (a: string) => void> = {
   unrelease: (id) => result(cancelTransport(w!, me, id), 'Ausschreibung zurückgezogen – weise jetzt ein eigenes Schiff zu.'),
   start: (id) => result(startFacility(w!, me, id), 'Die Anlage läuft.'),
   stop: (id) => result(stopFacility(w!, me, id), 'Die Anlage ist stillgelegt.'),
-  'repair-facility': (id) => result(repairFacility(w!, me, id), 'Ein Dynacore-Wartungsschiff hat die Anlage repariert.'),
+  'repair-facility': (id) => result(repairFacility(w!, me, id), 'Ein Dynacore-Wartungsschiff hat die Anlage repariert.', 'repair'),
   scrap(id) {
     if (confirm('Anlage wirklich verschrotten? Das lässt sich nicht rückgängig machen.')) result(scrapFacility(w!, me, id), 'Verschrottet.');
   },
@@ -520,16 +536,16 @@ const ACTS: Record<string, (a: string) => void> = {
     result(assignShip(w!, me, s, t), 'Das Schiff ist unterwegs.');
   },
   'to-terra': (id) => result(sendShipToTerra(w!, me, id), 'Das Schiff fliegt nach Terra.'),
-  'repair-ship': (id) => result(repairShip(w!, me, id), 'Das Schiff ist in der Werft.'),
+  'repair-ship': (id) => result(repairShip(w!, me, id), 'Das Schiff ist in der Werft.', 'repair'),
   'repair-mark'(a) {
     const [id, on] = a.split('|') as [string, string];
     const r = setRepairAtTerra(w!, me, id, on === '1');
-    result(r, r.ok ? { now: 'Das Schiff ist in der Werft.', marked: 'Reparatur vorgemerkt – beim nächsten Stopp auf Terra.', off: 'Vormerkung aufgehoben.' }[r.value] : '');
+    result(r, r.ok ? { now: 'Das Schiff ist in der Werft.', marked: 'Reparatur vorgemerkt – beim nächsten Stopp auf Terra.', off: 'Vormerkung aufgehoben.' }[r.value] : '', r.ok && r.value !== 'off' ? 'repair' : undefined);
   },
   'repair-trip'(id) {
     const r = sendShipToTerra(w!, me, id);
     if (r.ok) setRepairAtTerra(w!, me, id, true);
-    result(r, 'Das Schiff fliegt zur Reparatur nach Terra.');
+    result(r, 'Das Schiff fliegt zur Reparatur nach Terra.', 'repair');
   },
   'sell-ship'(id) {
     if (!confirm('Schiff wirklich verkaufen?')) return;
@@ -547,7 +563,7 @@ const ACTS: Record<string, (a: string) => void> = {
 // sheet buttons that switch state should also close the sheet
 const CLOSES_SHEET = new Set(['guide-show', 'guide-hide', 'to-start', 'intro']);
 /** actions that also work on the start screen, without a running game */
-const NO_WORLD = new Set(['continue', 'sheet-close', 'slots-load', 'slot-load', 'slot-delete']);
+const NO_WORLD = new Set(['sound', 'sound-test', 'continue', 'sheet-close', 'slots-load', 'slot-load', 'slot-delete']);
 
 document.addEventListener('click', (e) => {
   const target = e.target as HTMLElement;
@@ -562,7 +578,15 @@ document.addEventListener('click', (e) => {
   act(el.dataset.a ?? '');
 });
 
-document.addEventListener('pointerdown', () => (pointerDown = true), true);
+document.addEventListener(
+  'pointerdown',
+  () => {
+    pointerDown = true;
+    // browsers allow sound only after a tap
+    unlockSound();
+  },
+  true,
+);
 const release = () => {
   pointerDown = false;
   if (dirty) setTimeout(() => dirty && render(), 80);
@@ -570,6 +594,33 @@ const release = () => {
 document.addEventListener('pointerup', release, true);
 document.addEventListener('pointercancel', release, true);
 document.addEventListener('visibilitychange', () => document.hidden && persist());
+
+// ---------- sound settings ----------
+
+/** Volume, on/off per cue and a listening test; changes apply and are saved right away. */
+function soundSheet(): S.Sheet {
+  const s = soundSettings();
+  const rows = (Object.keys(CUE_INFO) as Cue[])
+    .map(
+      (c) => `<div class="sound-row"><label class="check"><input type="checkbox" name="cue-${c}" ${s.cues[c] ? 'checked' : ''}> <b>${CUE_INFO[c].name}</b></label>
+      <button type="button" class="ghost" data-act="sound-test" data-a="${c}" aria-label="${CUE_INFO[c].name} anhören">▶ Anhören</button>
+      <p class="muted">${CUE_INFO[c].text}</p></div>`,
+    )
+    .join('');
+  return {
+    title: 'Töne',
+    body: `<label class="check"><input type="checkbox" name="on" ${s.on ? 'checked' : ''}> Töne an</label>
+      <label class="field">Lautstärke <input type="range" name="volume" min="0" max="100" step="5" value="${Math.round(s.volume * 100)}"></label>
+      <p class="muted">Dezente Töne für wenige, wichtige Ereignisse. Neue Börsenangebote bleiben still – nur seltene Großaufträge von Terra klingen. Bei hoher Geschwindigkeit werden Töne zusammengefasst.</p>
+      <div class="sound-list">${rows}</div>`,
+    live(form) {
+      const data = new FormData(form);
+      const next = { on: data.has('on'), volume: Number(data.get('volume') ?? 60) / 100, cues: { ...s.cues } };
+      for (const c of Object.keys(CUE_INFO) as Cue[]) next.cues[c] = data.has(`cue-${c}`);
+      setSoundSettings(next);
+    },
+  };
+}
 
 // ---------- intro and save slots ----------
 

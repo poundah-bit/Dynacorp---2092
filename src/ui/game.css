@@ -305,3 +305,10 @@ svg.chain .price { fill: var(--muted); font-size: 11px; }
 .ship-card.critical { border-color: var(--bad); animation: critical 0.9s ease-in-out infinite; }
 @keyframes critical { 50% { box-shadow: 0 0 0 3px var(--bad); background: #3a1414; } }
 @media (prefers-reduced-motion: reduce) { .ship-card.critical { animation: none; box-shadow: 0 0 0 3px var(--bad); } }
+
+/* sound settings */
+.check { display: flex; align-items: center; gap: 8px; min-height: 40px; }
+.check input { width: 20px; height: 20px; }
+.sound-list { display: grid; gap: 4px; margin-top: 8px; }
+.sound-row { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 0 8px; padding: 6px 0; border-top: 1px solid rgba(255, 255, 255, 0.08); }
+.sound-row p { grid-column: 1 / -1; margin: 0; font-size: 0.85em; }
