@@ -116,7 +116,7 @@ export function repayLoan(w: World, companyId: string, loanId: string, amount?: 
   return ok(undefined);
 }
 
-// ---------- DYNATECH: facilities and storage ----------
+// ---------- Dynacore: facilities and storage ----------
 
 function createAssetTransport(w: World, companyId: string, assetId: string, size: number, to: string): Transport {
   const t: Transport = {
@@ -294,7 +294,7 @@ export function repairFacilityCost(f: Facility): number {
   return Math.round(facilityDef(f.type).price * f.units * CONFIG.facilities.repairCostPerPercent * (100 - f.condition));
 }
 
-/** Orders a DYNATECH maintenance ship; repaired immediately in this version (travel time comes with the UI). */
+/** Orders a Dynacore maintenance ship; repaired immediately in this version (travel time comes with the UI). */
 export function repairFacility(w: World, companyId: string, facilityId: string): Result<undefined> {
   const r = ownFacility(w, companyId, facilityId);
   if (!r.ok) return r;

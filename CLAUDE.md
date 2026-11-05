@@ -25,11 +25,13 @@ Non-commercial Android fan game inspired by Dynatech (1992). Owner: Rocco (GitHu
   - `ai.ts` rule-based AI companies
   - `report.ts` balancing report for headless runs
   - `metrics.ts` Phase-2 checks against the concept's target values (amortisation, transport days, loan share, storage share, loss-making planets) plus run statistics
-- `src/ui/` – the game (`index.html`): one player vs. 1–20 AI companies (default 10, `AI_DEFAULT` in `play.ts`), plain list UI. The real touch UI (star map, tutorial, 10 save slots) comes in Phase 3.
-  - `play.ts` pure player-side logic, no DOM: queries (deliverable demands, waiting transports), combined one-tap moves (`deliver`, `moveTransport`, `carry`, `shipDemand` with a `Choice` of own ship / buy ship / public) and `guide()`, the "Nächster Schritt" hint derived from world state. Tests drive the game through this module.
-  - `game.ts` start screen, time loop (paused, 1× = 6 s/day, 2×, 4×), click dispatch via `data-act`, sheets, toasts, autosave
-  - `views.ts` HTML of the six tabs (Terra, Anlagen, Flotte, Börse, Aufträge, Statistik); `data-guide` attributes mark what the guide highlights
-  - `sheets.ts` dialogs (loan, repay, deliver, transport, order goods); `format.ts` German number formatting and labels; `save.ts` one autosave slot in localStorage
+- `src/ui/` – the game (`index.html`): one player vs. 1–20 AI companies (default 10, `AI_DEFAULT` in `play.ts`). Seven tabs (Terra, Karte, Anlagen, Flotte, Börse, Aufträge, Statistik); on a tablet in landscape (≥ 1100 px wide) the star map sits in the side column next to the lists and the Karte tab is hidden.
+  - `play.ts` pure player-side logic, no DOM: queries (deliverable demands, waiting transports), combined one-tap moves (`deliver`, `moveTransport`, `carry`, `shipDemand` with a `Choice` of own ship / buy ship / public), `guide()` (the "Nächster Schritt" hint derived from world state) and `fittingOffers`/`newOffers` for the exchange notification. Tests drive the game through this module.
+  - `game.ts` start screen, intro sheet, time loop (paused, 1× = 6 s/day, 2×, 4×), click dispatch via `data-act`, sheets, toasts, autosave, save-slot sheets, exchange notification (tab blinks + toast), long press on anything with `data-tip` shows the explanation instead of running it (mouse: hover title)
+  - `views.ts` HTML of the list tabs; `data-guide` attributes mark what the guide highlights, `data-tip` holds the long-press explanation
+  - `starmap.ts` canvas star map (drag, pinch, wheel, zoom buttons, tap a planet); one element that `game.ts` moves between side column and Karte tab. `mapinfo.ts` the planet panel under it (pure HTML)
+  - `chain.ts` chain graph in the Statistik tab: goods as SVG nodes in columns by their longest production path, tap for producers, consumers and market (pure HTML/SVG)
+  - `sheets.ts` dialogs (loan, repay, deliver, transport, order goods); `format.ts` German number formatting and labels; `save.ts` one autosave slot in localStorage; `slots.ts` ten save slots in IndexedDB (a late game is ≈ 0.5 MB, too big for ten slots in localStorage)
   - `debug.ts` + `observe.html` – observation page where 20 AI companies play alone
 - `tools/simulate.ts` – headless run: `npm run sim -- <days> <seed> <difficulty>`
 - `tools/balance.ts` – balancing report against the target values: `npm run balance -- <days> <seeds,comma> <difficulty>` (default 1000 days, seeds 1,2,3, med)
@@ -47,10 +49,10 @@ Non-commercial Android fan game inspired by Dynatech (1992). Owner: Rocco (GitHu
 
 ## Commands
 
-- `npm test` must stay green. `tests/balance.test.ts` is the Phase-0 gate (200 days, no collapse, ≤3 bankruptcies, processing plants appear); `tests/phase1.test.ts` is the Phase-1 gate (following only `guide()` leads from loan to the first paid order with 1, 10 and 20 AI firms); `tests/endless.test.ts` is the Phase-2 gate (1,000 days, no collapse, ≤3 bankruptcies, all 17 facility types built, every final good reaches Terra).
+- `npm test` must stay green. `tests/balance.test.ts` is the Phase-0 gate (200 days, no collapse, ≤3 bankruptcies, processing plants appear); `tests/phase1.test.ts` is the Phase-1 gate (following only `guide()` leads from loan to the first paid order with 1, 10 and 20 AI firms); `tests/endless.test.ts` is the Phase-2 gate (1,000 days, no collapse, ≤3 bankruptcies, all 17 facility types built, every final good reaches Terra); `tests/phase3.test.ts` covers the pure parts of the touch UI (notifications, chain graph, planet panel). The Phase-3 gate itself is a test round by Rocco on tablet and phone without the manual.
 - `npm run typecheck` before committing.
 - `npm run dev` serves the game at `/` and the observation page at `/observe.html`.
 
 ## Status
 
-Phase 1 is done (short test on a real tablet by Rocco). Phase 2 is in progress: the 1,000-day gate passes since the AI fix (AI now buys a piece-goods ship big enough for large facilities). Open: tune `src/data/*.json` until `npm run balance` meets the targets – see "Entscheidungen aus der Umsetzung (Phase 2)" in the concept for the current numbers.
+Phase 1 is done (short test on a real tablet by Rocco). Phase 2 is done: the 1,000-day gate passes and `npm run balance` meets every target at base prices (transport duration is reported only, by decision after the play test). Base prices were solved along the chain (raw ≈ 70, intermediate ≈ 150, final ≈ 175 days to amortise); market prices of final goods run 10–40 % above base. Phase 3 (touch UI) is built: star map, chain graph, exchange notification, long-press help, intro, ten save slots. Open: the test round on tablet and phone. Dragging an order onto a ship was left out (the delivery dialog picks ships in one tap).

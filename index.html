@@ -18,11 +18,11 @@
           <span class="muted">Schulden <b id="debt"></b></span>
         </div>
         <div class="time" data-guide="time">
-          <button data-act="speed" data-a="0" aria-label="Pause">❚❚</button>
-          <button data-act="speed" data-a="1" aria-label="Normale Geschwindigkeit">▶ 1×</button>
-          <button data-act="speed" data-a="2">2×</button>
-          <button data-act="speed" data-a="4">4×</button>
-          <button data-act="step-day" class="ghost">+1 Tag</button>
+          <button data-act="speed" data-a="0" aria-label="Pause" data-tip="Hält die Zeit an. Im Pausenmodus kannst du in Ruhe planen.">❚❚</button>
+          <button data-act="speed" data-a="1" aria-label="Normale Geschwindigkeit" data-tip="Normale Geschwindigkeit: ein Spieltag alle 6 Sekunden.">▶ 1×</button>
+          <button data-act="speed" data-a="2" data-tip="Doppelte Geschwindigkeit: ein Tag alle 3 Sekunden.">2×</button>
+          <button data-act="speed" data-a="4" data-tip="Vierfache Geschwindigkeit: ein Tag alle 1,5 Sekunden.">4×</button>
+          <button data-act="step-day" class="ghost" data-tip="Hält an und spielt genau einen Tag weiter.">+1 Tag</button>
         </div>
         <div class="menu">
           <button id="help" data-act="guide-show" class="ghost" hidden>Hilfe</button>
@@ -31,7 +31,7 @@
       </header>
       <div id="ticker" class="ticker" data-act="tab" data-a="stats"></div>
       <div class="layout">
-        <aside id="guide" class="guide"></aside>
+        <aside class="side"><div id="guide" class="guide"></div><div id="map-dock" class="map-dock" hidden></div></aside>
         <main id="view"></main>
       </div>
       <nav id="nav" class="nav"></nav>
@@ -39,6 +39,7 @@
 
     <div id="sheet" class="sheet" hidden></div>
     <div id="toast" class="toast" hidden></div>
+    <div id="tip" class="tip" role="tooltip" hidden></div>
     <script type="module" src="./src/ui/game.ts"></script>
   </body>
 </html>

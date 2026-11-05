@@ -11,6 +11,11 @@
   --warn: #f2cc60;
   --bad: #ff7b72;
   --tap: 48px;
+  --map-bg: #070b17;
+  --tier-raw: #6fa8ff;
+  --tier-mid: #f2cc60;
+  --tier-final: #d68cff;
+  --tier-terra: #7ee787;
   color-scheme: dark;
 }
 * { box-sizing: border-box; }
@@ -127,7 +132,7 @@ main { display: grid; gap: 12px; min-width: 0; align-content: start; }
 @media (min-width: 1000px) {
   .layout { grid-template-columns: 320px minmax(0, 1fr); align-items: start; }
   .no-guide .layout { grid-template-columns: minmax(0, 1fr); }
-  .guide { position: sticky; top: 132px; }
+  .side { position: sticky; top: 132px; display: grid; gap: 12px; }
 }
 
 .guide-card { background: #1d2a1f; border: 1px solid #3b5a3f; border-radius: 14px; padding: 14px 16px; }
@@ -164,7 +169,7 @@ tr.me td { color: var(--accent); font-weight: 600; }
 /* ---------- bottom navigation ---------- */
 .nav {
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 5;
-  display: grid; grid-template-columns: repeat(6, 1fr);
+  display: grid; grid-auto-flow: column; grid-auto-columns: 1fr;
   padding-bottom: env(safe-area-inset-bottom);
   background: rgba(11, 16, 32, 0.97); border-top: 1px solid var(--line);
 }
@@ -213,3 +218,66 @@ tr.me td { color: var(--accent); font-weight: 600; }
 .chip-label { font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin-right: 2px; }
 .chips button small { opacity: 0.7; }
 .acts button.on { border-color: var(--warn); color: var(--warn); }
+
+/* ---------- side column: guide + star map on a tablet in landscape ---------- */
+.side { display: grid; gap: 12px; align-content: start; min-width: 0; }
+@media (min-width: 1100px) and (orientation: landscape) {
+  .layout, .no-guide .layout { grid-template-columns: minmax(380px, 44%) minmax(0, 1fr); max-width: 1600px; }
+  .side { position: sticky; top: 72px; max-height: calc(100vh - 72px - 76px); overflow-y: auto; }
+  .nav .tab-map { display: none; }
+  .map-dock .starmap { height: min(56vh, 560px); }
+}
+
+/* ---------- star map ---------- */
+.map-card { padding: 10px; }
+.map-wrap { position: relative; }
+.starmap { display: block; width: 100%; height: 62vh; min-height: 300px; border-radius: 10px; background: var(--map-bg); touch-action: none; cursor: grab; }
+.starmap:active { cursor: grabbing; }
+.map-zoom { position: absolute; right: 8px; top: 8px; display: grid; gap: 6px; }
+.map-zoom button { width: 44px; min-height: 44px; padding: 0; font-size: 20px; background: rgba(19, 26, 48, 0.9); }
+.map-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; margin: 8px 4px 0; color: var(--muted); }
+.map-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.map-legend .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+.map-legend .dot.raw { background: var(--tier-raw); }
+.map-legend .dot.intermediate { background: var(--tier-mid); }
+.map-legend .dot.final { background: var(--tier-final); }
+.map-legend .dot.mine { background: transparent; box-shadow: 0 0 0 3px var(--accent); }
+.map-legend .tri { width: 0; height: 0; border-left: 10px solid var(--accent); border-top: 5px solid transparent; border-bottom: 5px solid transparent; display: inline-block; }
+.map-legend .ring { width: 12px; height: 12px; border-radius: 50%; border: 1.5px dashed var(--bad); display: inline-block; }
+.map-info { padding: 6px 4px 0; }
+.map-info h3 { margin-top: 8px; }
+ul.plain { margin: 6px 0; padding-left: 18px; }
+ul.plain li { margin: 3px 0; }
+
+/* ---------- chain graph ---------- */
+.chain-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; margin: 0 -6px; padding: 0 6px; }
+svg.chain { display: block; font-family: inherit; }
+svg.chain .head { fill: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; }
+svg.chain .edge { fill: none; stroke: var(--line); stroke-width: 1.5; }
+svg.chain .edge.on { stroke: var(--accent); stroke-width: 2.5; }
+svg.chain .edge.off { opacity: 0.25; }
+svg.chain .node { cursor: pointer; }
+svg.chain .node rect { fill: var(--panel-2); stroke: var(--line); stroke-width: 1.5; }
+svg.chain .node.raw rect { fill: #14233d; }
+svg.chain .node.final rect { fill: #261a36; }
+svg.chain .node.need rect { stroke: var(--warn); stroke-width: 2.5; }
+svg.chain .node.mine rect { stroke: var(--accent); stroke-width: 2.5; }
+svg.chain .node.missing rect { stroke: var(--bad); stroke-width: 3; }
+svg.chain .node.sel rect { fill: #10283a; stroke: var(--accent); stroke-width: 3.5; }
+svg.chain .node.off { opacity: 0.35; }
+svg.chain .name { fill: var(--text); font-size: 13px; font-weight: 600; }
+svg.chain .price { fill: var(--muted); font-size: 11px; }
+.chain-io { display: grid; gap: 4px 20px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+.chain-io h4 { margin: 8px 0 2px; font-size: 13px; color: var(--muted); }
+.chain-io ul { margin: 0; padding-left: 18px; }
+.chain-io li { margin: 4px 0; }
+
+/* ---------- long-press help and notifications ---------- */
+.tip {
+  position: fixed; z-index: 40; max-width: min(320px, calc(100vw - 16px)); padding: 10px 12px; border-radius: 10px;
+  background: #fff7d6; color: #2b2000; font-size: 14px; line-height: 1.35; box-shadow: 0 6px 24px rgba(0, 0, 0, 0.45); pointer-events: none;
+}
+.nav button.blink { color: var(--warn); animation: blink 1s ease-in-out infinite; }
+@keyframes blink { 50% { background: rgba(242, 204, 96, 0.22); } }
+@media (prefers-reduced-motion: reduce) { .nav button.blink { animation: none; background: rgba(242, 204, 96, 0.22); } }
+[data-tip] { -webkit-touch-callout: none; }

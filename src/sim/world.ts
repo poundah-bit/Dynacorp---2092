@@ -135,7 +135,7 @@ export function log(w: World, companyId: string | null, text: string, priority: 
   if (w.log.length > 2000) w.log.splice(0, w.log.length - 2000);
 }
 
-/** Money transfer with bookkeeping. `from`/`to` may be null for the outside world (Terra, DYNATECH, bank). */
+/** Money transfer with bookkeeping. `from`/`to` may be null for the outside world (Terra, Dynacore, bank). */
 export function pay(w: World, from: string | null, to: string | null, amount: number) {
   if (amount <= 0) return;
   if (from) {

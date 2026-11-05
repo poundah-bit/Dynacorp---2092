@@ -1,4 +1,4 @@
-// HTML for the six tabs. Buttons carry data-act (what to do) and data-guide (what the guide may highlight);
+// HTML for the tabs (the Karte tab is the star map from starmap.ts). Buttons carry data-act (what to do) and data-guide (what the guide may highlight);
 // the click handling lives in game.ts.
 
 import {
@@ -42,6 +42,7 @@ import {
   waitingTransports,
 } from './play';
 import { unshippedAmount } from '../sim/index';
+import { chainDetail, chainSvg } from './chain';
 import {
   cr,
   days,
@@ -75,6 +76,8 @@ export interface ViewCtx {
   marketGood: string;
   marketSort: MarketSort;
   priceTrend: (goodId: string) => -1 | 0 | 1;
+  /** good selected in the chain graph, '' = none */
+  chainGood: string;
 }
 
 const btn = (label: string, act: string, a = '', extra = '') =>
@@ -84,7 +87,7 @@ const route = (from: string, to: string) => `${pName(from)} → ${pName(to)} <sp
 
 const CARGO_GOODS = (cargo: Cargo) => GOODS.filter((g) => g.cargo === cargo).map((g) => g.name).join(', ');
 
-// ---------- Terra: bank, DYNATECH, shipyard ----------
+// ---------- Terra: bank, Dynacore, shipyard ----------
 
 export function terraView({ w, me }: ViewCtx): string {
   const c = company(w, me);
@@ -93,7 +96,7 @@ export function terraView({ w, me }: ViewCtx): string {
     ? `<table><tr><th>Kredit</th><th class="n">Restschuld</th><th class="n">Rate/Tag</th><th class="n">Restlaufzeit</th><th></th></tr>${c.loans
         .map(
           (l, i) => `<tr><td>Kredit ${i + 1}${l.overdueDays ? ' <span class="bad">im Verzug</span>' : ''}</td><td class="n">${cr(l.remaining)}</td><td class="n">${cr(l.dailyRate)}</td><td class="n">${days(l.daysLeft)}</td>
-          <td class="n">${btn('Tilgen…', 'repay', l.id)}</td></tr>`,
+          <td class="n">${btn('Tilgen…', 'repay', l.id, 'data-tip="Zahlt einen Teil oder den ganzen Kredit vorzeitig zurück – das spart Zinsen."')}</td></tr>`,
         )
         .join('')}</table>`
     : empty('Keine laufenden Kredite.');
@@ -102,7 +105,7 @@ export function terraView({ w, me }: ViewCtx): string {
     const sites = planetsFor(def.id)
       .sort((a, b) => distance(TERRA, a.id) - distance(TERRA, b.id))
       .map((p) =>
-        btn(`${p.name} <small>${pc(distance(TERRA, p.id))}</small>`, 'buy-facility', `${def.id}|${p.id}`, `data-guide="buy-${def.id}-${p.id}"`),
+        btn(`${p.name} <small>${pc(distance(TERRA, p.id))}</small>`, 'buy-facility', `${def.id}|${p.id}`, `data-guide="buy-${def.id}-${p.id}" data-tip="Kauft die Anlage für ${p.name}. Sie steht dann als Stückgut auf Terra und muss hingeflogen werden."`),
       )
       .join('');
     const cls = c.cash < def.price ? ' dim' : '';
@@ -118,7 +121,7 @@ export function terraView({ w, me }: ViewCtx): string {
       const rows = SHIPS.filter((s) => s.cargo === cargo)
         .map(
           (s) => `<tr class="${c.cash < s.price ? 'dim' : ''}"><td><b>${s.name}</b></td><td class="n">${cr(s.price)}</td><td class="n">${fe(s.capacity)}</td><td class="n">${num(s.speed)} Pc/Tag</td><td class="n">${num(s.maintenance)} + ${num(s.operation)}</td>
-          <td class="n">${btn('Kaufen', 'buy-ship', s.id, `data-guide="buy-ship-${s.id}"`)}</td></tr>`,
+          <td class="n">${btn('Kaufen', 'buy-ship', s.id, `data-guide="buy-ship-${s.id}" data-tip="Kauft das Schiff; es wartet danach auf Terra auf seinen ersten Auftrag."`)}</td></tr>`,
         )
         .join('');
       return `<h3>${cargoName(cargo)} <span class="muted small">für ${CARGO_GOODS(cargo)}${cargo === 'piece' ? ', Anlagen und Lager' : ''}</span></h3>
@@ -131,11 +134,11 @@ export function terraView({ w, me }: ViewCtx): string {
     <h2>Bank</h2>
     <p>Kreditrahmen frei: <b>${cr(limit)}</b> · Schulden: <b>${cr(debt(w, me))}</b> · Firmenwert: ${cr(companyValue(w, me))}</p>
     ${loans}
-    <div class="acts">${btn('Kredit aufnehmen…', 'loan', '', `class="primary" data-guide="bank-loan" ${c.loans.length >= CONFIG.credit.maxLoans ? 'disabled' : ''}`)}</div>
+    <div class="acts">${btn('Kredit aufnehmen…', 'loan', '', `class="primary" data-guide="bank-loan" data-tip="Leiht dir Geld für Anlagen und Schiffe. Die Rate wird jeden Tag abgebucht; höchstens zwei Kredite gleichzeitig." ${c.loans.length >= CONFIG.credit.maxLoans ? 'disabled' : ''}`)}</div>
     <p class="hint">Die Rate wird jeden Tag automatisch abgebucht. Fehlt das Geld, gibt es Strafzins, ab dem ${CONFIG.credit.seizureAfterDays}. Tag pfändet die Bank ein Schiff, unter ${cr(CONFIG.credit.bankruptcyCash)} Barkapital droht der Konkurs.</p>
   </section>
   <section class="card">
-    <h2>DYNATECH – Anlagen</h2>
+    <h2>Dynacore – Anlagen</h2>
     <p class="hint">Jeder Planet erlaubt genau eine Anlagenart. Eine gekaufte Anlage steht als Stückgut auf Terra und muss mit einem Stückgutfrachter hingeflogen werden; danach wird sie ${days(CONFIG.constructionDays)} gebaut. Eine zweite gleiche Anlage am selben Ort vergrößert die erste.</p>
     ${facilityRows}
   </section>
@@ -186,10 +189,10 @@ export function facilitiesView({ w, me }: ViewCtx): string {
       const eff = f.status === 'running' ? Math.round(productionEfficiency(f) * 100) : 0;
       const cost = def.maintenance * f.units + (f.status === 'running' ? def.operation * f.units : 0);
       const acts = [
-        f.status === 'stopped' ? btn('Betrieb aufnehmen', 'start', f.id, 'class="primary" data-guide="start-facility"') : '',
-        f.status === 'running' ? btn('Stilllegen', 'stop', f.id) : '',
-        Object.keys(def.inputs).length && f.status !== 'construction' ? btn('Ware bestellen…', 'order', f.id) : '',
-        btn('Lager erweitern…', 'storage', f.id),
+        f.status === 'stopped' ? btn('Betrieb aufnehmen', 'start', f.id, 'class="primary" data-guide="start-facility" data-tip="Startet die Produktion. Ab jetzt kostet die Anlage auch Betriebskosten."') : '',
+        f.status === 'running' ? btn('Stilllegen', 'stop', f.id, 'data-tip="Hält die Produktion an. Dann fallen nur noch Wartungskosten an."') : '',
+        Object.keys(def.inputs).length && f.status !== 'construction' ? btn('Ware bestellen…', 'order', f.id, 'data-tip="Stellt eine Nachfrage an die Börse: andere Firmen liefern dir Rohstoffe zum genannten Preis."') : '',
+        btn('Lager erweitern…', 'storage', f.id, 'data-tip="Kauft ein Zusatzlager für eine Frachtart. Es wird wie eine Anlage hingeflogen."'),
         f.condition < 100 ? btn(`Reparieren (${cr(repairFacilityCost(f))})`, 'repair-facility', f.id) : '',
         btn('Verschrotten', 'scrap', f.id, 'class="ghost"'),
       ].join('');
@@ -205,7 +208,7 @@ export function facilitiesView({ w, me }: ViewCtx): string {
     .join('');
 
   return `${pending ? `<section class="card"><h2>Unterwegs von Terra</h2>${pending}</section>` : ''}
-    ${facs || (pending ? '' : `<section class="card">${empty('Du hast noch keine Anlage. Kaufe eine bei DYNATECH auf Terra.')}<div class="acts">${btn('Zu DYNATECH', 'tab', 'terra')}</div></section>`)}`;
+    ${facs || (pending ? '' : `<section class="card">${empty('Du hast noch keine Anlage. Kaufe eine bei Dynacore auf Terra.')}<div class="acts">${btn('Zu Dynacore', 'tab', 'terra')}</div></section>`)}`;
 }
 
 // ---------- Flotte ----------
@@ -234,8 +237,8 @@ export function fleetView({ w, me }: ViewCtx): string {
         atTerra && worn ? btn(`Reparieren (${cr(repairShipCost(s))})`, 'repair-ship', s.id) : '',
         !atTerra && worn && s.phase !== 'repair'
           ? s.repairAtTerra
-            ? btn('Reparatur vorgemerkt ✓ aufheben', 'repair-mark', `${s.id}|0`, 'class="on"')
-            : btn(`Beim nächsten Terra-Stopp reparieren (~${cr(repairShipCost(s))})`, 'repair-mark', `${s.id}|1`)
+            ? btn('Reparatur vorgemerkt ✓ aufheben', 'repair-mark', `${s.id}|0`, 'class="on" data-tip="Hebt die Vormerkung auf; das Schiff wird auf Terra dann nicht automatisch repariert."')
+            : btn(`Beim nächsten Terra-Stopp reparieren (~${cr(repairShipCost(s))})`, 'repair-mark', `${s.id}|1`, 'data-tip="Das Schiff fliegt weiter wie geplant und wird beim nächsten Halt auf Terra automatisch repariert."')
           : '',
         atTerra ? btn(`Verkaufen (${cr(Math.round(shipValue(s) * 0.6))})`, 'sell-ship', s.id, 'class="ghost"') : '',
       ].join('');
@@ -290,7 +293,7 @@ export function marketView(ctx: ViewCtx): string {
       return `<div class="row"><div class="grow"><b>${fe(d.amount)} ${gName(d.good)}</b> für ${who(w, d.requester)} <span class="price">${cr(value)}</span>
         <div class="small">${perFe(d.pricePerFe)} · ${route(f.planet, d.toPlanet)} · ${cargoName(good(d.good).cargo)} · seit ${days(w.day - d.createdDay)} offen</div>
         <div class="small">${state}</div></div>
-        <div class="acts">${btn('Liefern…', 'deliver', d.id, `class="${o.ready ? 'primary' : ''}" ${guide} ${o.tooBig ? 'disabled' : ''}`)}</div></div>`;
+        <div class="acts">${btn('Liefern…', 'deliver', d.id, `class="${o.ready ? 'primary' : ''}" ${guide} data-tip="Nimmt die Nachfrage an und wählt die Schiffe dafür. Wer zuerst annimmt, bekommt den Auftrag." ${o.tooBig ? 'disabled' : ''}`)}</div></div>`;
     })
     .join('');
 
@@ -304,7 +307,7 @@ export function marketView(ctx: ViewCtx): string {
       const tag = can === 'idle' ? '<span class="good">passt zu freiem Schiff</span>' : can === 'busy' ? '<span class="muted">passendes Schiff gerade unterwegs</span>' : `<span class="muted">kein passendes Schiff</span>`;
       return `<div class="row"><div class="grow"><b>${what}</b> für ${who(w, t.issuer)} <span class="price">${cr(t.fee)}</span>
         <div class="small">${route(t.fromPlanet, t.toPlanet)} · ${cargoName(t.cargo)} ${fe(t.amount)} · ${deadlineIn(w, t.deadlineDay)}</div><div class="small">${tag}</div></div>
-        <div class="acts">${btn('Übernehmen…', 'carry', t.id, `class="primary" ${can === 'idle' ? '' : 'disabled'}`)}</div></div>`;
+        <div class="acts">${btn('Übernehmen…', 'carry', t.id, `class="primary" data-tip="Fährt die Ladung einer anderen Firma mit einem freien eigenen Schiff – gegen das genannte Honorar." ${can === 'idle' ? '' : 'disabled'}`)}</div></div>`;
     })
     .join('');
 
@@ -342,7 +345,7 @@ export function ordersView({ w, me }: ViewCtx): string {
   const unshipped = unshippedDemands(w, me)
     .map(
       (d) => `<div class="row"><div class="grow"><b>${fe(d.amount)} ${gName(d.good)}</b> an ${who(w, d.requester)} <div class="small">Zugesagt – ${deadlineIn(w, d.deadlineDay)}. ${unshippedAmount(d) < d.amount ? `${fe(d.amount - unshippedAmount(d))} sind unterwegs, für ${fe(unshippedAmount(d))} fehlt noch der Transport.` : 'Es fehlt noch der Transport.'}</div></div>
-      <div class="acts">${btn('Transport organisieren…', 'arrange', d.id, 'class="primary" data-guide="arrange"')}</div></div>`,
+      <div class="acts">${btn('Transport organisieren…', 'arrange', d.id, 'class="primary" data-guide="arrange" data-tip="Wählt eigene Schiffe für die zugesagte Lieferung oder schreibt den Transport an der Börse aus."')}</div></div>`,
     )
     .join('');
 
@@ -392,7 +395,7 @@ export function ordersView({ w, me }: ViewCtx): string {
 
 // ---------- Statistik ----------
 
-export function statsView({ w, me, priceTrend }: ViewCtx): string {
+export function statsView({ w, me, priceTrend, chainGood }: ViewCtx): string {
   const rank = ranking(w)
     .map(
       (r, i) => `<tr class="${r.id === me ? 'me' : ''}"><td>${i + 1}</td><td>${esc(r.name)}${r.bankrupt ? ' ✝' : ''}</td><td class="n">${num(r.index)}</td><td class="n ${r.cash < 0 ? 'bad' : ''}">${cr(r.cash)}</td><td class="n">${cr(r.debt)}</td>
@@ -413,6 +416,11 @@ export function statsView({ w, me, priceTrend }: ViewCtx): string {
     .join('');
   const c = company(w, me);
   return `
+  <section class="card"><h2>Warenketten</h2>
+    <p class="hint">Von den Rohstoffen links bis zu den Endprodukten rechts, die Terra kauft. Türkis umrandet: das stellst du her. Gelb: das brauchst du. Rot: das fehlt einer deiner Anlagen gerade.</p>
+    <div class="chain-scroll">${chainSvg(w, me, chainGood, priceTrend)}</div>
+    <div class="chain-detail">${chainDetail(w, me, chainGood)}</div>
+  </section>
   <section class="card"><h2>Rangliste (Firmenindex)</h2>
     <table><tr><th>#</th><th>Firma</th><th class="n">Index</th><th class="n">Bar</th><th class="n">Schulden</th><th class="n">Anlagen</th><th class="n">Schiffe</th></tr>${rank}</table>
     <p class="small muted">Deine Bilanz bisher: Einnahmen ${cr(c.revenue)}, Ausgaben ${cr(c.expenses)}, Ruf ${num(c.reputation)} / 100.</p>

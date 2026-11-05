@@ -78,7 +78,7 @@ interface Load {
   to: string;
   good: string | null;
   allowPublic: boolean;
-  /** buying a new ship right here – only for facilities and storage from DYNATECH */
+  /** buying a new ship right here – only for facilities and storage from Dynacore */
   allowBuy?: boolean;
   /** days until the goods are produced (accepted early) */
   readyIn?: number;
@@ -346,7 +346,7 @@ export function storageSheet(w: World, me: string, facilityId: string): Sheet {
     .join('');
   return {
     title: `Lager erweitern: ${pName(f.planet)}`,
-    body: `<p class="hint">Ein Zusatzlager vergrößert das Lager für alle Waren seiner Frachtart an dieser Anlage. Es wird bei DYNATECH gekauft und wie eine Anlage als Stückgut hingeflogen.</p>${groups}`,
+    body: `<p class="hint">Ein Zusatzlager vergrößert das Lager für alle Waren seiner Frachtart an dieser Anlage. Es wird bei Dynacore gekauft und wie eine Anlage als Stückgut hingeflogen.</p>${groups}`,
     confirm: 'Kaufen',
     run(form) {
       const id = val(form, 'storage');

@@ -39,7 +39,7 @@
     "reofferFeeIncrease": 0.2
   },
   "terra": {
-    "demandChancePerGoodPerDay": 0.25,
+    "demandChancePerGoodPerDay": 0.18,
     "maxOpenPerGood": 3,
     "priceBonus": 1.15,
     "baseDemandChancePerGoodPerDay": 0.15,

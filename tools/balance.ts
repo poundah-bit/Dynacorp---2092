@@ -57,7 +57,8 @@ for (const [i, r] of runs.entries()) {
 const all = runs.flatMap((r) => r.transportDays);
 const tWithin = shareWithin(all, TARGETS.transportDays);
 console.log('\nZielwerte');
-console.log(`  ${mark(tWithin >= 0.5)} Transportdauer 3–9 Tage: Median ${median(all)} Tage, ${pct(tWithin)} im Ziel (${all.length} Transporte)`);
+// no longer a target: long trips with big, slow ships are intended (decision after the play test)
+console.log(`  · Transportdauer (nur zur Info): Median ${median(all)} Tage, ${pct(tWithin)} in 3–9 Tagen (${all.length} Transporte)`);
 
 const loans = loanShare(basePrices());
 const worstLoan = Math.max(...loans.map((l) => l.share));

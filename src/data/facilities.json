@@ -1,9 +1,9 @@
 [
-  { "id": "oilwell", "name": "Ölförderanlage", "price": 250000, "maintenance": 30, "operation": 100, "size": 8000,
+  { "id": "oilwell", "name": "Ölförderanlage", "price": 440000, "maintenance": 30, "operation": 100, "size": 8000,
     "inputs": {}, "outputs": { "oil": 350 } },
-  { "id": "waterstation", "name": "Wasserstation", "price": 300000, "maintenance": 30, "operation": 120, "size": 10000,
+  { "id": "waterstation", "name": "Wasserstation", "price": 350000, "maintenance": 30, "operation": 120, "size": 10000,
     "inputs": {}, "outputs": { "water": 400 } },
-  { "id": "mine", "name": "Erzbergwerk", "price": 300000, "maintenance": 30, "operation": 100, "size": 15000,
+  { "id": "mine", "name": "Erzbergwerk", "price": 390000, "maintenance": 30, "operation": 100, "size": 15000,
     "inputs": {}, "outputs": { "ore": 300 } },
   { "id": "refinery", "name": "Raffinerie", "price": 450000, "maintenance": 20, "operation": 200, "size": 15000,
     "inputs": { "oil": 300 }, "outputs": { "fuel": 150, "chemicals": 120 } },

@@ -15,7 +15,7 @@ export function facilityTier(def: FacilityDef): FacilityTier {
 /** Target ranges from the concept. */
 export const TARGETS = {
   amortizationDays: { raw: [60, 100], final: [120, 180] } as Record<string, [number, number]>,
-  transportDays: [3, 9] as [number, number],
+  transportDays: [3, 9] as [number, number], // reported only, no longer a target
   loanShareOfIncome: 0.6,
   storageShareOfCosts: 0.05,
 };

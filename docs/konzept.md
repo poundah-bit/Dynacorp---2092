@@ -213,13 +213,13 @@ Diese Werte sind frei entworfen und orientieren sich nur am Original: 21 Welten,
 
 ### Planeten
 
-Terra ist das Zentrum: Werft, Bank, DYNATECH und einziger Abnehmer für Endprodukte. Rohstoff-Kolonien liegen nah an Terra, damit der Einstieg mit kleinen Frachtern klappt; Endprodukt-Werke liegen am Rand, damit sich große, schnelle Schiffe erst später lohnen. Öl, Wasser und Erz gibt es je zweimal, damit mehrere Firmen sie fördern können.
+Terra ist das Zentrum: Werft, Bank, Dynacore und einziger Abnehmer für Endprodukte. Rohstoff-Kolonien liegen nah an Terra, damit der Einstieg mit kleinen Frachtern klappt; Endprodukt-Werke liegen am Rand, damit sich große, schnelle Schiffe erst später lohnen. Öl, Wasser und Erz gibt es je zweimal, damit mehrere Firmen sie fördern können.
 
 Die Koordinaten stehen in `src/data/planets.json`; Entfernungen sind die Luftlinie zwischen ihnen.
 
 | Planet | Anlagenart | X | Y | Entfernung zu Terra (Parsec) | Flugzeit bei 80 Pc/Tag | Flugzeit bei 40 Pc/Tag |
 | --- | --- | --- | --- | --- | --- | --- |
-| Terra | Werft, Bank, DYNATECH | 0 | 0 | 0 | – | – |
+| Terra | Werft, Bank, Dynacore | 0 | 0 | 0 | – | – |
 | Vesta Nova | Ölförderanlage | 180 | −120 | 216 | 2,7 Tage | 5,4 Tage |
 | Aquilon | Wasserstation | 150 | 190 | 242 | 3,0 Tage | 6,1 Tage |
 | Ferrox | Erzbergwerk | −120 | −260 | 286 | 3,6 Tage | 7,2 Tage |
@@ -276,7 +276,7 @@ Kühllager und Stallungen sind bewusst teuer im Betrieb: Nahrung und Vieh sollen
 Die Werte oben werden in Headless-Läufen gegen diese Ziele geprüft und angepasst:
 
 - Eine Rohstoffanlage amortisiert sich in 60–100 Spieltagen, eine Endprodukt-Anlage in 120–180.
-- Ein typischer Transport dauert 3–9 Tage; Fristen = doppelte Flugzeit des langsamsten passenden Schiffs + 2 Tage.
+- ~~Ein typischer Transport dauert 3–9 Tage~~ – nach dem Spieltest kein Ziel mehr: große, langsame Schiffe sind gewollt länger unterwegs (Median im Endlosspiel ≈ 15 Tage). Fristen = doppelte Flugzeit des langsamsten passenden Schiffs + 2 Tage.
 - Zu Spielbeginn frisst die Kreditrate höchstens 60 % der Tageseinnahmen.
 - Lagerkosten bleiben unter 5 % der Betriebskosten der Anlage, an der sie stehen.
 - Kein Planet ist so abgelegen, dass seine Anlage bei normalen Kursen dauerhaft Verlust macht.
@@ -378,8 +378,8 @@ Die Reihenfolge folgt dem Architektur-Grundsatz: Erst muss die Wirtschaft ohne G
 | --- | --- | --- | --- |
 | 0 · Spieldaten und Wirtschaftskern | Waren, Anlagen, Schiffe, Planeten, Lager, Kredit als JSON; Produktion, Markt, Auftragsbörse; headless mit Tests | 200 Spieltage im Test ohne Wirtschaftskollaps | ✅ fertig |
 | 1 · Spielbarer Prototyp | Ein Spieler gegen 3 KI-Firmen; Kredit, Anlagenkauf, Börse, Eigen- und Fremdtransport; schlichte Listen-Oberfläche, auf dem Tablet getestet | Handbuch-Beispiel (Kredit, Ölanlage, Frachter, erster Auftrag) durchspielbar | ✅ fertig (kurzer Test auf echtem Tablet) |
-| 2 · Volle Wirtschaft und Balancing | 20 KI-Firmen, alle 17 Anlagen und 19 Schiffe, 21 Welten, Terra-Nachfrage; Firmenindex, Gravo-Stürme, Wirtschaftskrise; Werte gegen die Zielwerte justiert | KI-Firmen halten die Wirtschaft im Endlosspiel stabil (1.000 Tage) | in Arbeit |
-| 3 · Touch-Oberfläche | sechs Tabs, Sternkarte, Ketten-Graph, Auftrags-Benachrichtigung, Zeitsteuerung, Tutorial, Autosave, 10 Speicherplätze | Testrunde auf Tablet und Smartphone ohne Handbuch | offen |
+| 2 · Volle Wirtschaft und Balancing | 20 KI-Firmen, alle 17 Anlagen und 19 Schiffe, 21 Welten, Terra-Nachfrage; Firmenindex, Gravo-Stürme, Wirtschaftskrise; Werte gegen die Zielwerte justiert | KI-Firmen halten die Wirtschaft im Endlosspiel stabil (1.000 Tage) | ✅ fertig (Zielwerte bei Grundpreisen erreicht) |
+| 3 · Touch-Oberfläche | sechs Tabs, Sternkarte, Ketten-Graph, Auftrags-Benachrichtigung, Zeitsteuerung, Tutorial, Autosave, 10 Speicherplätze | Testrunde auf Tablet und Smartphone ohne Handbuch | umgesetzt, Testrunde offen |
 | 4 · Veröffentlichung | PWA über GitHub Pages, APK über Capacitor in GitHub Releases, optional F-Droid; danach Szenarien, Daueraufträge, ggf. Online-Mehrspieler | – | offen |
 
 Jede Phase endet mit einem prüfbaren Tor; Phase 0 trägt das größte Risiko, weil die offenen Punkte zur Balance dort geklärt werden müssen.
@@ -417,7 +417,7 @@ Bei der Umsetzung des Wirtschaftskerns kamen diese Festlegungen hinzu. Sie stehe
 
 | Thema | Entscheidung | Warum |
 | --- | --- | --- |
-| Tabs | Terra (Bank, DYNATECH, Werft), Anlagen, Flotte, Börse, Aufträge, Statistik; „Ware bestellen“ sitzt an der Anlage statt in einem eigenen Tab „Auftrag geben“ | man bestellt immer für eine bestimmte Anlage |
+| Tabs | Terra (Bank, Dynacore, Werft), Anlagen, Flotte, Börse, Aufträge, Statistik; „Ware bestellen“ sitzt an der Anlage statt in einem eigenen Tab „Auftrag geben“ | man bestellt immer für eine bestimmte Anlage |
 | Einstiegshilfe | Hinweiskasten „Nächster Schritt“, der sich aus dem Spielstand ergibt, hebt den passenden Knopf hervor; kein festes Skript | übersteht Umwege des Spielers; das geführte Tutorial kommt in Phase 3 |
 | Ein Tap statt Menü-Kette | nach dem Anlagenkauf öffnet sich gleich der Transport; „Liefern“ = annehmen + Schiff wählen, kaufen oder öffentlich ausschreiben | wichtigste Aktion in höchstens zwei Taps |
 | Zeit | Spiel startet pausiert; 1× = 6 Sekunden pro Spieltag, dazu 2× und 4× | 2 Sekunden wirkten beim Tablet-Test zu schnell |
@@ -444,15 +444,32 @@ Bei der Umsetzung des Wirtschaftskerns kamen diese Festlegungen hinzu. Sie stehe
 | Terra-Großaufträge | in 10 % der Fälle bestellt Terra das 2- bis 4-Fache, höchstens so viel, wie das größte Schiff der Frachtart fasst (`terra.bigOrderChance`, `terra.bigOrderFactor`) | große Schiffe auslasten; mit 20 % stiegen die Kurse spürbar, weil die KI Großaufträge kaum bedient |
 | Reparatur vormerken | ein Schiff lässt sich unterwegs für die Reparatur vormerken; beim nächsten Stopp auf Terra wird es automatisch repariert. „Zur Reparatur nach Terra“ schickt ein freies Schiff hin und merkt vor | kein Nachsehen und Abpassen mehr (Spieltest) |
 | Börse | Filter nach Ware und Sortierung nach Lieferbarkeit, Preis pro FE oder Gesamtwert; Fristen überall als verbleibende Tage | Übersicht bei vielen Nachfragen (Spieltest) |
+| Balancing nach Zielwerten | Grundpreise entlang der Kette neu berechnet: jede Anlage amortisiert sich bei Grundpreisen in rund 150 Tagen (Zwischenprodukte), 175 Tagen (Endprodukte) bzw. 66–71 Tagen (Rohstoffe). Rohstoffanlagen teurer (Öl 440.000, Wasser 350.000, Erz 390.000 Cr), Wasser 15 statt 12 Cr | die Ziele aus „Balancing-Zielwerte“ waren bis auf Wasser alle verfehlt; Öl und Erz zahlten sich in 40–54 Tagen ab, Endprodukte erst nach bis zu 1.859 Tagen, die Plantage machte Verlust |
+| Lagerkosten | 2–5 Cr pro Tag je Lager statt 9–130; der Kaufpreis bleibt | Ziel „unter 5 % der Anlagenkosten“ (Freigabe nach dem Spieltest) |
+| Terra-Nachfrage nach Endprodukten | Chance pro Ware und Tag 18 % statt 25 % (`terra.demandChancePerGoodPerDay`) | mit den höheren Grundpreisen trieb die Nachfrage die Kurse auf +40–50 %; mit 18 % liefern die KI-Firmen mehr Endprodukte und die Kurse liegen 10–40 % über Grundpreis |
+| Transportdauer | kein Zielwert mehr, `npm run balance` zeigt sie nur noch an | große Schiffe sind gewollt langsamer (Spieltest) |
 
-**Messstand nach dem KI-Fix** (1.000 Tage, Seeds 1–3, Mittel, 20 KI-Firmen): stabil, 0–1 Bankrotte, alle Anlagenarten gebaut (≈ 170 Einheiten), Preisindex 1,05–1,68.
+**Messstand nach dem Balancing** (`npm run balance`, 1.000 Tage, Seeds 1–3, Mittel, 20 KI-Firmen): stabil, 0–1 Bankrotte, alle 17 Anlagenarten gebaut (≈ 130 Einheiten), Preisindex 0,93–1,37. Die Grundpreise und Kosten in den Tabellen weiter oben sind die ursprünglichen Entwurfswerte; gültig ist `src/data`.
 
 | Zielwert | Stand | Befund |
 | --- | --- | --- |
-| Rohstoffanlage amortisiert sich in 60–100 Tagen | bei Basiskursen Öl 40, Erz 51–54, Wasser 73–78 Tage; bei Marktkursen 61–180 | Öl und Erz zu lukrativ, Wasser verfällt im Kurs |
-| Endprodukt-Anlage in 120–180 Tagen | bei Basiskursen 192–1.859 Tage; bei Marktkursen 56–193 | Basiskurse der Endprodukte zu niedrig, der Markt gleicht über Knappheit aus |
-| Typischer Transport 3–9 Tage | Median 14 Tage, nur 2 % im Ziel | Entfernungen zu groß für die Schiffstempi – Koordinaten oder Tempi anpassen |
-| Kreditrate ≤ 60 % der Tageseinnahmen | Öl 50 %, Erz 54 %, Wasser 74 % | Wasserstation liefert zu wenig Wert |
-| Lagerkosten < 5 % der Anlagenkosten | alle 15 Lager darüber, schlimmster Fall 118 % | die Lagerwerte im Konzept selbst verfehlen das Ziel – Ziel oder Lagerkosten ändern |
-| Kein Planet mit Dauerverlust | Plantage auf Liora macht bei Basiskursen Verlust | Webstoff zu billig oder Plantage zu teuer im Betrieb |
-| Terra kauft Endprodukte | Plastikwaren, Textilien, Maschinen werden geliefert; Roboter, Medikamente, Nahrung, Getränke nie | Terra fragt 2.000–15.000 FE nach; ein Pharmawerk braucht für 2.000 FE 80 Tage – die Mengen müssen zum Produktionstempo passen |
+| Rohstoffanlage amortisiert sich in 60–100 Tagen | bei Grundpreisen 66–71 Tage; bei Marktkursen Öl und Erz 75–86, Wasser 119–131 | ✓ bei Grundpreisen; Wasser ist im Spiel meist überversorgt und fällt im Kurs |
+| Endprodukt-Anlage in 120–180 Tagen | bei Grundpreisen 175 Tage; bei Marktkursen 75–144 | ✓ bei Grundpreisen; Getränke, Nahrung, Textilien und Plastikwaren sind im Spiel knapp und dadurch lukrativer |
+| Kreditrate ≤ 60 % der Tageseinnahmen | Öl 50 %, Wasser 59 %, Erz 54 % | ✓ |
+| Lagerkosten < 5 % der Anlagenkosten | schlimmster Fall 4,5 % | ✓ |
+| Kein Planet mit Dauerverlust | keiner | ✓ |
+| Terra kauft Endprodukte | alle sieben Endprodukte werden geliefert | ✓ |
+| Transportdauer | Median 15 Tage | nur zur Info (siehe oben) |
+
+## Entscheidungen aus der Umsetzung (Phase 3)
+
+| Thema | Entscheidung | Warum |
+| --- | --- | --- |
+| Sternkarte | Canvas mit allen Planeten (Farbe nach Stufe: Rohstoff, Zwischen-, Endprodukt), eigenen Anlagen (türkiser Ring, rot bei Stillstand oder Zustand unter 70 %), eigenen Schiffen als Pfeile mit Route, fremden Schiffen als Punkte und der Gravo-Sturm-Zone. Ziehen verschiebt, zwei Finger oder Mausrad zoomen, Tippen zeigt eine Infokarte mit Kaufknopf | Grafikfenster des Originals, für Touch gebaut |
+| Karte und Listen nebeneinander | Tablet quer (ab 1.100 px Breite): Hilfe und Karte in der linken Spalte, Listen rechts, kein eigener Karten-Tab. Sonst ein siebter Tab „Karte“ | wie im Konzept vorgesehen; ein Tab mehr passt auch aufs Smartphone |
+| Ketten-Graph | im Tab Statistik: alle 18 Waren in Spalten nach dem längsten Produktionsweg, Linien von links nach rechts; eigene Produkte türkis, Bedarf gelb, fehlende Rohstoffe rot. Tippen zeigt Hersteller (mit Planeten und wie viele Anlagen laufen), Abnehmer, Kurs und offene Nachfragen | „Produktionsketten schwer zu durchschauen“ (Modernisierungen) |
+| Auftrags-Benachrichtigung | passt eine neue Nachfrage zu Ware auf Lager und einem freien Schiff, oder ein neuer Transportauftrag zu einem freien Schiff, blinkt der Börsen-Tab und eine Meldung nennt den Auftrag; jedes Angebot nur einmal | Benachrichtigung statt Lauern |
+| Erklärung per langem Drücken | 0,55 s gedrückt halten zeigt eine Erklärung und löst den Knopf nicht aus; mit der Maus erscheint sie beim Darüberfahren. Erklärungen an Tabs, Zeitsteuerung und den wichtigsten Knöpfen | „Tap führt aus; langes Drücken zeigt die Erklärung“ |
+| Auftrag auf Schiff ziehen | nicht umgesetzt | der Liefern-Dialog wählt die Schiffe bereits in einem Schritt; Ziehen wäre auf dem Smartphone eher hinderlich |
+| Tutorial | kurze Einführung beim neuen Spiel (Ziel, Zeit, Hilfe, langes Drücken, Karte) mit der Wahl „mit Hilfe“ oder „ohne Hilfe“; danach führt „Nächster Schritt“ durch das Handbuch-Beispiel. Die Einführung ist im Menü jederzeit wieder abrufbar | der Hinweiskasten aus Phase 1 war schon das geführte Tutorial |
+| 10 Speicherplätze | in IndexedDB, Laden auch vom Startbildschirm; das Autosave bleibt in localStorage | ein Spielstand ist nach 1.000 Tagen etwa 0,5 MB – zehn davon sprengen localStorage |

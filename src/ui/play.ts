@@ -153,7 +153,7 @@ export interface PendingAsset {
   transport: Transport | undefined;
 }
 
-/** Facilities and storage bought at DYNATECH that have not arrived yet. */
+/** Facilities and storage bought at Dynacore that have not arrived yet. */
 export function pendingAssets(w: World, me: string): PendingAsset[] {
   return w.assets
     .filter((a) => a.owner === me && !a.delivered)
@@ -165,7 +165,7 @@ export function pendingAssets(w: World, me: string): PendingAsset[] {
 /**
  * How a single load gets moved (a facility from Terra, another company's transport):
  * `ship:<id>` an own idle ship, `buy:<model>` buy a new ship and send it (only for facilities and
- * storage bought at DYNATECH – everything else is bought in the shipyard), `public` post it on the exchange.
+ * storage bought at Dynacore – everything else is bought in the shipyard), `public` post it on the exchange.
  */
 export type Choice = `ship:${string}` | `buy:${string}` | 'public';
 
@@ -303,7 +303,7 @@ export function carry(w: World, me: string, transportId: string, choice: Choice)
 
 /**
  * Sensible default for a single load: an idle own ship, else (only where buying is offered, i.e. for
- * facilities from DYNATECH) the cheapest fitting new one, else public.
+ * facilities from Dynacore) the cheapest fitting new one, else public.
  */
 export function defaultChoice(w: World, me: string, cargo: Cargo, amount: number, at: string, allowBuy = false): Choice {
   const idle = idleFittingShips(w, me, cargo, amount).sort((a, b) => distance(a.at ?? TERRA, at) - distance(b.at ?? TERRA, at))[0];
@@ -364,7 +364,7 @@ export function guide(w: World, me: string): GuideStep {
     return {
       id: 'facility',
       title: `${def.name} kaufen`,
-      text: `Kaufe bei DYNATECH eine ${def.name} für ${site.name}. Das ist die nächste Ölwelt bei Terra (${Math.round(distance(TERRA, site.id))} Parsec), Erdöl wird immer gebraucht.`,
+      text: `Kaufe bei Dynacore eine ${def.name} für ${site.name}. Das ist die nächste Ölwelt bei Terra (${Math.round(distance(TERRA, site.id))} Parsec), Erdöl wird immer gebraucht.`,
       tab: 'terra',
       target: `buy-${FIRST_FACILITY}-${site.id}`,
     };
@@ -496,3 +496,31 @@ export function guide(w: World, me: string): GuideStep {
     wait: true,
   };
 }
+
+// ---------- notifications ----------
+
+export interface Offer {
+  id: string;
+  kind: 'demand' | 'transport';
+  text: string;
+}
+
+/**
+ * Offers at the exchange the player could serve right now with an idle own ship: demands for goods
+ * on stock and public transports. The UI remembers which ids it has shown and flags the new ones.
+ */
+export function fittingOffers(w: World, me: string): Offer[] {
+  const out: Offer[] = [];
+  for (const o of deliverableDemands(w, me)) {
+    if (!o.ready || !idleShipsOfCargo(w, me, good(o.d.good).cargo).length) continue;
+    out.push({ id: o.d.id, kind: 'demand', text: `${good(o.d.good).name} für ${companyName(w, o.d.requester)}` });
+  }
+  for (const t of openTransports(w, me)) {
+    if (carryState(w, me, t) !== 'idle') continue;
+    out.push({ id: t.id, kind: 'transport', text: `Transport für ${companyName(w, t.issuer)}` });
+  }
+  return out;
+}
+
+/** Offers that were not in `seen` – the caller adds them to `seen` once the player was told. */
+export const newOffers = (w: World, me: string, seen: ReadonlySet<string>) => fittingOffers(w, me).filter((o) => !seen.has(o.id));
