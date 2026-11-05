@@ -4,41 +4,41 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="theme-color" content="#0b1020" />
-    <title>Dynacorp 2092 – Wirtschaftskern</title>
-    <link rel="stylesheet" href="./src/ui/debug.css" />
+    <title>Dynacorp 2092</title>
+    <link rel="stylesheet" href="./src/ui/game.css" />
   </head>
   <body>
-    <header>
-      <h1>Dynacorp 2092</h1>
-      <p class="sub">Phase 0 · Wirtschaftskern im Beobachtungsmodus – 20 KI-Firmen spielen allein</p>
-    </header>
-    <section class="controls">
-      <span id="day">Tag 0</span>
-      <button data-days="1">+1 Tag</button>
-      <button data-days="10">+10</button>
-      <button data-days="50">+50</button>
-      <button id="auto">Auto ▶</button>
-      <button id="reset">Neu</button>
-    </section>
-    <section id="status" class="status"></section>
-    <main>
-      <article>
-        <h2>Rangliste</h2>
-        <table id="ranking"></table>
-      </article>
-      <article>
-        <h2>Kurse</h2>
-        <table id="prices"></table>
-      </article>
-      <article>
-        <h2>Anlagen</h2>
-        <table id="facilities"></table>
-      </article>
-      <article>
-        <h2>Ticker</h2>
-        <ol id="ticker"></ol>
-      </article>
-    </main>
-    <script type="module" src="./src/ui/debug.ts"></script>
+    <div id="start" class="start"></div>
+
+    <div id="game" hidden>
+      <header class="top">
+        <div class="firm"><b id="firm"></b><span id="day"></span></div>
+        <div class="money">
+          <span>Bar <b id="cash"></b></span>
+          <span class="muted">Schulden <b id="debt"></b></span>
+        </div>
+        <div class="time" data-guide="time">
+          <button data-act="speed" data-a="0" aria-label="Pause">❚❚</button>
+          <button data-act="speed" data-a="1" aria-label="Normale Geschwindigkeit">▶ 1×</button>
+          <button data-act="speed" data-a="2">2×</button>
+          <button data-act="speed" data-a="4">4×</button>
+          <button data-act="step-day" class="ghost">+1 Tag</button>
+        </div>
+        <div class="menu">
+          <button id="help" data-act="guide-show" class="ghost" hidden>Hilfe</button>
+          <button data-act="menu" class="ghost" aria-label="Menü">☰</button>
+        </div>
+      </header>
+      <div id="ticker" class="ticker" data-act="tab" data-a="stats"></div>
+      <div class="layout">
+        <aside id="guide" class="guide"></aside>
+        <main id="view"></main>
+      </div>
+      <nav id="nav" class="nav"></nav>
+    </div>
+
+    <div id="sheet" class="sheet" hidden></div>
+    <div id="toast" class="toast" hidden></div>
+    <script type="module" src="./src/ui/game.ts"></script>
   </body>
 </html>

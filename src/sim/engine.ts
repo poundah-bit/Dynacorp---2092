@@ -200,6 +200,7 @@ function unload(w: World, s: Ship) {
   if (!t.own && t.carrier) {
     pay(w, t.issuer, t.carrier, t.fee);
     reputation(w, t.carrier, t.late ? -2 : 1);
+    log(w, t.carrier, `${company(w, t.carrier).name} erhält ${t.fee} Cr Transporthonorar (${planet(t.toPlanet).name}).`);
   }
   t.status = 'done';
   releaseShip(s);
@@ -238,7 +239,11 @@ function deliverGoods(w: World, t: Transport) {
     if (d.supplier !== d.requester) pay(w, d.requester, d.supplier, value);
   }
   d.status = 'done';
-  if (d.supplier && d.supplier !== d.requester) reputation(w, d.supplier, d.late ? -2 : 1);
+  if (d.supplier && d.supplier !== d.requester) {
+    reputation(w, d.supplier, d.late ? -2 : 1);
+    const buyer = d.requester === 'terra' ? 'Terra' : company(w, d.requester).name;
+    log(w, d.supplier, `${company(w, d.supplier).name} liefert ${d.amount} FE ${good(d.good).name} an ${buyer} und erhält ${value} Cr.`);
+  }
 }
 
 function deliverAsset(w: World, t: Transport) {

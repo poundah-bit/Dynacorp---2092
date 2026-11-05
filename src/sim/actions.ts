@@ -380,6 +380,9 @@ export function acceptDemand(w: World, companyId: string, demandId: string, supp
   // the deadline starts when someone commits to deliver
   d.deadlineDay =
     transportDeadline(w, good(d.good).cargo, d.amount, f.planet, d.toPlanet) + CONFIG.orders.demandExtraDays;
+  if (d.requester !== 'terra' && d.requester !== companyId) {
+    log(w, d.requester, `${company(w, companyId).name} liefert ${d.amount} FE ${good(d.good).name} nach ${planet(d.toPlanet).name}.`);
+  }
   return ok(d);
 }
 
@@ -450,6 +453,7 @@ export function acceptTransport(w: World, companyId: string, transportId: string
   if (!t || t.status !== 'open') return fail('Dieser Transport ist nicht mehr offen.');
   t.status = 'accepted';
   t.carrier = companyId;
+  log(w, t.issuer, `${company(w, companyId).name} übernimmt den Transport ${t.id} nach ${planet(t.toPlanet).name}.`);
   return ok(t);
 }
 

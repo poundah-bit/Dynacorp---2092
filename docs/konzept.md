@@ -377,7 +377,7 @@ Die Reihenfolge folgt dem Architektur-Grundsatz: Erst muss die Wirtschaft ohne G
 | Phase | Inhalt | Tor zum Abschluss | Status |
 | --- | --- | --- | --- |
 | 0 · Spieldaten und Wirtschaftskern | Waren, Anlagen, Schiffe, Planeten, Lager, Kredit als JSON; Produktion, Markt, Auftragsbörse; headless mit Tests | 200 Spieltage im Test ohne Wirtschaftskollaps | ✅ fertig |
-| 1 · Spielbarer Prototyp | Ein Spieler gegen 3 KI-Firmen; Kredit, Anlagenkauf, Börse, Eigen- und Fremdtransport; schlichte Listen-Oberfläche, auf dem Tablet getestet | Handbuch-Beispiel (Kredit, Ölanlage, Frachter, erster Auftrag) durchspielbar | offen |
+| 1 · Spielbarer Prototyp | Ein Spieler gegen 3 KI-Firmen; Kredit, Anlagenkauf, Börse, Eigen- und Fremdtransport; schlichte Listen-Oberfläche, auf dem Tablet getestet | Handbuch-Beispiel (Kredit, Ölanlage, Frachter, erster Auftrag) durchspielbar | ✅ gebaut, im Browser in Tablet-Größe durchgespielt; Test auf echtem Tablet offen |
 | 2 · Volle Wirtschaft und Balancing | 20 KI-Firmen, alle 17 Anlagen und 19 Schiffe, 21 Welten, Terra-Nachfrage; Firmenindex, Gravo-Stürme, Wirtschaftskrise; Werte gegen die Zielwerte justiert | KI-Firmen halten die Wirtschaft im Endlosspiel stabil | offen |
 | 3 · Touch-Oberfläche | sechs Tabs, Sternkarte, Ketten-Graph, Auftrags-Benachrichtigung, Zeitsteuerung, Tutorial, Autosave, 10 Speicherplätze | Testrunde auf Tablet und Smartphone ohne Handbuch | offen |
 | 4 · Veröffentlichung | PWA über GitHub Pages, APK über Capacitor in GitHub Releases, optional F-Droid; danach Szenarien, Daueraufträge, ggf. Online-Mehrspieler | – | offen |
@@ -412,3 +412,16 @@ Bei der Umsetzung des Wirtschaftskerns kamen diese Festlegungen hinzu. Sie stehe
 | Reparatur von Anlagen | vorerst sofort; Anflug des Wartungsschiffs kommt mit der Oberfläche | vereinfacht Phase 0 |
 | KI-Kredite | die KI leiht nur, was ein geplanter Kauf braucht, mit der längsten Laufzeit | volle Kreditrahmen ruinierten die KI mit Tagesraten |
 | Bekannter Balancing-Stand | nach 300 Tagen wächst die Wirtschaft (≈ 40 Anlagen, keine Bankrotte), Rohstoffanlagen dominieren aber lange | Feintuning ist Aufgabe von Phase 2 |
+
+## Entscheidungen aus der Umsetzung (Phase 1)
+
+| Thema | Entscheidung | Warum |
+| --- | --- | --- |
+| Tabs | Terra (Bank, DYNATECH, Werft), Anlagen, Flotte, Börse, Aufträge, Statistik; „Ware bestellen“ sitzt an der Anlage statt in einem eigenen Tab „Auftrag geben“ | man bestellt immer für eine bestimmte Anlage |
+| Einstiegshilfe | Hinweiskasten „Nächster Schritt“, der sich aus dem Spielstand ergibt, hebt den passenden Knopf hervor; kein festes Skript | übersteht Umwege des Spielers; das geführte Tutorial kommt in Phase 3 |
+| Ein Tap statt Menü-Kette | nach dem Anlagenkauf öffnet sich gleich der Transport; „Liefern“ = annehmen + Schiff wählen, kaufen oder öffentlich ausschreiben | wichtigste Aktion in höchstens zwei Taps |
+| Zeit | Spiel startet pausiert; 1× = 2 Sekunden pro Spieltag, dazu 2× und 4× | Einsteiger lesen erst, Profis spulen vor |
+| Spielstand | ein Autosave-Platz im Browser (localStorage) | 10 Speicherplätze mit IndexedDB folgen in Phase 3 |
+| Beobachtungsmodus | die Phase-0-Seite liegt jetzt unter `observe.html` | `index.html` ist das Spiel |
+| Ticker | der Kern meldet jetzt auch bezahlte Lieferungen, Honorare und übernommene Aufträge | sonst erfährt der Spieler nicht, dass Geld kam |
+| Wirtschaft mit 3 KI-Firmen | bleibt in Tests stabil, ist aber dünn (4–8 Anlagen nach 200 Tagen) | Phase 2 bringt 20 KI-Firmen und das Balancing |

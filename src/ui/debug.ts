@@ -1,5 +1,5 @@
-// Phase-0 observation page: runs the economy core with 20 AI companies and shows what happens.
-// Not the game UI – that comes in Phase 3. Useful for checking balancing on the tablet.
+// Observation page (observe.html): runs the economy core with 20 AI companies and shows what happens.
+// Not the game UI (see game.ts). Useful for checking balancing on the tablet.
 
 import { FACILITIES, GOODS, createWorld, marketBalance, priceIndex, ranking, run, type World } from '../sim/index';
 

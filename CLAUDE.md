@@ -4,7 +4,7 @@ Non-commercial Android fan game inspired by Dynatech (1992). Owner: Rocco (GitHu
 
 ## Read first
 
-- `docs/konzept.md` – the full game concept (German): original game analysis, goods/facilities/ships, planets, credit, storage, touch UI plan, roadmap, legal notes, and the decisions taken while building Phase 0. When concept and `src/data/*.json` disagree, the data wins.
+- `docs/konzept.md` – the full game concept (German): original game analysis, goods/facilities/ships, planets, credit, storage, touch UI plan, roadmap, legal notes, and the decisions taken while building Phases 0 and 1. When concept and `src/data/*.json` disagree, the data wins.
 
 ## Project rules
 
@@ -24,7 +24,12 @@ Non-commercial Android fan game inspired by Dynatech (1992). Owner: Rocco (GitHu
   - `engine.ts` `step(world)` = one game day: bank → facilities → ships → orders → Terra demand → prices → storms → AI → bankruptcy → collapse
   - `ai.ts` rule-based AI companies
   - `report.ts` balancing report for headless runs
-- `src/ui/` – Phase 0 only has a debug/observation page. The real touch UI comes in Phase 3.
+- `src/ui/` – the Phase-1 game (`index.html`): one player vs. 3 AI companies, plain list UI. The real touch UI (star map, tutorial, 10 save slots) comes in Phase 3.
+  - `play.ts` pure player-side logic, no DOM: queries (deliverable demands, waiting transports), combined one-tap moves (`deliver`, `moveTransport`, `carry`, `shipDemand` with a `Choice` of own ship / buy ship / public) and `guide()`, the "Nächster Schritt" hint derived from world state. Tests drive the game through this module.
+  - `game.ts` start screen, time loop (paused, 1× = 2 s/day, 2×, 4×), click dispatch via `data-act`, sheets, toasts, autosave
+  - `views.ts` HTML of the six tabs (Terra, Anlagen, Flotte, Börse, Aufträge, Statistik); `data-guide` attributes mark what the guide highlights
+  - `sheets.ts` dialogs (loan, repay, deliver, transport, order goods); `format.ts` German number formatting and labels; `save.ts` one autosave slot in localStorage
+  - `debug.ts` + `observe.html` – observation page where 20 AI companies play alone
 - `tools/simulate.ts` – headless run: `npm run sim -- <days> <seed> <difficulty>`
 
 ## Key game rules (as implemented)
@@ -38,9 +43,10 @@ Non-commercial Android fan game inspired by Dynatech (1992). Owner: Rocco (GitHu
 
 ## Commands
 
-- `npm test` must stay green. `tests/balance.test.ts` is the Phase-0 gate (200 days, no collapse, ≤3 bankruptcies, processing plants appear).
+- `npm test` must stay green. `tests/balance.test.ts` is the Phase-0 gate (200 days, no collapse, ≤3 bankruptcies, processing plants appear); `tests/phase1.test.ts` is the Phase-1 gate (following only `guide()` leads from loan to the first paid order against 3 AI firms).
 - `npm run typecheck` before committing.
+- `npm run dev` serves the game at `/` and the observation page at `/observe.html`.
 
-## Next (Phase 1)
+## Status
 
-Playable prototype: one human company vs. 3 AI firms, simple list UI on the tablet using the actions API; the manual's example (loan → oil well → freighter → first order) must be playable without docs.
+Phase 1 (playable prototype) is built and played through in the browser at tablet size; a test on a real Android tablet is still open. Next is Phase 2: 20 AI companies, balancing against the target values in the concept. Known: with only 3 AI firms the economy stays stable but thin (4–8 facilities after 200 days).
