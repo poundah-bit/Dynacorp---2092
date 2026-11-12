@@ -1,12 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { buyAutomation, company, facilitiesOf, nextAutomation, routeLimit, automationLevel, run, type Facility, type World } from '../src/sim/index';
-import { oilWellWithTanker, player, soloWorld } from './helpers';
-
-/** Gives the player n extra running facilities (copies of the first) so the 5-plant rule is met. */
-export function fakePlants(w: World, n: number, base: Facility) {
-  const planets = ['aquilon', 'ferrox', 'kharon', 'magnar', 'tethys-prime', 'sulcis', 'pyros', 'mirabel'];
-  for (let i = 0; i < n; i++) w.facilities.push({ ...base, id: `f-fake-${i}`, planet: planets[i]!, stock: {}, reserved: {}, storages: [] });
-}
+import { fakePlants, oilWellWithTanker, player, routeSetup, soloWorld } from './helpers';
 
 describe('buying the Logistikzentrale', () => {
   it('starts at level 0 with the first level on offer', () => {
@@ -54,22 +48,6 @@ describe('buying the Logistikzentrale', () => {
 });
 
 import { addRoute, assignShip, buyShip, lineRoute, postDemand, postTransportForDemand, removeRoute, routeGoods, sellShip, setRouteActive, shipDef, shipsOf, storageCapacity } from '../src/sim/index';
-
-/** Level-1 player with an oil well, a plastic plant (fake) and a big tanker at Terra. */
-export function routeSetup() {
-  const w = soloWorld();
-  const me = player(w);
-  const well = oilWellWithTanker(w);
-  fakePlants(w, 4, well);
-  const plastic = w.facilities.find((f) => f.id === 'f-fake-0')!;
-  plastic.type = 'plasticplant';
-  company(w, me).loans = [];
-  company(w, me).cash = 10_000_000;
-  expect(buyAutomation(w, me).ok).toBe(true);
-  const big = buyShip(w, me, 'tank-c');
-  if (!big.ok) throw new Error(big.error);
-  return { w, me, well, plastic, tanker: big.value };
-}
 
 describe('managing routes', () => {
   it('a route with defaults from ship and target storage', () => {
@@ -140,7 +118,8 @@ describe('routes run by themselves', () => {
     expect(only(w).status).toContain('Wartet auf Ware');
     expect(only(w).demand).toBeNull();
     well.stock.oil = 25_000;
-    step(w);
+    // while waiting the ship went home to the source; the trip starts once it is there
+    runUntil(w, () => only(w).demand !== null, 30);
     expect(only(w).status).toContain('Fahrt gestartet');
     const d = w.demands.find((x) => x.id === only(w).demand)!;
     expect(d.own).toBe(true);

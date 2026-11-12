@@ -1,5 +1,5 @@
 import { expect } from 'vitest';
-import { assignShip, buyFacility, buyShip, createWorld, facilitiesOf, run, startFacility, takeLoan, type Demand, type World } from '../src/sim/index';
+import { assignShip, buyAutomation, buyFacility, buyShip, company, createWorld, facilitiesOf, run, startFacility, takeLoan, type Demand, type Facility, type World } from '../src/sim/index';
 
 /** A world with the human player and no AI competitors, so tests control everything. */
 export function soloWorld(seed = 7): World {
@@ -55,4 +55,28 @@ export const terraOilDemand = (w: World, amount: number): Demand => {
   w.demands.push(d);
   return d;
 };
+
+
+/** Gives the player n extra running facilities (copies of the first) so the 5-plant rule is met. */
+export function fakePlants(w: World, n: number, base: Facility) {
+  const planets = ['aquilon', 'ferrox', 'kharon', 'magnar', 'tethys-prime', 'sulcis', 'pyros', 'mirabel'];
+  for (let i = 0; i < n; i++) w.facilities.push({ ...base, id: `f-fake-${i}`, planet: planets[i]!, stock: {}, reserved: {}, storages: [] });
+}
+
+
+/** Level-1 player with an oil well, a plastic plant (fake) and a big tanker at Terra. */
+export function routeSetup() {
+  const w = soloWorld();
+  const me = player(w);
+  const well = oilWellWithTanker(w);
+  fakePlants(w, 4, well);
+  const plastic = w.facilities.find((f) => f.id === 'f-fake-0')!;
+  plastic.type = 'plasticplant';
+  company(w, me).loans = [];
+  company(w, me).cash = 10_000_000;
+  expect(buyAutomation(w, me).ok).toBe(true);
+  const big = buyShip(w, me, 'tank-c');
+  if (!big.ok) throw new Error(big.error);
+  return { w, me, well, plastic, tanker: big.value };
+}
 

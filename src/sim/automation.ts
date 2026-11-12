@@ -3,8 +3,8 @@
 // same actions a player would (postDemand with an own supplier, own transport, assignShip).
 
 import { CONFIG, TERRA, facilityDef, good, planet, shipDef, unitOf } from './data';
-import { assignShip, debt, incoming, postDemand, postTransportForDemand, sendShipToTerra, setRepairAtTerra, type Result } from './actions';
-import type { Route, World } from './types';
+import { assignShip, debt, incoming, postDemand, postTransportForDemand, repairShip, repairShipCost, sendShipToTerra, setRepairAtTerra, startRoute, type Result } from './actions';
+import type { Route, Ship, World } from './types';
 import { available, company, facilitiesOf, facility, freeCapacity, isCritical, lineRoute, log, newId, pay, ship, storageCapacity } from './world';
 
 const ok = <T>(value: T): Result<T> => ({ ok: true, value });
@@ -49,6 +49,7 @@ export interface RouteInput {
   ship: string;
   amount?: number;
   refillBelow?: number;
+  serviceBelow?: number;
 }
 
 /** Goods the source makes that the target needs. */
@@ -93,7 +94,10 @@ export function addRoute(w: World, c: string, input: RouteInput): Result<Route> 
   if (amount > srcCap) return fail(`Höchstens ${srcCap} ${unit} – so viel fasst das Lager an der Quelle.`);
   if (refillBelow <= 0 || refillBelow >= cap) return fail('Die Nachschubgrenze muss zwischen 1 und der Lagergröße am Ziel liegen.');
   if (amount + refillBelow > cap) return fail(`Menge und Nachschubgrenze zusammen höchstens ${cap} ${unit} – so viel fasst das Lager am Ziel.`);
-  const r: Route = { id: newId(w, 'r'), owner: c, from: from.id, to: to.id, fromPlanet: from.planet, toPlanet: to.planet, good: input.good, amount, refillBelow, ship: s.id, active: true, status: 'Wartet auf den nächsten Tag', demand: null, trips: 0, delivered: 0 };
+  const service = input.serviceBelow ?? CONFIG.automation.serviceDefault;
+  const bad = serviceError(service);
+  if (bad) return fail(bad);
+  const r: Route = { id: newId(w, 'r'), owner: c, from: from.id, to: to.id, fromPlanet: from.planet, toPlanet: to.planet, serviceBelow: service, good: input.good, amount, refillBelow, ship: s.id, active: true, status: 'Wartet auf den nächsten Tag', demand: null, trips: 0, delivered: 0 };
   (w.routes ??= []).push(r);
   log(w, c, `Neue Lieferroute ${routeName(w, r)}: ${g.name}, ${def.name} fährt ab jetzt als Linienschiff.`, 2);
   return ok(r);
@@ -110,6 +114,25 @@ export function setRouteActive(w: World, c: string, routeId: string, on: boolean
   }
   r.active = on;
   r.status = on ? 'Wartet auf den nächsten Tag' : 'Pausiert';
+  return ok(undefined);
+}
+
+function serviceError(pct: number): string {
+  const { serviceMin, serviceMax } = CONFIG.automation;
+  return pct >= serviceMin && pct <= serviceMax ? '' : `Die Wartungsgrenze muss zwischen ${serviceMin} und ${serviceMax} % liegen.`;
+}
+
+export const serviceLimit = (r: Route) => r.serviceBelow ?? CONFIG.automation.serviceDefault;
+/** Linienschiffe are serviced where they stand from this level of the Logistikzentrale. */
+export const onsiteService = (w: World, c: string) => automationLevel(w, c) >= CONFIG.automation.onsiteServiceFromLevel;
+
+/** Service the Linienschiff when its condition falls below `pct` %. */
+export function setRouteService(w: World, c: string, routeId: string, pct: number): Result<undefined> {
+  const r = ownRoute(w, c, routeId);
+  if (!r) return fail('Lieferroute nicht gefunden.');
+  const bad = serviceError(pct);
+  if (bad) return fail(bad);
+  r.serviceBelow = Math.round(pct);
   return ok(undefined);
 }
 
@@ -133,6 +156,40 @@ function undoTrip(w: World, demandId: string) {
   if (src) src.reserved[d.good] = Math.max(0, (src.reserved[d.good] ?? 0) - d.amount);
   d.status = 'cancelled';
   for (const t of w.transports) if (t.demand === d.id && t.status !== 'done') t.status = 'cancelled';
+}
+
+const SHIP_BUSY: Partial<Record<Ship['phase'], string>> = {
+  toHome: 'Linienschiff kehrt zur Quelle zurück',
+  toTerra: 'Linienschiff fliegt zur Wartung nach Terra',
+  repair: 'Linienschiff in Wartung',
+};
+
+/** A waiting Linienschiff waits at the source, so the next trip starts without the flight there. */
+function goHome(s: Ship, planetId: string) {
+  if (s.phase === 'idle' && s.at && s.at !== planetId) startRoute(s, planetId, 'toHome');
+}
+
+/** Repairs a Linienschiff below its service limit: on the spot from level II (with surcharge), else on Terra. */
+function service(w: World, r: Route, s: Ship): string {
+  const name = shipDef(s.model).name;
+  // on Terra the yard is cheaper than the on-site service
+  if (s.at === TERRA) {
+    const done = repairShip(w, r.owner, s.id);
+    return done.ok ? 'Linienschiff in Wartung auf Terra' : `Wartung nicht bezahlbar (${fmt(repairShipCost(s))} Cr)`;
+  }
+  if (onsiteService(w, r.owner) && s.at) {
+    const cost = Math.round(repairShipCost(s) * CONFIG.automation.onsiteServiceFactor);
+    if (company(w, r.owner).cash < cost) return `Wartung nicht bezahlbar (${fmt(cost)} Cr)`;
+    pay(w, r.owner, null, cost);
+    s.phase = 'repair';
+    s.waitDays = Math.max(1, Math.ceil((100 - s.condition) / 20));
+    s.repairAtTerra = false;
+    log(w, r.owner, `${name} wird vor Ort gewartet (${fmt(cost)} Cr).`);
+    return 'Linienschiff in Wartung vor Ort';
+  }
+  setRepairAtTerra(w, r.owner, s.id, true);
+  sendShipToTerra(w, r.owner, s.id);
+  return 'Linienschiff fliegt zur Wartung auf Terra';
 }
 
 /** One game day for every Lieferroute: book finished trips, pay, check the conditions, start a trip. */
@@ -170,30 +227,32 @@ export function routesTick(w: World): void {
       r.status = 'Pausiert';
       continue;
     }
-    if (isCritical(s!)) {
-      if (!s!.repairAtTerra) setRepairAtTerra(w, r.owner, s!.id, true);
-      // trips end at the target, so send the idle ship home for the marked repair
-      if (s!.phase === 'idle' && s!.at !== TERRA) sendShipToTerra(w, r.owner, s!.id);
-      r.status = 'Linienschiff kritisch – zur Reparatur auf Terra vorgemerkt';
+    const sh = s!;
+    if (sh.phase !== 'idle') {
+      r.status = SHIP_BUSY[sh.phase] ?? 'Linienschiff ist noch unterwegs';
       continue;
     }
-    if (s!.phase !== 'idle') {
-      r.status = 'Linienschiff ist noch unterwegs';
+    // service first: below the route's limit the ship is repaired before the next trip
+    if (sh.condition < serviceLimit(r)) {
+      r.status = service(w, r, sh);
       continue;
     }
     const coming = incoming(w, to!.id, r.good);
     const have = (to!.stock[r.good] ?? 0) + coming;
     if (have >= r.refillBelow) {
       r.status = `Ziel hat genug: ${fmt(have)} ${unit}, Nachschub unter ${fmt(r.refillBelow)} ${unit}`;
+      goHome(sh, from!.planet);
       continue;
     }
     if (freeCapacity(to!, r.good) - coming < r.amount) {
       r.status = `Wartet auf Platz am Ziel: ${fmt(Math.max(0, freeCapacity(to!, r.good) - coming))} / ${fmt(r.amount)} ${unit} frei`;
+      goHome(sh, from!.planet);
       continue;
     }
     const free = available(from!, r.good);
     if (free < r.amount) {
       r.status = `Wartet auf Ware: ${fmt(Math.max(0, free))} / ${fmt(r.amount)} ${unit}`;
+      goHome(sh, from!.planet);
       continue;
     }
     const d = postDemand(w, r.owner, to!.id, r.good, r.amount, from!.id);

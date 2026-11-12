@@ -96,6 +96,8 @@ export function shipStatus(w: World, s: Ship): { text: string; cls: string } {
       return { text: `Bringt ${load} nach ${pName(s.route!.to)} – noch ${days(left)}`, cls: 'warn' };
     case 'unloading':
       return { text: `Entlädt auf ${pName(s.at!)}`, cls: 'warn' };
+    case 'toHome':
+      return { text: `Fliegt zurück zur Quelle nach ${pName(s.route!.to)} – noch ${days(left)}`, cls: 'warn' };
     case 'toTerra':
       return { text: `Fliegt nach Terra – noch ${days(left)}`, cls: 'warn' };
     case 'repair':

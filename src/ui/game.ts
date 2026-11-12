@@ -537,6 +537,7 @@ const ACTS: Record<string, (a: string) => void> = {
     if (r.ok && r.value === 1) openSheet(S.routeSheet(w!, me));
   },
   'route-new': () => openSheet(S.routeSheet(w!, me)),
+  'route-service': (id) => openSheet(S.serviceSheet(w!, me, id)),
   'route-pause': (id) => result(setRouteActive(w!, me, id, false), 'Lieferroute pausiert – das Linienschiff ist frei.'),
   'route-resume': (id) => result(setRouteActive(w!, me, id, true), 'Lieferroute läuft wieder.'),
   'route-delete'(id) {
