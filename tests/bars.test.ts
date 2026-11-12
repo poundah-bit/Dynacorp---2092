@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { CONFIG } from '../src/sim/index';
-import { bar, deadlineRatio, deadlineTone, facilityConditionTone, shipConditionTone, stockTone } from '../src/ui/format';
+import { bar, deadlineShare, deadlineTone, facilityStatus, facilityConditionTone, shipConditionTone, stockTone } from '../src/ui/format';
 
 describe('tone rules', () => {
   it('stockTone: inputs run empty, outputs run full', () => {
@@ -21,13 +21,14 @@ describe('tone rules', () => {
     expect(shipConditionTone(49)).toBe('warn');
     expect(shipConditionTone(CONFIG.ships.criticalBelow - 1)).toBe('bad');
   });
-  it('deadlineTone and deadlineRatio', () => {
-    expect(deadlineTone(0, 0, 10)).toBe('neutral');
-    expect(deadlineTone(6, 0, 10)).toBe('warn');
-    expect(deadlineTone(11, 0, 10)).toBe('bad');
-    expect(deadlineTone(5, 5, 5)).toBe('warn');
-    expect(deadlineRatio(5, 5, 5)).toBe(0);
-    expect(deadlineRatio(0, 0, 10)).toBe(1);
+  it('deadlineTone counts absolute days left, deadlineShare fills against a 30-day scale', () => {
+    expect(deadlineTone(0, 10)).toBe('neutral');
+    expect(deadlineTone(7, 10)).toBe('warn');
+    expect(deadlineTone(11, 10)).toBe('bad');
+    expect(deadlineShare(0, 30)).toBe(1);
+    expect(deadlineShare(0, 15)).toBe(0.5);
+    expect(deadlineShare(5, 5)).toBe(0);
+    expect(deadlineShare(9, 5)).toBe(0);
   });
 });
 
@@ -132,5 +133,65 @@ describe('market and orders view', () => {
     html = ordersView(ctx(w));
     expect(html).toMatch(/class="bar bad"[^>]*aria-label="Frist"><span class="bar-fill" style="width:100%"/);
     expect(facilitiesOf(w, me).length).toBe(1);
+  });
+});
+
+import { storageCapacity, type Transport } from '../src/sim/index';
+import { areaStats } from '../src/ui/play';
+
+describe('review fixes', () => {
+  it('a demand accepted long after it was posted starts with a calm deadline bar', () => {
+    const w = soloWorld();
+    const me = player(w);
+    const well = oilWellWithTanker(w);
+    const d = terraOilDemand(w, 500);
+    d.createdDay = w.day - 200;
+    expect(acceptDemand(w, me, d.id, well.id).ok).toBe(true);
+    expect(d.deadlineDay - w.day).toBeGreaterThan(3);
+    expect(ordersView(ctx(w))).toMatch(/class="bar neutral"[^>]*aria-label="Frist"/);
+  });
+  it('an own order nobody took yet has no deadline bar', () => {
+    const w = soloWorld();
+    const me = player(w);
+    const well = oilWellWithTanker(w);
+    const d = terraOilDemand(w, 500);
+    Object.assign(d, { requester: me, own: true, toPlanet: well.planet, toFacility: well.id, deadlineDay: w.day - 5 });
+    const html = ordersView(ctx(w));
+    expect(html).toContain('Erdöl');
+    expect(meters(html, 'Frist')).toBe(0);
+  });
+  it('a running plant that produces nothing is shown as standing still', () => {
+    const w = soloWorld();
+    const well = oilWellWithTanker(w);
+    well.stock.oil = storageCapacity(well, 'oil');
+    expect(areaStats(w, player(w)).facilities.stopped).toBe(1);
+    expect(facilityStatus(well)).toMatchObject({ text: 'Steht still', cls: 'bad', icon: 'stopped' });
+  });
+  it('the exchange header counts the transports the list shows', () => {
+    const w = soloWorld();
+    const t = { id: 't-x', issuer: 'someone', kind: 'goods', good: 'livestock', asset: null, amount: 100, cargo: 'live', fromPlanet: 'terra', fromFacility: null, toPlanet: 'vesta-nova', fee: 1000, own: false, demand: null, carrier: null, ship: null, status: 'open', createdDay: w.day, deadlineDay: w.day + 30, late: false } as Transport;
+    w.transports.push(t);
+    expect(areaStats(w, player(w)).market.transports).toBe(0);
+  });
+  it('critical ships are not counted as free and condition text follows the bar colour', () => {
+    const w = soloWorld();
+    const me = player(w);
+    const well = oilWellWithTanker(w);
+    const tanker = shipsOf(w, me).find((s) => s.model === 'tank-a')!;
+    tanker.condition = CONFIG.ships.criticalBelow - 1;
+    const s = areaStats(w, me).fleet;
+    expect(s.idle).toBe(shipsOf(w, me).filter((x) => x.phase === 'idle').length - 1);
+    tanker.condition = 40;
+    expect(fleetView(ctx(w))).toContain('Zustand <span class="warn">40,00 %');
+    well.condition = 50;
+    expect(facilitiesView(ctx(w))).toContain('Zustand <b class="warn">50,00 %');
+  });
+  it('a loading ship says so in its badge', () => {
+    const w = soloWorld();
+    const me = player(w);
+    oilWellWithTanker(w);
+    const tanker = shipsOf(w, me).find((s) => s.model === 'tank-a')!;
+    tanker.phase = 'loading';
+    expect(fleetView(ctx(w))).toMatch(/class="badge[^"]*">[^<]*<svg[\s\S]*?<\/svg> lädt</);
   });
 });

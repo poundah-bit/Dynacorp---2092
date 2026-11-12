@@ -1,6 +1,6 @@
 // Formatting for the game UI: German number format, labels, HTML escaping.
 
-import { CARGO_UNIT, CONFIG, cargoName, facility, facilityDef, good, planet, shipDef, shipLoads, storageDef, unitOf, type Cargo, type Facility, type Ship, type Transport, type World } from '../sim/index';
+import { CARGO_UNIT, CONFIG, productionEfficiency, cargoName, facility, facilityDef, good, planet, shipDef, shipLoads, storageDef, unitOf, type Cargo, type Facility, type Ship, type Transport, type World } from '../sim/index';
 import { cargoIconName, icon, type IconName } from './icons';
 import { companyName, shipLegDays } from './play';
 
@@ -68,6 +68,7 @@ export { cargoName };
 export function facilityStatus(f: Facility): { text: string; cls: string; icon: IconName } {
   if (f.status === 'construction') return { text: `Im Bau – noch ${days(f.buildDaysLeft)}`, cls: 'warn', icon: 'construction' };
   if (f.status === 'stopped') return { text: 'Stillgelegt', cls: 'bad', icon: 'stopped' };
+  if (productionEfficiency(f) <= 0) return { text: 'Steht still', cls: 'bad', icon: 'stopped' };
   return { text: 'In Betrieb', cls: 'good', icon: 'running' };
 }
 
@@ -145,13 +146,16 @@ export function stockTone(isInput: boolean, ratio: number): Tone {
 export const facilityConditionTone = (c: number): Tone => (c < FACILITY_BAD_BELOW ? 'bad' : c < CONFIG.facilities.repairBelow ? 'warn' : 'good');
 export const shipConditionTone = (c: number): Tone => (c < CONFIG.ships.criticalBelow ? 'bad' : c < SHIP_WARN_BELOW ? 'warn' : 'good');
 
-/** Share of the time between creation and deadline that is still left (0..1). */
-export const deadlineRatio = (day: number, created: number, deadline: number) =>
-  deadline - created <= 0 ? 0 : clamp01((deadline - day) / (deadline - created));
+/** Days a full deadline bar stands for. Deadlines restart when an order is accepted, so the bar shows
+ * absolute days left instead of a share of the time since posting. */
+export const DEADLINE_SCALE_DAYS = 30;
+export const DEADLINE_WARN_DAYS = 3;
 
-export function deadlineTone(day: number, created: number, deadline: number): Tone {
-  if (deadline - day < 0) return 'bad';
-  return deadlineRatio(day, created, deadline) > 0.5 ? 'neutral' : 'warn';
+export const deadlineShare = (day: number, deadline: number) => clamp01((deadline - day) / DEADLINE_SCALE_DAYS);
+
+export function deadlineTone(day: number, deadline: number): Tone {
+  const left = deadline - day;
+  return left < 0 ? 'bad' : left <= DEADLINE_WARN_DAYS ? 'warn' : 'neutral';
 }
 
 /** A thin fill bar (HTML) with optional reserved and incoming parts. */
@@ -160,7 +164,7 @@ export function bar(o: BarOpts): string {
   const fill = pct(share(o.value));
   const res = o.reserved ? Math.min(pct(share(o.reserved)), fill) : 0;
   const inc = o.incoming ? Math.min(pct(share(o.incoming)), Math.round((100 - fill) * 10) / 10) : 0;
-  return `<span class="bar ${o.tone}" role="meter" aria-valuenow="${Math.round(Math.max(0, o.value))}" aria-valuemin="0" aria-valuemax="${Math.round(Math.max(0, o.max))}" aria-label="${esc(o.label)}"><span class="bar-fill" style="width:${fill}%"></span>${
+  return `<span class="bar ${o.tone}" role="meter" aria-valuenow="${Math.round(Math.min(Math.max(0, o.value), Math.max(0, o.max)))}" aria-valuemin="0" aria-valuemax="${Math.round(Math.max(0, o.max))}" aria-label="${esc(o.label)}"><span class="bar-fill" style="width:${fill}%"></span>${
     res > 0 ? `<span class="bar-res" style="left:${Math.round((fill - res) * 10) / 10}%;width:${res}%"></span>` : ''
   }${inc > 0 ? `<span class="bar-in" style="left:${fill}%;width:${inc}%"></span>` : ''}</span>`;
 }

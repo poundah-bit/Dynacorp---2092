@@ -575,13 +575,13 @@ export function areaStats(w: World, me: string): AreaStats {
     },
     fleet: {
       total: ships.length,
-      idle: ships.filter((s) => s.phase === 'idle').length,
+      idle: ships.filter((s) => s.phase === 'idle' && s.condition >= CONFIG.ships.criticalBelow).length,
       moving: ships.filter((s) => s.phase !== 'idle').length,
       critical: ships.filter((s) => s.condition < CONFIG.ships.criticalBelow).length,
     },
     market: {
       fitting: deliverableDemands(w, me).filter((o) => o.ready).length + openTransports(w, me).filter((t) => carryState(w, me, t) === 'idle').length,
-      transports: openTransports(w, me).length,
+      transports: openTransports(w, me).filter((t) => carryState(w, me, t) !== 'none').length,
       big: w.demands.filter((d) => d.status === 'open' && d.requester === 'terra' && d.big && myGoods.has(d.good)).length,
     },
     orders: { promised: promised.length, unshipped: unshippedDemands(w, me).length, nextDeadline, overdue: nextDeadline !== null && nextDeadline < 0 },

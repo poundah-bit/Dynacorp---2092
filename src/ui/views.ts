@@ -78,7 +78,8 @@ import {
   bar,
   facilityConditionTone,
   shipConditionTone,
-  deadlineRatio,
+  deadlineShare,
+  type Tone,
   deadlineTone,
   stockTone,
 } from './format';
@@ -104,13 +105,16 @@ const btn = (label: string, act: string, a = '', extra = '') =>
 const empty = (text: string) => `<p class="empty">${text}</p>`;
 const route = (from: string, to: string) => `${pName(from)} → ${pName(to)} <span class="muted">(${pc(distance(from, to))})</span>`;
 
+/** Text colour class that matches a bar's tone (green stays plain text). */
+const toneClass = (t: Tone) => (t === 'warn' || t === 'bad' ? t : '');
+
 /** A small caption in front of a fill bar. */
 const meterRow = (label: string, b: string) => `<span class="meter-label">${label}</span>${b}`;
 
 /** Time left until a deadline as a bar; full red once it has passed. */
-const deadlineBar = (w: World, created: number, deadline: number) => {
+const deadlineBar = (w: World, deadline: number) => {
   const overdue = deadline < w.day;
-  return `<div class="meters">${meterRow('Frist', bar({ value: overdue ? 100 : deadlineRatio(w.day, created, deadline) * 100, max: 100, tone: deadlineTone(w.day, created, deadline), label: 'Frist' }))}</div>`;
+  return `<div class="meters">${meterRow('Frist', bar({ value: overdue ? 100 : deadlineShare(w.day, deadline) * 100, max: 100, tone: deadlineTone(w.day, deadline), label: 'Frist' }))}</div>`;
 };
 
 const CARGO_GOODS = (cargo: Cargo) => GOODS.filter((g) => g.cargo === cargo).map((g) => g.name).join(', ');
@@ -300,7 +304,7 @@ export function facilitiesView({ w, me }: ViewCtx): string {
       return `<section class="card">
         <h2>${icon(facilityIcon(f.type))}${facilityLabel(f)}${f.units > 1 ? ` <span class="muted">× ${f.units}</span>` : ''} <span class="badge ${st.cls}">${icon(st.icon)} ${st.text}</span></h2>
         <div class="meters">${meterRow('Zustand', bar({ value: f.condition, max: 100, tone: facilityConditionTone(f.condition), label: 'Zustand' }))}</div>
-        <p class="small">Zustand <b class="${f.condition < CONFIG.facilities.repairBelow ? 'bad' : ''}">${dec(f.condition)} %</b> · Auslastung ${eff} % · Kosten heute ${cr(cost)} · liefert bis zu ${flows(def.outputs, f.units)} pro Tag${Object.keys(def.inputs).length ? ` aus ${flows(def.inputs, f.units)}` : ''}</p>
+        <p class="small">Zustand <b class="${toneClass(facilityConditionTone(f.condition))}">${dec(f.condition)} %</b> · Auslastung ${eff} % · Kosten heute ${cr(cost)} · liefert bis zu ${flows(def.outputs, f.units)} pro Tag${Object.keys(def.inputs).length ? ` aus ${flows(def.inputs, f.units)}` : ''}</p>
         ${f.status === 'running' && eff === 0 ? `<p class="bad small">Steht still: ${Object.keys(def.inputs).some((g) => (f.stock[g] ?? 0) <= 0) ? 'Rohstoffe fehlen – „Ware bestellen“.' : 'Lager voll – liefere Ware aus.'}</p>` : ''}
         <table><tr><th>Ware</th><th class="n">Lager</th><th class="n">Kapazität</th><th class="n">Aufträge</th><th class="n"></th></tr>${stock}</table>
         ${f.storages.length ? `<p class="small muted">Zusatzlager: ${f.storages.map((id) => storageDef(id).name).join(', ')}</p>` : ''}
@@ -353,9 +357,10 @@ export function fleetView({ w, me }: ViewCtx): string {
         atTerra ? btn(`Verkaufen (${cr(Math.round(shipValue(s) * 0.6))})`, 'sell-ship', s.id, 'class="ghost"') : '',
       ].join('');
       const stateIc: IconName = critical ? 'critical' : s.phase === 'idle' ? 'idle' : s.phase === 'loading' || s.phase === 'unloading' ? 'loading' : 'travelling';
+      const stateText = s.phase === 'idle' ? 'frei' : stateIc === 'loading' ? (s.phase === 'loading' ? 'lädt' : 'entlädt') : 'unterwegs';
       const badge = critical
         ? `<span class="badge bad">${icon(stateIc)} kritisch</span>`
-        : `<span class="badge ${st.cls}">${icon(stateIc)} ${s.phase === 'idle' ? 'frei' : 'unterwegs'}</span>`;
+        : `<span class="badge ${st.cls}">${icon(stateIc)} ${stateText}</span>`;
       const cap = def.capacity;
       const bars = [
         meterRow('Zustand', bar({ value: s.condition, max: 100, tone: shipConditionTone(s.condition), label: 'Zustand' })),
@@ -368,7 +373,7 @@ export function fleetView({ w, me }: ViewCtx): string {
         <p>${st.text}</p>
         ${critical ? `<p class="bad small"><b>Kritischer Zustand:</b> fliegt nur noch mit ${Math.round(CONFIG.ships.criticalSpeedFactor * 100)} % Tempo und nimmt keine neuen Aufträge an. ${s.phase === 'idle' ? (s.at === TERRA ? 'Jetzt reparieren.' : 'Schick es zur Reparatur nach Terra.') : 'Nach diesem Flug zur Reparatur nach Terra.'}</p>` : ''}
         ${loads.length > 1 ? `<p class="small">An Bord für diesen Flug: ${loads.map((t) => loadName(w, t)).join(' · ')}</p>` : ''}
-        <p class="small muted">${qty(def.capacity, def.cargo)} Laderaum${room > 0 ? ` (noch ${qty(room, def.cargo)} frei für Zuladung)` : ''} · ${critical ? `<span class="bad">${num(shipSpeed(s))} Pc/Tag</span> (sonst ${num(def.speed)})` : `${num(def.speed)} Pc/Tag`} · Zustand <span class="${s.condition < 50 ? 'bad' : ''}">${dec(s.condition)} %</span>${s.condition < 50 && !critical ? ' – bald zur Reparatur nach Terra' : ''}${s.repairAtTerra ? ` · <span class="warn">${icon('repairMarked')} Reparatur auf Terra vorgemerkt</span>` : ''}</p>
+        <p class="small muted">${qty(def.capacity, def.cargo)} Laderaum${room > 0 ? ` (noch ${qty(room, def.cargo)} frei für Zuladung)` : ''} · ${critical ? `<span class="bad">${num(shipSpeed(s))} Pc/Tag</span> (sonst ${num(def.speed)})` : `${num(def.speed)} Pc/Tag`} · Zustand <span class="${toneClass(shipConditionTone(s.condition))}">${dec(s.condition)} %</span>${s.condition < 50 && !critical ? ' – bald zur Reparatur nach Terra' : ''}${s.repairAtTerra ? ` · <span class="warn">${icon('repairMarked')} Reparatur auf Terra vorgemerkt</span>` : ''}</p>
         ${acts ? `<div class="acts">${acts}</div>` : ''}
       </section>`;
   };
@@ -481,7 +486,7 @@ export function marketView(ctx: ViewCtx): string {
 export function ordersView({ w, me }: ViewCtx): string {
   const unshipped = unshippedDemands(w, me)
     .map(
-      (d) => `<div class="row"><div class="grow">${cargoIcon(good(d.good).cargo)} <b>${amt(d.amount, d.good)} ${gName(d.good)}</b> an ${who(w, d.requester)}${deadlineBar(w, d.createdDay, d.deadlineDay)}<div class="small">Zugesagt – ${deadlineIn(w, d.deadlineDay)}. ${unshippedAmount(d) < d.amount ? `${amt(d.amount - unshippedAmount(d), d.good)} sind unterwegs, für ${amt(unshippedAmount(d), d.good)} fehlt noch der Transport.` : 'Es fehlt noch der Transport.'}</div></div>
+      (d) => `<div class="row"><div class="grow">${cargoIcon(good(d.good).cargo)} <b>${amt(d.amount, d.good)} ${gName(d.good)}</b> an ${who(w, d.requester)}${deadlineBar(w, d.deadlineDay)}<div class="small">Zugesagt – ${deadlineIn(w, d.deadlineDay)}. ${unshippedAmount(d) < d.amount ? `${amt(d.amount - unshippedAmount(d), d.good)} sind unterwegs, für ${amt(unshippedAmount(d), d.good)} fehlt noch der Transport.` : 'Es fehlt noch der Transport.'}</div></div>
       <div class="acts">${btn('Transport organisieren…', 'arrange', d.id, 'class="primary" data-guide="arrange" data-tip="Wählt eigene Schiffe für die zugesagte Lieferung oder schreibt den Transport an der Börse aus."')}</div></div>`,
     )
     .join('');
@@ -490,7 +495,7 @@ export function ordersView({ w, me }: ViewCtx): string {
     .map((t) => {
       const what = loadName(w, t);
       const ships = idleFittingShips(w, me, t.cargo, t.amount);
-      return `<div class="row"><div class="grow">${cargoIcon(t.cargo)} <b>${what}</b> ${route(t.fromPlanet, t.toPlanet)}${deadlineBar(w, t.createdDay, t.deadlineDay)}
+      return `<div class="row"><div class="grow">${cargoIcon(t.cargo)} <b>${what}</b> ${route(t.fromPlanet, t.toPlanet)}${deadlineBar(w, t.deadlineDay)}
         <div class="small">${t.own ? 'Eigener Transport' : `Für ${who(w, t.issuer)}, Honorar ${cr(t.fee)}`} · ${deadlineIn(w, t.deadlineDay)} · ${ships.length ? `${ships.length} passende freie Schiffe` : '<span class="bad">kein passendes freies Schiff</span>'}</div></div>
         <div class="acts">${btn('Schiff wählen…', 'move', t.id, 'class="primary" data-guide="waiting"')}</div></div>`;
     })
@@ -507,7 +512,7 @@ export function ordersView({ w, me }: ViewCtx): string {
           : s
             ? `${t.carrier === me ? '' : `${who(w, t.carrier)}: `}${shipStatus(w, s).text}`
             : `Übernommen von ${who(w, t.carrier)}`;
-      return `<div class="row"><div class="grow">${cargoIcon(t.cargo)} <b>${amt(t.amount, t.good!)} ${gName(t.good!)}</b> ${route(t.fromPlanet, t.toPlanet)}${deadlineBar(w, t.createdDay, t.deadlineDay)}<div class="small">${state}${t.late ? ' · <span class="bad">Frist überzogen</span>' : ` · ${deadlineIn(w, t.deadlineDay)}`}</div></div>${t.status === 'open' && t.issuer === me ? `<div class="acts">${btn('Zurückziehen', 'unrelease', t.id)}</div>` : ''}</div>`;
+      return `<div class="row"><div class="grow">${cargoIcon(t.cargo)} <b>${amt(t.amount, t.good!)} ${gName(t.good!)}</b> ${route(t.fromPlanet, t.toPlanet)}${deadlineBar(w, t.deadlineDay)}<div class="small">${state}${t.late ? ' · <span class="bad">Frist überzogen</span>' : ` · ${deadlineIn(w, t.deadlineDay)}`}</div></div>${t.status === 'open' && t.issuer === me ? `<div class="acts">${btn('Zurückziehen', 'unrelease', t.id)}</div>` : ''}</div>`;
     })
     .join('');
 
@@ -515,7 +520,7 @@ export function ordersView({ w, me }: ViewCtx): string {
     .filter((d) => d.requester === me && ['open', 'accepted', 'shipping'].includes(d.status))
     .map((d) => {
       const state = d.status === 'open' ? 'Offen – wartet auf einen Lieferanten' : d.own ? 'Aus eigener Anlage' : `Liefert ${who(w, d.supplier)}`;
-      return `<div class="row"><div class="grow">${cargoIcon(good(d.good).cargo)} <b>${amt(d.amount, d.good)} ${gName(d.good)}</b> nach ${pName(d.toPlanet)}${deadlineBar(w, d.createdDay, d.deadlineDay)} <span class="price">${perUnit(d.pricePerFe, d.good)}</span><div class="small">${state}</div></div>
+      return `<div class="row"><div class="grow">${cargoIcon(good(d.good).cargo)} <b>${amt(d.amount, d.good)} ${gName(d.good)}</b> nach ${pName(d.toPlanet)} <span class="price">${perUnit(d.pricePerFe, d.good)}</span>${d.status === 'open' ? '' : deadlineBar(w, d.deadlineDay)}<div class="small">${state}</div></div>
       <div class="acts">${d.status === 'open' ? btn('Stornieren', 'cancel-demand', d.id, 'class="ghost"') : ''}</div></div>`;
     })
     .join('');
@@ -575,6 +580,6 @@ export function badges(w: World, me: string) {
   const facilities =
     facilitiesOf(w, me).filter((f) => f.status === 'stopped').length +
     pendingAssets(w, me).filter((p) => p.transport?.status === 'accepted' && !p.transport.ship && p.transport.carrier === me).length;
-  const fleet = shipsOf(w, me).filter((s) => s.phase === 'idle').length;
+  const fleet = areaStats(w, me).fleet.idle;
   return { market, orders, facilities, fleet };
 }
