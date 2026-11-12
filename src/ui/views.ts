@@ -76,6 +76,8 @@ import {
   qty,
   SHIP_KIND,
 } from './format';
+import { icon, type IconName } from './icons';
+import type { AreaStats } from './play';
 
 export type MarketSort = 'ready' | 'price' | 'value';
 
@@ -97,6 +99,76 @@ const empty = (text: string) => `<p class="empty">${text}</p>`;
 const route = (from: string, to: string) => `${pName(from)} → ${pName(to)} <span class="muted">(${pc(distance(from, to))})</span>`;
 
 const CARGO_GOODS = (cargo: Cargo) => GOODS.filter((g) => g.cargo === cargo).map((g) => g.name).join(', ');
+
+// ---------- area headers ----------
+
+export type Area = 'facilities' | 'fleet' | 'market' | 'orders';
+export const AREAS: readonly Area[] = ['facilities', 'fleet', 'market', 'orders'];
+const AREA_NAME: Record<Area, string> = { facilities: 'Anlagen', fleet: 'Flotte', market: 'Börse', orders: 'Aufträge' };
+
+interface Chip {
+  text: string;
+  tone?: 'good' | 'warn' | 'bad';
+  ic?: IconName;
+  tip: string;
+  /** only shown when the count is above 0 */
+  count?: number;
+}
+const plural = (n: number, one: string, many: string) => `${num(n)} ${n === 1 ? one : many}`;
+const chip = (c: Chip) =>
+  c.count === 0 ? '' : `<span class="chip${c.tone ? ` ${c.tone}` : ''}" data-tip="${esc(c.tip)}">${c.ic ? icon(c.ic) : ''}${c.text}</span>`;
+
+function deadlineChip(n: number | null): Chip | null {
+  if (n === null) return null;
+  const tip = 'Die knappste Frist unter deinen zugesagten Lieferungen und angenommenen Transporten.';
+  if (n < 0) return { text: 'Frist überzogen', tone: 'bad', ic: 'deadline', tip };
+  return { text: n === 0 ? 'nächste Frist heute' : `nächste Frist in ${n === 1 ? '1 Tag' : `${num(n)} Tagen`}`, tone: n <= 3 ? 'warn' : undefined, ic: 'deadline', tip };
+}
+
+function areaChips(area: Area, s: AreaStats): Chip[] {
+  switch (area) {
+    case 'facilities': {
+      const f = s.facilities;
+      return [
+        { text: plural(f.total, 'Anlage', 'Anlagen'), tip: 'Alle deine gebauten Anlagen.' },
+        { text: `${num(f.running)} in Betrieb`, tone: 'good', ic: 'running', tip: 'Anlagen, die gerade produzieren.' },
+        { text: `${num(f.stopped)} Stillstand`, tone: 'bad', ic: 'stopped', count: f.stopped, tip: 'Stillgelegt oder ohne Produktion: Rohstoffe fehlen oder das Lager ist voll.' },
+        { text: `${num(f.building)} im Bau`, ic: 'construction', count: f.building, tip: 'Anlagen im Aufbau.' },
+        { text: `${num(f.pending)} unterwegs von Terra`, ic: 'travelling', count: f.pending, tip: 'Gekaufte Anlagen und Lager, die noch nicht angekommen sind.' },
+      ];
+    }
+    case 'fleet': {
+      const f = s.fleet;
+      return [
+        { text: plural(f.total, 'Schiff', 'Schiffe'), tip: 'Alle deine Schiffe.' },
+        { text: `${num(f.idle)} frei`, tone: 'good', ic: 'idle', tip: 'Schiffe ohne Auftrag – bereit für den nächsten Transport.' },
+        { text: `${num(f.moving)} unterwegs`, ic: 'travelling', tip: 'Schiffe im Flug, beim Laden oder in Reparatur.' },
+        { text: `${num(f.critical)} kritisch`, tone: 'bad', ic: 'critical', count: f.critical, tip: 'Schiffe in kritischem Zustand: langsam und ohne neue Aufträge, bis sie auf Terra repariert sind.' },
+      ];
+    }
+    case 'market': {
+      const m = s.market;
+      return [
+        { text: `${num(m.fitting)} passen zu dir`, tone: 'good', tip: 'Nachfragen, die du sofort liefern kannst, und Transporte für ein freies Schiff.' },
+        { text: plural(m.transports, 'Transport', 'Transporte'), tip: 'Offene Transportaufträge anderer Firmen.' },
+        { text: plural(m.big, 'Großauftrag', 'Großaufträge'), tone: 'warn', ic: 'bigOrder', count: m.big, tip: 'Große Aufträge von Terra für eine Ware, die du herstellst.' },
+      ];
+    }
+    case 'orders': {
+      const o = s.orders;
+      const d = deadlineChip(o.nextDeadline);
+      return [
+        { text: `${num(o.promised)} zugesagt`, tip: 'Lieferungen, die du zugesagt hast und die noch nicht angekommen sind.' },
+        { text: `${num(o.unshipped)} ohne Transport`, tone: 'warn', count: o.unshipped, tip: 'Zugesagte Lieferungen, für die noch kein Schiff organisiert ist.' },
+        ...(d ? [d] : []),
+      ];
+    }
+  }
+}
+
+/** The header of an area tab: its icon, name and key figures. */
+export const areaHead = (area: Area, s: AreaStats) =>
+  `<header class="area-head" data-area="${area}">${icon(area)}<h2 class="area-name">${AREA_NAME[area]}</h2><div class="chips">${areaChips(area, s).map(chip).join('')}</div></header>`;
 
 // ---------- Terra: bank, Dynacore, shipyard ----------
 
