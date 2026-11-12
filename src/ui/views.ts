@@ -38,6 +38,7 @@ import {
   type World,
 } from '../sim/index';
 import {
+  areaStats,
   carryState,
   deliverableDemands,
   idleFittingShips,
@@ -470,8 +471,7 @@ export function statsView({ w, me, priceTrend, chainGood }: ViewCtx): string {
 
 /** Numbers for the badges on the bottom navigation. */
 export function badges(w: World, me: string) {
-  const market =
-    deliverableDemands(w, me).filter((o) => o.ready).length + openTransports(w, me).filter((t) => carryState(w, me, t) === 'idle').length;
+  const market = areaStats(w, me).market.fitting;
   const orders = unshippedDemands(w, me).length + waitingTransports(w, me).filter((t) => t.kind === 'goods').length;
   const facilities =
     facilitiesOf(w, me).filter((f) => f.status === 'stopped').length +

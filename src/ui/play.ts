@@ -30,6 +30,7 @@ import {
   shipDef,
   shipRoom,
   shipSpeed,
+  productionEfficiency,
   shipsOf,
   storageCapacity,
   transport,
@@ -545,3 +546,44 @@ export function fittingOffers(w: World, me: string): Offer[] {
 
 /** Offers that were not in `seen` – the caller adds them to `seen` once the player was told. */
 export const newOffers = (w: World, me: string, seen: ReadonlySet<string>) => fittingOffers(w, me).filter((o) => !seen.has(o.id));
+
+// ---------- key figures for the area headers ----------
+
+export interface AreaStats {
+  facilities: { total: number; running: number; stopped: number; building: number; pending: number };
+  fleet: { total: number; idle: number; moving: number; critical: number };
+  market: { fitting: number; transports: number; big: number };
+  orders: { promised: number; unshipped: number; nextDeadline: number | null; overdue: boolean };
+}
+
+/** What the header of Anlagen, Flotte, Börse and Aufträge shows. */
+export function areaStats(w: World, me: string): AreaStats {
+  const facs = facilitiesOf(w, me);
+  const producing = (f: Facility) => f.status === 'running' && productionEfficiency(f) > 0;
+  const ships = shipsOf(w, me);
+  const myGoods = new Set(facs.flatMap((f) => Object.keys(facilityDef(f.type).outputs)));
+  const promised = w.demands.filter((d) => d.supplier === me && (d.status === 'accepted' || d.status === 'shipping'));
+  const deadlines = [...promised, ...waitingTransports(w, me)].map((x) => x.deadlineDay - w.day);
+  const nextDeadline = deadlines.length ? Math.min(...deadlines) : null;
+  return {
+    facilities: {
+      total: facs.length,
+      running: facs.filter(producing).length,
+      stopped: facs.filter((f) => f.status === 'stopped' || (f.status === 'running' && !producing(f))).length,
+      building: facs.filter((f) => f.status === 'construction').length,
+      pending: pendingAssets(w, me).length,
+    },
+    fleet: {
+      total: ships.length,
+      idle: ships.filter((s) => s.phase === 'idle').length,
+      moving: ships.filter((s) => s.phase !== 'idle').length,
+      critical: ships.filter((s) => s.condition < CONFIG.ships.criticalBelow).length,
+    },
+    market: {
+      fitting: deliverableDemands(w, me).filter((o) => o.ready).length + openTransports(w, me).filter((t) => carryState(w, me, t) === 'idle').length,
+      transports: openTransports(w, me).length,
+      big: w.demands.filter((d) => d.status === 'open' && d.requester === 'terra' && d.big && myGoods.has(d.good)).length,
+    },
+    orders: { promised: promised.length, unshipped: unshippedDemands(w, me).length, nextDeadline, overdue: nextDeadline !== null && nextDeadline < 0 },
+  };
+}

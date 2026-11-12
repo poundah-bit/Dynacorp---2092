@@ -5,44 +5,7 @@ import { FACILITIES, GOODS, PLANETS, assignShip, buyFacility, buyShip, facilitie
 import { CHAIN_EDGES, chainDetail, chainLayout, chainSvg, goodRoles } from '../src/ui/chain';
 import { planetInfo } from '../src/ui/mapinfo';
 import { fittingOffers, newOffers } from '../src/ui/play';
-import { player, runUntil, soloWorld } from './helpers';
-
-function oilWellWithTanker(w: World) {
-  const me = player(w);
-  expect(takeLoan(w, me, 1_000_000, 2).ok).toBe(true);
-  const t = buyFacility(w, me, 'oilwell', 'vesta-nova');
-  if (!t.ok) throw new Error(t.error);
-  const s = buyShip(w, me, 'piece-a');
-  if (!s.ok) throw new Error(s.error);
-  expect(assignShip(w, me, s.value.id, t.value.id).ok).toBe(true);
-  runUntil(w, () => facilitiesOf(w, me).some((f) => f.status === 'stopped'));
-  const well = facilitiesOf(w, me)[0]!;
-  expect(startFacility(w, me, well.id).ok).toBe(true);
-  expect(buyShip(w, me, 'tank-a').ok).toBe(true);
-  return well;
-}
-
-const terraOilDemand = (w: World, amount: number): Demand => {
-  const d: Demand = {
-    id: `d-test-${w.demands.length}`,
-    requester: 'terra',
-    good: 'oil',
-    amount,
-    toPlanet: 'terra',
-    toFacility: null,
-    pricePerFe: 25,
-    own: false,
-    status: 'open',
-    supplier: null,
-    supplierFacility: null,
-    transport: null,
-    createdDay: w.day,
-    deadlineDay: w.day + 40,
-    late: false,
-  };
-  w.demands.push(d);
-  return d;
-};
+import { oilWellWithTanker, player, runUntil, soloWorld, terraOilDemand } from './helpers';
 
 describe('Benachrichtigung bei passenden Aufträgen', () => {
   it('meldet eine Nachfrage nur, wenn Ware auf Lager und ein freies Schiff der Frachtart da ist', () => {
