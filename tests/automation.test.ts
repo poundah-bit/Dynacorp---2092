@@ -200,3 +200,27 @@ describe('routes run by themselves', () => {
     expect(w.log.some((l) => l.text.includes('beendet'))).toBe(true);
   });
 });
+
+import { areaStats, carryState, idleFittingShips, idleShipsOfCargo, joinableShips } from '../src/ui/play';
+import { fleetView, type ViewCtx } from '../src/ui/views';
+
+describe('player side', () => {
+  it('a Linienschiff is offered nowhere and not counted as free, until the route is paused', () => {
+    const { w, me, well, plastic, tanker } = routeSetup();
+    const r = addRoute(w, me, { from: well.id, to: plastic.id, good: 'oil', ship: tanker.id, amount: 20_000 });
+    if (!r.ok) throw new Error(r.error);
+    const ids = (xs: { id: string }[]) => xs.map((x) => x.id);
+    const freeBefore = shipsOf(w, me).filter((s) => s.phase === 'idle').length;
+    expect(ids(idleFittingShips(w, me, 'tank', 30_000))).not.toContain(tanker.id);
+    expect(ids(idleShipsOfCargo(w, me, 'tank'))).not.toContain(tanker.id);
+    expect(areaStats(w, me).fleet.idle).toBe(freeBefore - 1);
+    const t = { id: 't-x', issuer: 'x', kind: 'goods', good: 'oil', asset: null, amount: 30_000, cargo: 'tank', fromPlanet: 'terra', fromFacility: null, toPlanet: 'aquilon', fee: 1, own: false, demand: null, carrier: null, ship: null, status: 'open', createdDay: 0, deadlineDay: 99, late: false } as const;
+    expect(carryState(w, me, { ...t } as never)).not.toBe('idle');
+    expect(ids(joinableShips(w, me, 'tank', 'terra', 'aquilon'))).not.toContain(tanker.id);
+    const ctx = { w, me, marketAll: true, marketGood: '', marketSort: 'ready', priceTrend: () => 0, chainGood: '' } as ViewCtx;
+    expect(fleetView(ctx)).toContain('Linienschiff');
+    setRouteActive(w, me, r.value.id, false);
+    expect(ids(idleFittingShips(w, me, 'tank', 30_000))).toContain(tanker.id);
+    expect(areaStats(w, me).fleet.idle).toBe(freeBefore);
+  });
+});

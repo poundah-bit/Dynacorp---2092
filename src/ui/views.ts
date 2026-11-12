@@ -47,7 +47,7 @@ import {
   unshippedDemands,
   waitingTransports,
 } from './play';
-import { unitOf, unshippedAmount } from '../sim/index';
+import { lineRoute, routeName, unitOf, unshippedAmount } from '../sim/index';
 import { chainDetail, chainSvg } from './chain';
 import {
   cr,
@@ -334,8 +334,10 @@ export function fleetView({ w, me, order }: ViewCtx): string {
       const def = shipDef(s.model);
       const st = shipStatus(w, s);
       const critical = isCriticalShip(s);
-      const jobs =
-        s.phase === 'idle' && !critical
+      const line = lineRoute(w, s.id);
+      const jobs = line
+        ? ''
+        : s.phase === 'idle' && !critical
           ? waiting
               .filter((t) => t.cargo === def.cargo && t.amount <= def.capacity)
               .map((t) => btn(`Zuweisen: ${loadName(w, t)} ${pName(t.fromPlanet)} → ${pName(t.toPlanet)}`, 'assign', `${s.id}|${t.id}`, 'class="primary"'))
@@ -353,7 +355,7 @@ export function fleetView({ w, me, order }: ViewCtx): string {
       const room = loads.length && s.phase !== 'toDelivery' && s.phase !== 'unloading' ? shipRoom(w, s) : 0;
       const acts = [
         jobs,
-        s.phase === 'idle' && !atTerra ? btn('Nach Terra fliegen', 'to-terra', s.id) : '',
+        s.phase === 'idle' && !atTerra && !line ? btn('Nach Terra fliegen', 'to-terra', s.id) : '',
         s.phase === 'idle' && !atTerra && worn ? btn('Zur Reparatur nach Terra', 'repair-trip', s.id) : '',
         atTerra && worn ? btn(`Reparieren (${cr(repairShipCost(s))})`, 'repair-ship', s.id) : '',
         !atTerra && worn && s.phase !== 'repair'
@@ -368,6 +370,9 @@ export function fleetView({ w, me, order }: ViewCtx): string {
       const badge = critical
         ? `<span class="badge bad">${icon(stateIc)} kritisch</span>`
         : `<span class="badge ${st.cls}">${icon(stateIc)} ${stateText}</span>`;
+      const lineBadge = line
+        ? ` <span class="badge line" data-tip="Fährt nur diese Lieferroute. Zum Freigeben die Route unter Aufträge pausieren.">${icon('orders')} Linienschiff ${esc(routeName(w, line))}</span>`
+        : '';
       const cap = def.capacity;
       const bars = [
         meterRow('Zustand', bar({ value: s.condition, max: 100, tone: shipConditionTone(s.condition), label: 'Zustand' })),
@@ -375,7 +380,7 @@ export function fleetView({ w, me, order }: ViewCtx): string {
         s.route ? meterRow('Flug', bar({ value: s.route.traveled, max: s.route.distance, tone: 'neutral', label: 'Flug' })) : '',
       ].join('');
       return `<section class="card ship-card cargo-${def.cargo}${critical ? ' critical' : ''}">
-        <h2>${cargoIcon(def.cargo)} ${shipLabel(s)} ${badge}</h2>
+        <h2>${cargoIcon(def.cargo)} ${shipLabel(s)} ${badge}${lineBadge}</h2>
         <div class="meters">${bars}</div>
         <p>${st.text}</p>
         ${critical ? `<p class="bad small"><b>Kritischer Zustand:</b> fliegt nur noch mit ${Math.round(CONFIG.ships.criticalSpeedFactor * 100)} % Tempo und nimmt keine neuen Aufträge an. ${s.phase === 'idle' ? (s.at === TERRA ? 'Jetzt reparieren.' : 'Schick es zur Reparatur nach Terra.') : 'Nach diesem Flug zur Reparatur nach Terra.'}</p>` : ''}
@@ -392,7 +397,7 @@ export function fleetView({ w, me, order }: ViewCtx): string {
         .filter((s) => shipDef(s.model).cargo === cargo)
         .sort((a, b) => shipDef(b.model).capacity - shipDef(a.model).capacity || a.id.localeCompare(b.id, 'de', { numeric: true }));
       if (!group.length) return '';
-      const idle = group.filter((s) => s.phase === 'idle' && !isCriticalShip(s)).length;
+      const idle = group.filter((s) => s.phase === 'idle' && !isCriticalShip(s) && !lineRoute(w, s.id)).length;
       const crit = group.filter(isCriticalShip).length;
       return `<div class="drag-item fleet-group" data-drag-item="${cargo}"><h2 class="fleet-head cargo-${cargo}">${cargoIcon(cargo)} ${SHIP_KIND[cargo]} <span class="muted small">${group.length} ${group.length === 1 ? 'Schiff' : 'Schiffe'} · ${idle} frei${crit ? ` · <span class="bad">${crit} kritisch</span>` : ''} · für ${CARGO_GOODS(cargo)}${cargo === 'piece' ? ', Anlagen' : ''}</span>${dragHandle('cargo', cargo, `${SHIP_KIND[cargo]} verschieben`)}</h2>
         ${group.map(card).join('')}</div>`;

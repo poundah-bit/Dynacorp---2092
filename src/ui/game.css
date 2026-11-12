@@ -376,3 +376,7 @@ td .bar { height: 8px; min-width: 64px; margin-left: auto; }
 .fleet-group.dragging { background: var(--bg); border-radius: 14px; }
 .drag-active { user-select: none; }
 @media (prefers-reduced-motion: no-preference) { .drag-active > [data-drag-item]:not(.dragging) { transition: transform 0.15s ease; } }
+
+/* ---------- Logistikzentrale ---------- */
+:root { --route: #e8c45a; }
+.badge.line { color: var(--route); }
