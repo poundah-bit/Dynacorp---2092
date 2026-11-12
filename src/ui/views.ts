@@ -84,6 +84,7 @@ import {
   stockTone,
 } from './format';
 import { facilityIcon, icon, type IconName } from './icons';
+import { DEFAULT_CARGO, applyOrder, type ListOrder } from './order';
 import type { AreaStats } from './play';
 
 export type MarketSort = 'ready' | 'price' | 'value';
@@ -98,6 +99,8 @@ export interface ViewCtx {
   priceTrend: (goodId: string) => -1 | 0 | 1;
   /** good selected in the chain graph, '' = none */
   chainGood: string;
+  /** the player's own order of facilities and cargo groups (default: build order, tank first) */
+  order?: ListOrder;
 }
 
 const btn = (label: string, act: string, a = '', extra = '') =>
@@ -107,6 +110,10 @@ const route = (from: string, to: string) => `${pName(from)} → ${pName(to)} <sp
 
 /** Text colour class that matches a bar's tone (green stays plain text). */
 const toneClass = (t: Tone) => (t === 'warn' || t === 'bad' ? t : '');
+
+/** Grip to drag a card or group to another place (drag.ts); pointer only, no long-press help. */
+const dragHandle = (kind: 'facility' | 'cargo', id: string, label: string) =>
+  `<button type="button" class="drag" data-drag="${kind}" data-id="${esc(id)}" aria-label="${esc(label)}">⠿</button>`;
 
 /** A small caption in front of a fill bar. */
 const meterRow = (label: string, b: string) => `<span class="meter-label">${label}</span>${b}`;
@@ -265,7 +272,7 @@ function assetTransportText(w: World, t: Transport | undefined): { text: string;
   return { text: s ? `${t.carrier === w.playerId ? '' : `${who(w, t.carrier)}: `}${shipStatus(w, s).text}` : 'Unterwegs', action: '' };
 }
 
-export function facilitiesView({ w, me }: ViewCtx): string {
+export function facilitiesView({ w, me, order }: ViewCtx): string {
   const pending = pendingAssets(w, me)
     .map(({ asset: a, transport: t }) => {
       const name = a.kind === 'facility' ? facilityDef(a.defId).name : storageDef(a.defId).name;
@@ -274,7 +281,7 @@ export function facilitiesView({ w, me }: ViewCtx): string {
     })
     .join('');
 
-  const facs = facilitiesOf(w, me)
+  const facs = applyOrder(facilitiesOf(w, me), order?.facilities ?? [], (f) => f.id)
     .map((f) => {
       const def = facilityDef(f.type);
       const st = facilityStatus(f);
@@ -301,8 +308,8 @@ export function facilitiesView({ w, me }: ViewCtx): string {
         f.condition < 100 ? btn(`Reparieren (${cr(repairFacilityCost(f))})`, 'repair-facility', f.id) : '',
         btn('Verschrotten', 'scrap', f.id, 'class="ghost"'),
       ].join('');
-      return `<section class="card">
-        <h2>${icon(facilityIcon(f.type))}${facilityLabel(f)}${f.units > 1 ? ` <span class="muted">× ${f.units}</span>` : ''} <span class="badge ${st.cls}">${icon(st.icon)} ${st.text}</span></h2>
+      return `<section class="card drag-item" data-drag-item="${f.id}">
+        <h2>${icon(facilityIcon(f.type))}${facilityLabel(f)}${f.units > 1 ? ` <span class="muted">× ${f.units}</span>` : ''} <span class="badge ${st.cls}">${icon(st.icon)} ${st.text}</span>${dragHandle('facility', f.id, `${facilityLabel(f)} verschieben`)}</h2>
         <div class="meters">${meterRow('Zustand', bar({ value: f.condition, max: 100, tone: facilityConditionTone(f.condition), label: 'Zustand' }))}</div>
         <p class="small">Zustand <b class="${toneClass(facilityConditionTone(f.condition))}">${dec(f.condition)} %</b> · Auslastung ${eff} % · Kosten heute ${cr(cost)} · liefert bis zu ${flows(def.outputs, f.units)} pro Tag${Object.keys(def.inputs).length ? ` aus ${flows(def.inputs, f.units)}` : ''}</p>
         ${f.status === 'running' && eff === 0 ? `<p class="bad small">Steht still: ${Object.keys(def.inputs).some((g) => (f.stock[g] ?? 0) <= 0) ? 'Rohstoffe fehlen – „Ware bestellen“.' : 'Lager voll – liefere Ware aus.'}</p>` : ''}
@@ -319,7 +326,7 @@ export function facilitiesView({ w, me }: ViewCtx): string {
 
 // ---------- Flotte ----------
 
-export function fleetView({ w, me }: ViewCtx): string {
+export function fleetView({ w, me, order }: ViewCtx): string {
   const ships = shipsOf(w, me);
   if (!ships.length) return `<section class="card">${empty('Du hast noch kein Schiff. Frachter gibt es in der Werft auf Terra.')}<div class="acts">${btn('Zur Werft', 'tab', 'terra')}</div></section>`;
   const waiting = waitingTransports(w, me);
@@ -379,8 +386,7 @@ export function fleetView({ w, me }: ViewCtx): string {
   };
 
   // grouped by cargo type, each with its symbol; within a group the big ships first
-  const order: Cargo[] = ['tank', 'bulk', 'piece', 'cooled', 'live'];
-  return order
+  return (order?.cargo ?? DEFAULT_CARGO)
     .map((cargo) => {
       const group = ships
         .filter((s) => shipDef(s.model).cargo === cargo)
@@ -388,8 +394,8 @@ export function fleetView({ w, me }: ViewCtx): string {
       if (!group.length) return '';
       const idle = group.filter((s) => s.phase === 'idle' && !isCriticalShip(s)).length;
       const crit = group.filter(isCriticalShip).length;
-      return `<h2 class="fleet-head cargo-${cargo}">${cargoIcon(cargo)} ${SHIP_KIND[cargo]} <span class="muted small">${group.length} ${group.length === 1 ? 'Schiff' : 'Schiffe'} · ${idle} frei${crit ? ` · <span class="bad">${crit} kritisch</span>` : ''} · für ${CARGO_GOODS(cargo)}${cargo === 'piece' ? ', Anlagen' : ''}</span></h2>
-        ${group.map(card).join('')}`;
+      return `<div class="drag-item fleet-group" data-drag-item="${cargo}"><h2 class="fleet-head cargo-${cargo}">${cargoIcon(cargo)} ${SHIP_KIND[cargo]} <span class="muted small">${group.length} ${group.length === 1 ? 'Schiff' : 'Schiffe'} · ${idle} frei${crit ? ` · <span class="bad">${crit} kritisch</span>` : ''} · für ${CARGO_GOODS(cargo)}${cargo === 'piece' ? ', Anlagen' : ''}</span>${dragHandle('cargo', cargo, `${SHIP_KIND[cargo]} verschieben`)}</h2>
+        ${group.map(card).join('')}</div>`;
     })
     .join('');
 }

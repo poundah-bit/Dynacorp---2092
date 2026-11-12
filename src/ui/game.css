@@ -363,3 +363,16 @@ td .bar { height: 8px; min-width: 64px; margin-left: auto; }
 .meters { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 2px 10px; max-width: 420px; margin: 2px 0 6px; }
 .meter-label { font-size: 12px; color: var(--muted); }
 .meters .bar { margin: 0; }
+
+/* ---------- drag to reorder (Anlagen, Flotte) ---------- */
+.drag {
+  margin-left: auto; min-height: 44px; width: 44px; padding: 0; border: 0; background: transparent;
+  color: var(--muted); font-size: 22px; line-height: 1; cursor: grab; touch-action: none; user-select: none;
+}
+.drag:active { cursor: grabbing; color: var(--text); }
+.fleet-group { display: grid; gap: 12px; }
+.fleet-head .drag { margin-left: auto; }
+.dragging { position: relative; z-index: 4; box-shadow: 0 12px 28px rgba(0, 0, 0, 0.55); transition: none !important; }
+.fleet-group.dragging { background: var(--bg); border-radius: 14px; }
+.drag-active { user-select: none; }
+@media (prefers-reduced-motion: no-preference) { .drag-active > [data-drag-item]:not(.dragging) { transition: transform 0.15s ease; } }

@@ -30,6 +30,8 @@ import { cr, esc, isCriticalShip, logText } from './format';
 import { icon, type IconName } from './icons';
 import { AI_DEFAULT, AI_MAX, AI_MIN, areaStats, clampAi, fittingOffers, guide, newGame, newOffers, type GuideTab } from './play';
 import { clearSave, loadGame, saveGame, type SaveData } from './save';
+import { enableDrag } from './drag';
+import { emptyOrder, parseOrder, reorderVisible, type ListOrder } from './order';
 import { SLOT_COUNT, deleteSlot, listSlots, loadSlot, saveSlot, type SlotMeta } from './slots';
 import { createStarMap } from './starmap';
 import * as S from './sheets';
@@ -79,6 +81,8 @@ let me = '';
 let tab: Tab = 'terra';
 let speed = 0;
 let guideHidden = false;
+/** the player's own order of facilities and cargo groups, saved with the game */
+let listOrder: ListOrder = emptyOrder();
 let marketAll = false;
 let marketGood = '';
 let marketSort: V.MarketSort = 'ready';
@@ -158,8 +162,9 @@ function showStart() {
   });
 }
 
-function begin(world: World, hideGuide: boolean) {
+function begin(world: World, hideGuide: boolean, order?: unknown) {
   w = world;
+  listOrder = parseOrder(order);
   me = world.playerId!;
   guideHidden = hideGuide;
   tab = hideGuide ? 'stats' : guide(w, me).tab;
@@ -231,7 +236,7 @@ function render() {
   const view = $('view');
   if (isArea(tab)) view.dataset.area = tab;
   else delete view.dataset.area;
-  view.innerHTML = (isArea(tab) ? V.areaHead(tab, areaStats(w, me)) : '') + VIEWS[tab]({ w, me, marketAll, marketGood, marketSort, priceTrend, chainGood });
+  view.innerHTML = (isArea(tab) ? V.areaHead(tab, areaStats(w, me)) : '') + VIEWS[tab]({ w, me, marketAll, marketGood, marketSort, priceTrend, chainGood, order: listOrder });
   placeMap();
 
   // the header is not re-rendered, so clear old highlights before setting the current one
@@ -329,7 +334,7 @@ function notifyOffers() {
 }
 
 function persist() {
-  if (w && !gameOverShown) saveGame({ version: 1, world: w, guideHidden });
+  if (w && !gameOverShown) saveGame({ version: 1, world: w, guideHidden, order: listOrder });
 }
 
 // ---------- sheets and toasts ----------
@@ -455,7 +460,7 @@ const ACTS: Record<string, (a: string) => void> = {
     const n = Number(a);
     const occupied = document.querySelector(`[data-slot="${n}"]`)?.getAttribute('data-used') === '1';
     if (occupied && !confirm(`Platz ${n} überschreiben?`)) return;
-    const data: SaveData = { version: 1, world: w!, guideHidden };
+    const data: SaveData = { version: 1, world: w!, guideHidden, order: listOrder };
     saveSlot(n, data, company(w!, me).name)
       .then(() => {
         closeSheet();
@@ -470,7 +475,7 @@ const ACTS: Record<string, (a: string) => void> = {
       .then((data) => {
         if (!data) return toast('Dieser Platz ist leer oder beschädigt.', true);
         closeSheet();
-        begin(data.world, data.guideHidden);
+        begin(data.world, data.guideHidden, data.order);
         toast(`Platz ${n} geladen – Tag ${data.world.day}.`);
       })
       .catch((e: Error) => toast(e.message || 'Laden fehlgeschlagen.', true));
@@ -513,7 +518,7 @@ const ACTS: Record<string, (a: string) => void> = {
   },
   continue() {
     const save = loadGame();
-    if (save) begin(save.world, save.guideHidden);
+    if (save) begin(save.world, save.guideHidden, save.order);
   },
   'sheet-close'() {
     closeSheet();
@@ -610,6 +615,14 @@ const release = () => {
   if (dirty) setTimeout(() => dirty && render(), 80);
 };
 document.addEventListener('pointerup', release, true);
+
+// drag a facility card or a cargo group by its grip to another place
+enableDrag($('view'), (kind, ids) => {
+  if (kind === 'facility') listOrder = { ...listOrder, facilities: ids };
+  else listOrder = { ...listOrder, cargo: reorderVisible(listOrder.cargo, ids as ListOrder['cargo']) };
+  persist();
+  render();
+});
 document.addEventListener('pointercancel', release, true);
 document.addEventListener('visibilitychange', () => document.hidden && persist());
 
