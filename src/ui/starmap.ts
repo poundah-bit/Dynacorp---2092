@@ -4,6 +4,7 @@
 
 import { CONFIG, PLANETS, facilityDef, good, shipSpeed, type PlanetDef, type World } from '../sim/index';
 import { planetInfo } from './mapinfo';
+import { lookOf, planetRadius, planetSprite } from './planets';
 import { buildSkyLayers, drawSky, skyKey } from './sky';
 
 export interface StarMap {
@@ -68,8 +69,8 @@ export function createStarMap(): StarMap {
       </div>
     </div>
     <div class="map-legend small">
-      <span><i class="dot raw"></i>Rohstoff</span><span><i class="dot intermediate"></i>Zwischenprodukt</span><span><i class="dot final"></i>Endprodukt</span>
-      <span><i class="dot mine"></i>deine Anlage</span><span><i class="tri"></i>dein Schiff</span><span><i class="ring"></i>Gravo-Sturm-Zone</span>
+      <span class="muted">Leuchten:</span><span><i class="dot raw"></i>Rohstoff</span><span><i class="dot intermediate"></i>Zwischenprodukt</span><span><i class="dot final"></i>Endprodukt</span>
+      <span><i class="dot mine"></i>deine Anlage</span><span><i class="tri"></i>dein Schiff</span><span><i class="veil"></i>Gravo-Sturm-Zone</span>
     </div>
     <div class="map-info"></div>`;
   const canvas = el.querySelector('canvas')!;
@@ -78,6 +79,7 @@ export function createStarMap(): StarMap {
 
   // view: screen = (world - centre) * scale + size / 2
   let scale = 0; // 0 = fit on next draw
+  let fitScale = 1;
   let cx = 0;
   let cy = 0;
   let last: { w: World; me: string; frac: number; running: boolean } | null = null;
@@ -112,6 +114,7 @@ export function createStarMap(): StarMap {
     cx = (x0 + x1) / 2;
     cy = (y0 + y1) / 2;
     scale = Math.min((r.width - 60) / (x1 - x0 || 1), (r.height - 50) / (y1 - y0 || 1));
+    fitScale = scale;
   }
   const toScreen = (x: number, y: number, r: DOMRect) => [(x - cx) * scale + r.width / 2, (y - cy) * scale + r.height / 2] as const;
   const toWorld = (sx: number, sy: number, r: DOMRect) => [(sx - r.width / 2) / scale + cx, (sy - r.height / 2) / scale + cy] as const;
@@ -209,11 +212,32 @@ export function createStarMap(): StarMap {
     }
     const showSub = scale > 0.55;
     ctx.textAlign = 'center';
+    const zoom = scale / fitScale;
     for (const p of PLANETS) {
       const [x, y] = toScreen(p.x, p.y, r);
+      if (x < -60 || y < -60 || x > r.width + 60 || y > r.height + 60) continue;
       const tier = planetTier(p);
-      const rad = tier === 'terra' ? 11 : 7;
+      const rad = planetRadius(tier === 'terra', zoom);
+      const look = lookOf(p);
       const mine = own.get(p.id);
+      // atmosphere in the tier colour
+      const glow = ctx.createRadialGradient(x, y, rad * 0.9, x, y, rad * 1.9);
+      glow.addColorStop(0, withAlpha(col[tier], 0.65));
+      glow.addColorStop(1, withAlpha(col[tier], 0));
+      ctx.fillStyle = glow;
+      ctx.beginPath();
+      ctx.arc(x, y, rad * 1.9, 0, Math.PI * 2);
+      ctx.fill();
+      const ringHalf = (from: number) => {
+        ctx.strokeStyle = 'rgba(220, 210, 190, 0.6)';
+        ctx.lineWidth = Math.max(1.5, rad * 0.16);
+        ctx.beginPath();
+        ctx.ellipse(x, y, rad * 1.75, rad * 0.42, -0.35, from, from + Math.PI);
+        ctx.stroke();
+      };
+      if (look.ring) ringHalf(Math.PI);
+      ctx.drawImage(planetSprite(p, rad), x - rad - 1, y - rad - 1, rad * 2 + 2, rad * 2 + 2);
+      if (look.ring) ringHalf(0);
       if (map.selected === p.id) {
         ctx.strokeStyle = col.warn;
         ctx.lineWidth = 3;
@@ -221,10 +245,6 @@ export function createStarMap(): StarMap {
         ctx.arc(x, y, rad + 7, 0, Math.PI * 2);
         ctx.stroke();
       }
-      ctx.fillStyle = col[tier];
-      ctx.beginPath();
-      ctx.arc(x, y, rad, 0, Math.PI * 2);
-      ctx.fill();
       if (mine) {
         ctx.strokeStyle = mine.bad ? col.bad : col.accent;
         ctx.lineWidth = 3;
@@ -312,11 +332,13 @@ export function createStarMap(): StarMap {
   function hit(sx: number, sy: number): string {
     const r = canvas.getBoundingClientRect();
     let best = '';
-    let bestD = 26; // finger-sized hit area
+    let bestD = Infinity;
+    const zoom = scale / (fitScale || 1);
     for (const p of PLANETS) {
       const [x, y] = toScreen(p.x, p.y, r);
       const d = Math.hypot(x - sx, y - sy);
-      if (d < bestD) {
+      // finger-sized hit area that grows with the drawn planet
+      if (d < Math.max(26, planetRadius(!p.facility, zoom) + 10) && d < bestD) {
         bestD = d;
         best = p.id;
       }
