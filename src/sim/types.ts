@@ -82,6 +82,8 @@ export interface Company {
   bankrupt: boolean;
   revenue: number; // lifetime
   expenses: number; // lifetime
+  /** Logistikzentrale level 0..3 (missing in older saves = 0) */
+  automation?: number;
 }
 
 export type FacilityStatus = 'construction' | 'stopped' | 'running';
@@ -212,4 +214,25 @@ export interface World {
   log: LogEntry[];
   nextId: number;
   collapsed: boolean;
+  /** the player's Lieferrouten (missing in older saves = none) */
+  routes?: Route[];
+}
+
+/** An automatic delivery from an own plant to another own plant with a fixed Linienschiff. */
+export interface Route {
+  id: string;
+  owner: string;
+  from: string; // facility id
+  to: string; // facility id
+  good: string;
+  amount: number; // per trip
+  refillBelow: number; // only ship when target stock + incoming is below this
+  ship: string;
+  active: boolean;
+  /** what the route is doing or waiting for (German, shown to the player) */
+  status: string;
+  /** the own demand of the trip under way */
+  demand: string | null;
+  trips: number;
+  delivered: number;
 }

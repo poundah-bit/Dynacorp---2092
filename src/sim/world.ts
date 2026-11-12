@@ -45,6 +45,7 @@ export function createWorld(opts: NewWorldOptions = {}): World {
     log: [],
     nextId: 1,
     collapsed: false,
+    routes: [],
   };
   const mk = (name: string, isPlayer: boolean, prefers: string[]): Company => ({
     id: newId(w, 'c'),
