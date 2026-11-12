@@ -173,7 +173,7 @@ export interface ShipRoute {
   traveled: number;
 }
 
-export type ShipPhase = 'idle' | 'toPickup' | 'loading' | 'toDelivery' | 'unloading' | 'toTerra' | 'repair';
+export type ShipPhase = 'idle' | 'toPickup' | 'loading' | 'toDelivery' | 'unloading' | 'toTerra' | 'toHome' | 'repair';
 
 export interface Ship {
   id: string;
@@ -230,6 +230,8 @@ export interface Route {
   good: string;
   amount: number; // per trip
   refillBelow: number; // only ship when target stock + incoming is below this
+  /** service the Linienschiff when its condition falls below this % (missing in older saves = config default) */
+  serviceBelow?: number;
   ship: string;
   active: boolean;
   /** what the route is doing or waiting for (German, shown to the player) */

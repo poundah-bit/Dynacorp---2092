@@ -79,6 +79,11 @@
       { "price": 6000000, "routes": 6 }
     ],
     "minFacilities": 5,
-    "dailyCostPerRoute": 1500
+    "dailyCostPerRoute": 1500,
+    "serviceDefault": 60,
+    "serviceMin": 35,
+    "serviceMax": 90,
+    "onsiteServiceFromLevel": 2,
+    "onsiteServiceFactor": 1.5
   }
 }

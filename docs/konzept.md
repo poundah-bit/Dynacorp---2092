@@ -540,3 +540,5 @@ Konzept: `docs/superpowers/specs/2026-11-12-automatisierung-konzept.md`.
 | Linienschiff | fest zugeordnet, nicht in den Liefer-Dialogen, nicht verkaufbar, frei durch Pausieren oder Löschen | kein Schiff wird „weggeschnappt“ (Rocco) |
 | Auslöser | Menge an der Quelle frei, Platz am Ziel, Ziel unter der Nachschubgrenze (Vorgabe: halbes Lager) | Ware kommt, wenn sie gebraucht wird; Überschüsse bleiben für die Börse (Rocco) |
 | Grenzen | nur eigene Anlagen, kein Terra, keine fremden Firmen; die KI kauft keine Logistikzentrale | das Spiel soll sich nicht selbst spielen |
+| Linienschiffe nach der Fahrt | fliegen zurück zur Quelle und warten dort; vor jeder Fahrt Wartung, wenn der Zustand unter der Wartungsgrenze der Route liegt (35–90 %, Vorgabe 60 %, pro Route einstellbar) | echte Automation ohne liegengebliebene Schiffe; Spieler behält die Kontrolle (Rocco) |
+| Wartungsort | Stufe I: Werft auf Terra (Umweg); ab Stufe II Wartung vor Ort an Quelle oder Ziel für 150 % des Werftpreises | spürbarer Vorteil des Ausbaus (Rocco) |

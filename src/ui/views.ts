@@ -47,7 +47,7 @@ import {
   unshippedDemands,
   waitingTransports,
 } from './play';
-import { automationLevel, automationName, lineRoute, nextAutomation, routeLimit, routeName, unitOf, unshippedAmount } from '../sim/index';
+import { automationLevel, automationName, lineRoute, nextAutomation, routeLimit, routeName, serviceLimit, unitOf, unshippedAmount } from '../sim/index';
 import { chainDetail, chainSvg } from './chain';
 import {
   cr,
@@ -277,7 +277,7 @@ function automationCard(w: World, me: string): string {
   return `<section class="card automation">
     <h2>${icon('orders')} Logistikzentrale</h2>
     ${have}
-    <p>Nächste Stufe: <b>${automationName(next.level)}</b> – ${next.routes} ${next.routes === 1 ? 'Lieferroute' : 'Lieferrouten'} · <span class="price">${cr(next.price)}</span> · laufend ${cr(CONFIG.automation.dailyCostPerRoute)} pro aktive Route und Tag</p>
+    <p>Nächste Stufe: <b>${automationName(next.level)}</b> – ${next.routes} ${next.routes === 1 ? 'Lieferroute' : 'Lieferrouten'}${next.level >= CONFIG.automation.onsiteServiceFromLevel && level < CONFIG.automation.onsiteServiceFromLevel ? ' und <b>Wartung vor Ort</b> (Linienschiffe werden an Quelle oder Ziel repariert, ohne Umweg über Terra, für ' + num(CONFIG.automation.onsiteServiceFactor * 100) + ' % des Werftpreises)' : ''} · <span class="price">${cr(next.price)}</span> · laufend ${cr(CONFIG.automation.dailyCostPerRoute)} pro aktive Route und Tag</p>
     <ul class="plain conds">
       ${cond(n >= min, `${min} eigene Anlagen (du hast ${n})`)}
       ${cond(debt(w, me) === 0, 'schuldenfrei – kein offener Kredit')}
@@ -295,10 +295,10 @@ function routesSection(w: World, me: string): string {
     .map((r) => {
       const s = w.ships.find((x) => x.id === r.ship);
       return `<div class="row route${r.active ? '' : ' dim'}"><div class="grow">${cargoIcon(good(r.good).cargo)} <b>${gName(r.good)}: ${esc(routeName(w, r))}</b>
-        <div class="small">${s ? `Linienschiff ${shipLabel(s)} · ` : ''}${amt(r.amount, r.good)} pro Fahrt · Nachschub unter ${amt(r.refillBelow, r.good)}</div>
+        <div class="small">${s ? `Linienschiff ${shipLabel(s)} · ` : ''}${amt(r.amount, r.good)} pro Fahrt · Nachschub unter ${amt(r.refillBelow, r.good)} · Wartung unter ${num(serviceLimit(r))} %</div>
         <div class="small ${r.active ? '' : 'muted'}">${esc(r.status)}</div>
         <div class="small muted">automatisch geliefert: ${amt(r.delivered, r.good)} in ${num(r.trips)} ${r.trips === 1 ? 'Fahrt' : 'Fahrten'}</div></div>
-        <div class="acts">${r.active ? btn('Pausieren', 'route-pause', r.id, 'data-tip="Hält die Route an und gibt das Linienschiff frei. Eine laufende Fahrt wird noch zu Ende gebracht."') : btn('Fortsetzen', 'route-resume', r.id, 'class="primary"')}${btn('Löschen', 'route-delete', r.id, 'class="ghost"')}</div></div>`;
+        <div class="acts">${r.active ? btn('Pausieren', 'route-pause', r.id, 'data-tip="Hält die Route an und gibt das Linienschiff frei. Eine laufende Fahrt wird noch zu Ende gebracht."') : btn('Fortsetzen', 'route-resume', r.id, 'class="primary"')}${btn('Wartung…', 'route-service', r.id, 'data-tip="Ab welchem Zustand das Linienschiff gewartet wird – vor jeder neuen Fahrt."')}${btn('Löschen', 'route-delete', r.id, 'class="ghost"')}</div></div>`;
     })
     .join('');
   const full = routes.length >= routeLimit(w, me);

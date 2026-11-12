@@ -4,6 +4,9 @@
 import {
   addRoute,
   routeGoods,
+  routeName,
+  serviceLimit,
+  setRouteService,
   CONFIG,
   STORAGES,
   TERRA,
@@ -441,6 +444,26 @@ export function orderSheet(w: World, me: string, facilityId: string): Sheet {
 
 // ---------- Logistikzentrale: new Lieferroute ----------
 
+const serviceField = (value: number) =>
+  `<label class="field">Wartung, wenn der Zustand unter: <output name="serviceOut"></output><input type="range" name="service" min="${CONFIG.automation.serviceMin}" max="${CONFIG.automation.serviceMax}" step="5" value="${value}"></label>
+  <p class="small muted">Vor jeder neuen Fahrt: liegt das Linienschiff darunter, wird es zuerst gewartet – auf Terra, ab Logistikzentrale II vor Ort. Niedrig = seltener, aber teurer; hoch = öfter kurze Stopps.</p>`;
+const showService = (form: HTMLFormElement) => {
+  (form.elements.namedItem('serviceOut') as HTMLOutputElement).value = `${val(form, 'service')} %`;
+};
+
+/** Change when a route's Linienschiff gets serviced. */
+export function serviceSheet(w: World, me: string, routeId: string): Sheet {
+  const r = (w.routes ?? []).find((x) => x.id === routeId && x.owner === me);
+  if (!r) return { title: 'Wartung', body: '<p>Die Lieferroute gibt es nicht mehr.</p>' };
+  return {
+    title: `Wartung: ${routeName(w, r)}`,
+    body: serviceField(serviceLimit(r)),
+    confirm: 'Übernehmen',
+    live: showService,
+    run: (form) => done(setRouteService(w, me, r.id, numVal(form, 'service')), `Wartung ab jetzt unter ${val(form, 'service')} %.`),
+  };
+}
+
 /** Source → target → good, a Linienschiff, amount per trip and refill limit. */
 export function routeSheet(w: World, me: string): Sheet {
   const built = facilitiesOf(w, me).filter((f) => f.status !== 'construction');
@@ -464,7 +487,8 @@ export function routeSheet(w: World, me: string): Sheet {
       <h3>Linienschiff</h3><div class="opts" data-ships></div>
       <label class="field">Nachschub, wenn am Ziel weniger als: <output name="refillOut"></output><input type="range" name="refill" min="500" step="500" value="500"></label>
       <label class="field">Menge pro Fahrt: <output name="amountOut"></output><input type="range" name="amount" min="500" step="500" value="500"></label>
-      <p class="small muted">Nachschubgrenze und Menge passen zusammen ins Lager am Ziel – so ist bei jeder Fahrt Platz für die Ladung.</p>`,
+      <p class="small muted">Nachschubgrenze und Menge passen zusammen ins Lager am Ziel – so ist bei jeder Fahrt Platz für die Ladung.</p>
+      ${serviceField(CONFIG.automation.serviceDefault)}`,
     confirm: 'Lieferroute anlegen',
     live(form) {
       const p = pick(form);
@@ -497,11 +521,12 @@ export function routeSheet(w: World, me: string): Sheet {
       if (Number(range.value) > max) range.value = String(max);
       (form.elements.namedItem('amountOut') as HTMLOutputElement).value = amt(Number(range.value), p.g);
       (form.elements.namedItem('refillOut') as HTMLOutputElement).value = amt(Number(refillIn.value), p.g);
+      showService(form);
     },
     run(form) {
       const p = pick(form);
       if (!val(form, 'ship')) return { error: 'Wähle ein Linienschiff.' };
-      const r = addRoute(w, me, { from: p.from.id, to: p.to.id, good: p.g, ship: val(form, 'ship'), amount: numVal(form, 'amount'), refillBelow: numVal(form, 'refill') });
+      const r = addRoute(w, me, { from: p.from.id, to: p.to.id, good: p.g, ship: val(form, 'ship'), amount: numVal(form, 'amount'), refillBelow: numVal(form, 'refill'), serviceBelow: numVal(form, 'service') });
       return done(r, 'Lieferroute angelegt – sie startet, sobald die Bedingungen erfüllt sind.');
     },
   };
