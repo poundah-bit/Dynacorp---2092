@@ -82,3 +82,32 @@ describe('ship trail', () => {
     expect(trailLength(-3)).toBe(0);
   });
 });
+
+import { storageCapacity } from '../src/sim/index';
+import { stormFade } from '../src/ui/mapfx';
+
+describe('review fixes', () => {
+  it('a plant that produced today pulses even if its storage is now full; an idle one does not', () => {
+    const w = soloWorld();
+    const me = player(w);
+    const well = oilWellWithTanker(w);
+    well.idleDays = 0;
+    well.stock.oil = storageCapacity(well, 'oil');
+    expect(mapEvents(w, me).pulses).toEqual(['vesta-nova']);
+    well.idleDays = 2;
+    well.stock.oil = 0;
+    expect(mapEvents(w, me).pulses).toEqual([]);
+  });
+  it('at 4x (a day every 1.5 s) every day can pulse despite frame jitter', () => {
+    const fx = createFx();
+    fx.add({ pulses: ['a'], arrivals: [], storm: null }, 0);
+    fx.add({ pulses: ['a'], arrivals: [], storm: null }, 1450);
+    expect(fx.active(1450).filter((f) => f.start === 1450)).toHaveLength(1);
+  });
+  it('the storm glow fades out instead of stopping hard', () => {
+    expect(stormFade(0)).toBe(1);
+    expect(stormFade(0.5)).toBe(1);
+    expect(stormFade(0.9)).toBeCloseTo(0.5);
+    expect(stormFade(1)).toBe(0);
+  });
+});

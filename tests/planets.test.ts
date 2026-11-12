@@ -23,7 +23,9 @@ describe('planet looks', () => {
     expect(spriteTier(7)).toBe(8);
     expect(spriteTier(12)).toBe(12);
     expect(spriteTier(30)).toBe(32);
-    expect(spriteTier(500)).toBe(48);
+    expect(spriteTier(500)).toBe(96);
+    expect(spriteTier(24 * 3)).toBeGreaterThanOrEqual(72);
+    expect(spriteTier(24 * 3.5)).toBeGreaterThanOrEqual(84);
     expect(planetRadius(false, 1)).toBe(7);
     expect(planetRadius(false, 100)).toBe(16);
     expect(planetRadius(true, 1.5)).toBe(16.5);
@@ -53,5 +55,13 @@ describe('sky', () => {
   });
   it('sky key', () => {
     expect(skyKey(800.4, 600, 2)).toBe('800x600@2');
+  });
+});
+
+import { readFileSync } from 'node:fs';
+describe('map legend', () => {
+  it('explains all four atmosphere colours', () => {
+    const src = readFileSync('src/ui/starmap.ts', 'utf8');
+    for (const t of ['raw', 'intermediate', 'final', 'terra']) expect(src, t).toContain(`<i class="dot ${t}"></i>`);
   });
 });

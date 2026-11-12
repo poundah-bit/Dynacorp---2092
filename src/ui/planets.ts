@@ -149,7 +149,8 @@ export function planetPixels(id: string, look: PlanetLook, r: number): Uint8Clam
   return out;
 }
 
-export const SPRITE_TIERS = [8, 12, 16, 24, 32, 48] as const;
+/** sprite radii in device pixels; up to 96 so Terra stays sharp at full zoom on dpr-3.5 phones */
+export const SPRITE_TIERS = [8, 12, 16, 24, 32, 48, 64, 96] as const;
 /** The smallest sprite radius at least `px`, else the largest. */
 export const spriteTier = (px: number): number => SPRITE_TIERS.find((t) => t >= px) ?? SPRITE_TIERS[SPRITE_TIERS.length - 1]!;
 

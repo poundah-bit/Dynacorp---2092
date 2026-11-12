@@ -247,6 +247,7 @@ tr.me td { color: var(--accent); font-weight: 600; }
 .map-legend .dot.raw { box-shadow: 0 0 5px 3px var(--tier-raw); }
 .map-legend .dot.intermediate { box-shadow: 0 0 5px 3px var(--tier-mid); }
 .map-legend .dot.final { box-shadow: 0 0 5px 3px var(--tier-final); }
+.map-legend .dot.terra { background: #1a2238; box-shadow: 0 0 5px 3px var(--tier-terra); }
 .map-legend .dot.mine { background: transparent; box-shadow: 0 0 0 3px var(--accent); }
 .map-legend .tri { width: 0; height: 0; border-left: 10px solid var(--accent); border-top: 5px solid transparent; border-bottom: 5px solid transparent; display: inline-block; }
 .map-legend .veil { width: 18px; height: 8px; border-radius: 4px; background: linear-gradient(90deg, transparent, rgba(255, 123, 114, 0.45), transparent); display: inline-block; }

@@ -3,7 +3,7 @@
 // (tablet in landscape) and the "Karte" tab (phone, portrait).
 
 import { CONFIG, PLANETS, facilityDef, good, shipSpeed, type PlanetDef, type World } from '../sim/index';
-import { FX_DURATION, createFx, trailLength, type DayEvents } from './mapfx';
+import { FX_DURATION, createFx, stormFade, trailLength, type DayEvents } from './mapfx';
 import { planetInfo } from './mapinfo';
 import { lookOf, planetRadius, planetSprite } from './planets';
 import { buildSkyLayers, drawSky, skyKey } from './sky';
@@ -76,7 +76,7 @@ export function createStarMap(): StarMap {
       </div>
     </div>
     <div class="map-legend small">
-      <span class="muted">Leuchten:</span><span><i class="dot raw"></i>Rohstoff</span><span><i class="dot intermediate"></i>Zwischenprodukt</span><span><i class="dot final"></i>Endprodukt</span>
+      <span class="muted">Leuchten:</span><span><i class="dot raw"></i>Rohstoff</span><span><i class="dot intermediate"></i>Zwischenprodukt</span><span><i class="dot final"></i>Endprodukt</span><span><i class="dot terra"></i>Terra</span>
       <span><i class="dot mine"></i>deine Anlage</span><span><i class="tri"></i>dein Schiff</span><span><i class="veil"></i>Gravo-Sturm-Zone</span>
     </div>
     <div class="map-info"></div>`;
@@ -312,7 +312,7 @@ export function createStarMap(): StarMap {
         // flicker: quick, irregular brightness changes; steady when motion is reduced
         const flick = calm ? 0.45 : 0.25 + 0.35 * Math.abs(Math.sin(now / 47) * Math.sin(now / 131 + e.start));
         const g = ctx.createRadialGradient(x, y, rad, x, y, rad * 2.5);
-        g.addColorStop(0, withAlpha(col.bad, flick * (1 - k * 0.5)));
+        g.addColorStop(0, withAlpha(col.bad, flick * stormFade(k)));
         g.addColorStop(1, withAlpha(col.bad, 0));
         ctx.fillStyle = g;
         ctx.beginPath();

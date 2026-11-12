@@ -96,7 +96,7 @@ export function mapEvents(w: World, me: string): DayEvents
 - `arrivals`: Zielplaneten deiner Transporte (`carrier === me`) mit `doneDay === w.day`.
 - `storm`: Planet aus der Log-Meldung „Gravo-Sturm bei <Name>!“ des aktuellen Tages, sonst `null`.
 
-**Effektliste** (`createFx()`): hält `{ kind, planet, start }`, Dauer je Art: Puls 1,2 s, Funke 0,8 s, Sturm 3 s. `add(events, now)`, `active(now)`, `busy(now)`. Puls-Bremse: pro Planet höchstens ein Puls je 1,5 s.
+**Effektliste** (`createFx()`): hält `{ kind, planet, start }`, Dauer je Art: Puls 1,2 s, Funke 0,8 s, Sturm 3 s. `add(events, now)`, `active(now)`, `busy(now)`. Puls-Bremse: pro Planet höchstens ein Puls je 1,4 s (knapp unter einem 4×-Tag).
 
 **Zeichnen:**
 - Schiffsspuren: eigene Schiffe Linie mit Verlauf von Türkis (vorn, 90 %) zu transparent, Länge `min(40 px, zurückgelegter Weg)`, 3 px; fremde Schiffe 15 px, 1,5 px, 25 %.

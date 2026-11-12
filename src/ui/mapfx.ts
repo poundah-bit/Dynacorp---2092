@@ -1,7 +1,7 @@
 // Motion on the star map: what happened on the new game day (pure, from the world state) and a small
 // list of running effects (production pulse, arrival spark, storm flicker) timed in real milliseconds.
 
-import { PLANETS, facilitiesOf, productionEfficiency, type World } from '../sim/index';
+import { PLANETS, facilitiesOf, type World } from '../sim/index';
 
 export interface DayEvents {
   /** planets of own plants that produced today */
@@ -15,7 +15,8 @@ export interface DayEvents {
 const STORM = /^Gravo-Sturm bei (.+?)!/;
 
 export function mapEvents(w: World, me: string): DayEvents {
-  const pulses = [...new Set(facilitiesOf(w, me).filter((f) => f.status === 'running' && productionEfficiency(f) > 0).map((f) => f.planet))];
+  // idleDays is reset only on a day with production (efficiency now would describe tomorrow)
+  const pulses = [...new Set(facilitiesOf(w, me).filter((f) => f.status === 'running' && f.idleDays === 0).map((f) => f.planet))];
   const arrivals = [...new Set(w.transports.filter((t) => t.carrier === me && t.status === 'done' && t.doneDay === w.day).map((t) => t.toPlanet))];
   let storm: string | null = null;
   for (let i = w.log.length - 1; i >= 0; i--) {
@@ -43,7 +44,7 @@ export interface Fx {
 
 export const FX_DURATION: Record<FxKind, number> = { pulse: 1200, spark: 800, storm: 3000 };
 /** at most one pulse per planet in this time, so 4× speed does not get hectic */
-export const PULSE_GAP = 1500;
+export const PULSE_GAP = 1400;
 
 export interface FxList {
   add(e: DayEvents, now: number): void;
@@ -76,6 +77,9 @@ export function createFx(): FxList {
     },
   };
 }
+
+/** Storm glow strength over its life (k = 0..1): full, then fading out in the last fifth. */
+export const stormFade = (k: number) => (k >= 1 ? 0 : k <= 0.8 ? 1 : (1 - k) / 0.2);
 
 /** Length in px of a ship's light trail: the way it has flown on screen, at most 40 px. */
 export const trailLength = (traveledPx: number) => Math.max(0, Math.min(40, traveledPx));
