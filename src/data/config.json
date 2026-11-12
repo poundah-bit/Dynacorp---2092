@@ -71,5 +71,14 @@
   "collapse": {
     "priceIndexBelow": 0.45,
     "insolventShare": 0.5
+  },
+  "automation": {
+    "levels": [
+      { "price": 2500000, "routes": 1 },
+      { "price": 4000000, "routes": 3 },
+      { "price": 6000000, "routes": 6 }
+    ],
+    "minFacilities": 5,
+    "dailyCostPerRoute": 1500
   }
 }

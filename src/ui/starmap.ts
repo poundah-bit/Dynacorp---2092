@@ -2,7 +2,7 @@
 // for details. One map element lives for the whole game; game.ts moves it between the side column
 // (tablet in landscape) and the "Karte" tab (phone, portrait).
 
-import { CONFIG, PLANETS, facilityDef, good, shipSpeed, type PlanetDef, type World } from '../sim/index';
+import { CONFIG, PLANETS, lineRoute, facilityDef, good, shipSpeed, type PlanetDef, type World } from '../sim/index';
 import { FX_DURATION, createFx, stormFade, trailLength, type DayEvents } from './mapfx';
 import { planetInfo } from './mapinfo';
 import { lookOf, planetRadius, planetSprite } from './planets';
@@ -169,6 +169,7 @@ export function createStarMap(): StarMap {
       intermediate: css('--tier-mid', '#f2cc60'),
       final: css('--tier-final', '#d68cff'),
       terra: css('--tier-terra', '#7ee787'),
+      route: css('--route', '#e8c45a'),
     };
     ctx.fillStyle = col.bg;
     ctx.fillRect(0, 0, r.width, r.height);
@@ -216,6 +217,26 @@ export function createStarMap(): StarMap {
     }
     ctx.setLineDash([]);
     ctx.globalAlpha = 1;
+
+    // Lieferrouten of the Logistikzentrale: a golden line from source to target
+    for (const rt of w.routes ?? []) {
+      if (rt.owner !== me || !rt.active) continue;
+      const fa = w.facilities.find((f) => f.id === rt.from);
+      const fb = w.facilities.find((f) => f.id === rt.to);
+      if (!fa || !fb) continue;
+      const a = pos(fa.planet);
+      const b = pos(fb.planet);
+      const [ax, ay] = toScreen(a.x, a.y, r);
+      const [bx, by] = toScreen(b.x, b.y, r);
+      ctx.strokeStyle = withAlpha(col.route, 0.5);
+      ctx.lineWidth = 2;
+      ctx.setLineDash([8, 6]);
+      ctx.beginPath();
+      ctx.moveTo(ax, ay);
+      ctx.lineTo(bx, by);
+      ctx.stroke();
+    }
+    ctx.setLineDash([]);
 
     // planets
     const own = new Map<string, { units: number; bad: boolean }>();
@@ -340,7 +361,7 @@ export function createStarMap(): StarMap {
           const ex = x - Math.cos(angle) * len;
           const ey = y - Math.sin(angle) * len;
           const g = ctx.createLinearGradient(ex, ey, x, y);
-          const c = mineShip ? col.accent : col.muted;
+          const c = mineShip ? (lineRoute(w, s.id) ? col.route : col.accent) : col.muted;
           g.addColorStop(0, withAlpha(c, 0));
           g.addColorStop(1, withAlpha(c, mineShip ? 0.9 : 0.25));
           ctx.strokeStyle = g;

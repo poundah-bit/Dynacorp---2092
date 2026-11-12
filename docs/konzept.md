@@ -527,3 +527,16 @@ Konzept: `docs/superpowers/specs/2026-11-12-sternkarte-design.md`.
 | Stufe | als Atmosphärenleuchten in der Stufenfarbe | Information bleibt, Planeten wirken trotzdem natürlich (Rocco) |
 | Bewegung | Schiffsspuren, Produktionspuls, Ankunftsfunke, Gravo-Sturm als Schleier mit Flackern; keine Handelsbahnen aller Firmen | lebendig, aber ruhig (Rocco) |
 | Leistung | Ebenen vorzeichnen statt WebGL; gemessen 0,7 ms Median, 3,2 ms p95 pro Bild mit 20 KI-Firmen bei 4× | flüssig auf dem Tablet, keine neue Bibliothek |
+
+## Entscheidungen zur Logistikzentrale
+
+Konzept: `docs/superpowers/specs/2026-11-12-automatisierung-konzept.md`.
+
+| Thema | Entscheidung | Grund |
+|---|---|---|
+| Idee | teures Endgame-Upgrade „Logistikzentrale“ mit automatischen Lieferrouten zwischen eigenen Anlagen | Entlastung bei großen Firmen und ein Sparziel mit Belohnung (Rocco) |
+| Stufen | I / II / III für 2,5 / +4 / +6 Mio Cr, 1 / 3 / 6 Routen, 1.500 Cr pro aktive Route und Tag | hohe Ziele verlängern den Spielspaß (Rocco) |
+| Kauf | ab 5 eigenen Anlagen, nur schuldenfrei | echtes Sparen statt Kredit (Rocco) |
+| Linienschiff | fest zugeordnet, nicht in den Liefer-Dialogen, nicht verkaufbar, frei durch Pausieren oder Löschen | kein Schiff wird „weggeschnappt“ (Rocco) |
+| Auslöser | Menge an der Quelle frei, Platz am Ziel, Ziel unter der Nachschubgrenze (Vorgabe: halbes Lager) | Ware kommt, wenn sie gebraucht wird; Überschüsse bleiben für die Börse (Rocco) |
+| Grenzen | nur eigene Anlagen, kein Terra, keine fremden Firmen; die KI kauft keine Logistikzentrale | das Spiel soll sich nicht selbst spielen |

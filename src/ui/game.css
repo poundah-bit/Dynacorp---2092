@@ -376,3 +376,11 @@ td .bar { height: 8px; min-width: 64px; margin-left: auto; }
 .fleet-group.dragging { background: var(--bg); border-radius: 14px; }
 .drag-active { user-select: none; }
 @media (prefers-reduced-motion: no-preference) { .drag-active > [data-drag-item]:not(.dragging) { transition: transform 0.15s ease; } }
+
+/* ---------- Logistikzentrale ---------- */
+:root { --route: #e8c45a; }
+.badge.line { color: var(--route); }
+.conds { list-style: none; padding: 0; margin: 6px 0; display: grid; gap: 2px; }
+.conds .ic { vertical-align: -3px; }
+.card.automation, .card.routes { border-color: color-mix(in srgb, var(--route) 45%, var(--line)); }
+.card.automation h2 .ic, .card.routes h2 .ic { color: var(--route); width: 20px; height: 20px; }

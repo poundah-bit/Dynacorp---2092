@@ -45,6 +45,7 @@ export function createWorld(opts: NewWorldOptions = {}): World {
     log: [],
     nextId: 1,
     collapsed: false,
+    routes: [],
   };
   const mk = (name: string, isPlayer: boolean, prefers: string[]): Company => ({
     id: newId(w, 'c'),
@@ -114,6 +115,9 @@ export function freeCapacity(f: Facility, goodId: string): number {
 /** Speed in Parsec/day, reduced linearly by wear (100 % → 1.0, scrap limit → minSpeedFactor). */
 /** Below this condition a ship flies at a crawl and takes no new orders until it is repaired. */
 export const isCritical = (s: Ship) => s.condition < CONFIG.ships.criticalBelow;
+
+/** The active Lieferroute this ship serves as Linienschiff, if any. */
+export const lineRoute = (w: World, shipId: string) => (w.routes ?? []).find((r) => r.active && r.ship === shipId);
 
 export function shipSpeed(s: Ship): number {
   const def = shipDef(s.model);

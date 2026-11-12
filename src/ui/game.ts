@@ -4,6 +4,10 @@
 
 import {
   assignShip,
+  automationName,
+  buyAutomation,
+  removeRoute,
+  setRouteActive,
   buyFacility,
   buyShip,
   cancelDemand,
@@ -526,6 +530,19 @@ const ACTS: Record<string, (a: string) => void> = {
 
   // Terra
   loan: () => openSheet(S.loanSheet(w!, me)),
+  'buy-automation'() {
+    const r = buyAutomation(w!, me);
+    result(r, r.ok ? `${automationName(r.value)} eröffnet!` : '', 'automation');
+    // the first level comes with its first route right away
+    if (r.ok && r.value === 1) openSheet(S.routeSheet(w!, me));
+  },
+  'route-new': () => openSheet(S.routeSheet(w!, me)),
+  'route-pause': (id) => result(setRouteActive(w!, me, id, false), 'Lieferroute pausiert – das Linienschiff ist frei.'),
+  'route-resume': (id) => result(setRouteActive(w!, me, id, true), 'Lieferroute läuft wieder.'),
+  'route-delete'(id) {
+    if (!confirm('Lieferroute löschen? Eine laufende Fahrt wird noch zu Ende gebracht.')) return;
+    result(removeRoute(w!, me, id), 'Lieferroute gelöscht.');
+  },
   repay: (id) => openSheet(S.repaySheet(w!, me, id)),
   'buy-facility'(a) {
     const [type, planet] = a.split('|') as [string, string];

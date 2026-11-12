@@ -31,6 +31,7 @@ import {
   shipRoom,
   shipSpeed,
   productionEfficiency,
+  lineRoute,
   shipsOf,
   storageCapacity,
   transport,
@@ -78,8 +79,11 @@ export function tripDays(speed: number, at: string, from: string, to: string, re
   return Math.max(Math.ceil(distance(at, from) / speed), readyIn) + Math.ceil(distance(from, to) / speed) + 2 * CONFIG.loadDays;
 }
 
+/** Own ships the player may plan with: everything except Linienschiffe of active Lieferrouten. */
+export const plannableShips = (w: World, me: string) => shipsOf(w, me).filter((s) => !lineRoute(w, s.id));
+
 export function idleFittingShips(w: World, me: string, cargo: Cargo, amount: number): Ship[] {
-  return shipsOf(w, me).filter((s) => {
+  return plannableShips(w, me).filter((s) => {
     const def = shipDef(s.model);
     return s.phase === 'idle' && def.cargo === cargo && def.capacity >= amount && s.condition >= CONFIG.ships.criticalBelow;
   });
@@ -94,12 +98,12 @@ export function cheapestShipFor(cargo: Cargo, amount: number): ShipDef | undefin
  * on the same trip (e.g. several small orders from one plant to Terra on one big tanker).
  */
 export function joinableShips(w: World, me: string, cargo: Cargo, from: string, to: string, amount = 1): Ship[] {
-  return shipsOf(w, me).filter((s) => canJoin(w, s, { cargo, amount, fromPlanet: from, toPlanet: to }));
+  return plannableShips(w, me).filter((s) => canJoin(w, s, { cargo, amount, fromPlanet: from, toPlanet: to }));
 }
 
 /** Can the player carry this transport: with an idle ship now, a busy one later, or not at all? */
 export function carryState(w: World, me: string, t: Transport): 'idle' | 'busy' | 'none' {
-  const fit = shipsOf(w, me).filter((s) => shipDef(s.model).cargo === t.cargo && shipDef(s.model).capacity >= t.amount);
+  const fit = plannableShips(w, me).filter((s) => shipDef(s.model).cargo === t.cargo && shipDef(s.model).capacity >= t.amount);
   if (fit.some((s) => s.phase === 'idle' && s.condition >= CONFIG.ships.criticalBelow)) return 'idle';
   if (joinableShips(w, me, t.cargo, t.fromPlanet, t.toPlanet, t.amount).length) return 'idle';
   return fit.length ? 'busy' : 'none';
@@ -196,7 +200,7 @@ export const tripRoom = (w: World, s: Ship) => (s.phase === 'idle' ? shipDef(s.m
 
 /** Idle own ships of a cargo type, any size (several of them can share a demand). */
 export function idleShipsOfCargo(w: World, me: string, cargo: Cargo): Ship[] {
-  return shipsOf(w, me).filter((s) => s.phase === 'idle' && shipDef(s.model).cargo === cargo && s.condition >= CONFIG.ships.criticalBelow);
+  return plannableShips(w, me).filter((s) => s.phase === 'idle' && shipDef(s.model).cargo === cargo && s.condition >= CONFIG.ships.criticalBelow);
 }
 
 function shipFor(w: World, me: string, choice: Choice): Result<string> {
@@ -553,7 +557,7 @@ export interface AreaStats {
   facilities: { total: number; running: number; stopped: number; building: number; pending: number };
   fleet: { total: number; idle: number; moving: number; critical: number };
   market: { fitting: number; transports: number; big: number };
-  orders: { promised: number; unshipped: number; nextDeadline: number | null; overdue: boolean };
+  orders: { promised: number; unshipped: number; nextDeadline: number | null; overdue: boolean; routes: number };
 }
 
 /** What the header of Anlagen, Flotte, Börse and Aufträge shows. */
@@ -575,7 +579,7 @@ export function areaStats(w: World, me: string): AreaStats {
     },
     fleet: {
       total: ships.length,
-      idle: ships.filter((s) => s.phase === 'idle' && s.condition >= CONFIG.ships.criticalBelow).length,
+      idle: ships.filter((s) => s.phase === 'idle' && s.condition >= CONFIG.ships.criticalBelow && !lineRoute(w, s.id)).length,
       moving: ships.filter((s) => s.phase !== 'idle').length,
       critical: ships.filter((s) => s.condition < CONFIG.ships.criticalBelow).length,
     },
@@ -584,6 +588,6 @@ export function areaStats(w: World, me: string): AreaStats {
       transports: openTransports(w, me).filter((t) => carryState(w, me, t) !== 'none').length,
       big: w.demands.filter((d) => d.status === 'open' && d.requester === 'terra' && d.big && myGoods.has(d.good)).length,
     },
-    orders: { promised: promised.length, unshipped: unshippedDemands(w, me).length, nextDeadline, overdue: nextDeadline !== null && nextDeadline < 0 },
+    orders: { promised: promised.length, unshipped: unshippedDemands(w, me).length, nextDeadline, overdue: nextDeadline !== null && nextDeadline < 0, routes: (w.routes ?? []).filter((r) => r.owner === me && r.active).length },
   };
 }

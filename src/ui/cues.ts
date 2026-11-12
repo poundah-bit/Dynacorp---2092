@@ -1,13 +1,13 @@
 // Which sound cues one game day produced for the player. Pure logic, no DOM and no audio: the tracker compares
 // the world after a day with what it saw the day before. Sounds are played in sound.ts.
 
-import { facilitiesOf, facilityDef, type ShipPhase, type World } from '../sim/index';
+import { facilitiesOf, facilityDef, lineRoute, type ShipPhase, type World } from '../sim/index';
 
 /** Every cue the game can play. `repair` comes from the player's own taps, the others from the day loop. */
-export type Cue = 'big' | 'stall' | 'critical' | 'built' | 'idle' | 'repair';
+export type Cue = 'automation' | 'big' | 'stall' | 'critical' | 'built' | 'idle' | 'repair';
 
 /** Order of importance: if a day has many cues, the first ones win. */
-export const CUE_ORDER: Cue[] = ['big', 'stall', 'critical', 'built', 'idle', 'repair'];
+export const CUE_ORDER: Cue[] = ['automation', 'big', 'stall', 'critical', 'built', 'idle', 'repair'];
 
 export interface CueTracker {
   /** cues for the day that just passed, most important first, each at most once */
@@ -46,7 +46,8 @@ export function cueTracker(w: World, me: string): CueTracker {
       const nowPhases = shipPhases(w, me);
       for (const [id, phase] of nowPhases) {
         const before = phases.get(id);
-        if (phase === 'idle' && before && before !== 'idle') out.add('idle');
+        // a Linienschiff is not free after its trip – it serves its route
+        if (phase === 'idle' && before && before !== 'idle' && !lineRoute(w, id)) out.add('idle');
       }
       phases = nowPhases;
 

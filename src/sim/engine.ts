@@ -3,6 +3,7 @@
 import { CONFIG, FACILITIES, GOODS, PLANETS, SHIPS, TERRA, distance, facilityDef, good, planet, shipDef, storageDef, unitOf } from './data';
 import { companyValue, debt, diff, repairShip, shipLoads, startRoute, transportDeadline } from './actions';
 import { runAi } from './ai';
+import { routesTick } from './automation';
 import type { Cargo, Demand, Facility, Ship, Transport, World } from './types';
 import {
   asset,
@@ -30,6 +31,7 @@ export function step(w: World): void {
   terraDemands(w);
   updatePrices(w);
   gravoStorms(w);
+  routesTick(w);
   runAi(w);
   checkBankruptcies(w);
   checkCollapse(w);
@@ -357,7 +359,9 @@ function ordersTick(w: World) {
   // keep the lists short: drop finished orders after 30 days
   const keep = (o: { status: string; createdDay: number }) =>
     !(['done', 'cancelled'].includes(o.status) && w.day - o.createdDay > 60);
-  w.demands = w.demands.filter(keep);
+  // a Lieferroute still has to count its trip: keep the demand it waits for
+  const routed = new Set((w.routes ?? []).map((r) => r.demand));
+  w.demands = w.demands.filter((d) => keep(d) || routed.has(d.id));
   w.transports = w.transports.filter(keep);
 }
 
