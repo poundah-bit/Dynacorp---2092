@@ -359,7 +359,9 @@ function ordersTick(w: World) {
   // keep the lists short: drop finished orders after 30 days
   const keep = (o: { status: string; createdDay: number }) =>
     !(['done', 'cancelled'].includes(o.status) && w.day - o.createdDay > 60);
-  w.demands = w.demands.filter(keep);
+  // a Lieferroute still has to count its trip: keep the demand it waits for
+  const routed = new Set((w.routes ?? []).map((r) => r.demand));
+  w.demands = w.demands.filter((d) => keep(d) || routed.has(d.id));
   w.transports = w.transports.filter(keep);
 }
 

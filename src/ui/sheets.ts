@@ -462,8 +462,9 @@ export function routeSheet(w: World, me: string): Sheet {
     body: `<p class="hint">Das Linienschiff fährt nur noch diese Route: Es holt die Menge an der Quelle, sobald sie frei ist und das Ziel unter die Nachschubgrenze fällt. Pro aktive Route ${cr(CONFIG.automation.dailyCostPerRoute)} am Tag.</p>
       <h3>Quelle → Ziel</h3><div class="opts">${opts}</div>
       <h3>Linienschiff</h3><div class="opts" data-ships></div>
+      <label class="field">Nachschub, wenn am Ziel weniger als: <output name="refillOut"></output><input type="range" name="refill" min="500" step="500" value="500"></label>
       <label class="field">Menge pro Fahrt: <output name="amountOut"></output><input type="range" name="amount" min="500" step="500" value="500"></label>
-      <label class="field">Nachschub, wenn am Ziel weniger als: <output name="refillOut"></output><input type="range" name="refill" min="500" step="500" value="500"></label>`,
+      <p class="small muted">Nachschubgrenze und Menge passen zusammen ins Lager am Ziel – so ist bei jeder Fahrt Platz für die Ladung.</p>`,
     confirm: 'Lieferroute anlegen',
     live(form) {
       const p = pick(form);
@@ -479,20 +480,23 @@ export function routeSheet(w: World, me: string): Sheet {
           ? ships.map((s, i) => `<label class="opt"><input type="radio" name="ship" value="${s.id}" ${i === 0 ? 'checked' : ''}><span><b>${shipDef(s.model).name} #${s.id.slice(1)}</b> – ${qty(shipDef(s.model).capacity, cargo)} Laderaum – ${shipStatus(w, s).text}</span></label>`).join('')
           : `<p class="empty">Kein freies Schiff für ${cargoName(cargo)} – kaufe eines in der Werft auf Terra.</p>`;
         const refill = form.elements.namedItem('refill') as HTMLInputElement;
-        refill.max = String(cap);
+        refill.max = String(cap - 500);
         refill.value = String(Math.round(cap / 2 / 500) * 500);
-        // the max first: a range input clamps a value above its current max
         const amountIn = form.elements.namedItem('amount') as HTMLInputElement;
-        amountIn.max = String(Math.min(ships[0] ? shipDef(ships[0].model).capacity : cap, cap));
-        amountIn.value = amountIn.max;
+        amountIn.max = String(cap);
+        amountIn.value = String(cap);
       }
+      // a trip starts below the refill limit and must still fit: amount + refill ≤ storage at the target,
+      // and the amount must fit the hold and the source's storage
       const sid = val(form, 'ship');
       const hold = sid ? shipDef(w.ships.find((s) => s.id === sid)!.model).capacity : cap;
+      const refillIn = form.elements.namedItem('refill') as HTMLInputElement;
       const range = form.elements.namedItem('amount') as HTMLInputElement;
-      range.max = String(Math.min(hold, cap));
-      if (Number(range.value) > Number(range.max)) range.value = range.max;
+      const max = Math.max(500, Math.floor(Math.min(hold, cap - Number(refillIn.value), storageCapacity(p.from, p.g)) / 500) * 500);
+      range.max = String(max);
+      if (Number(range.value) > max) range.value = String(max);
       (form.elements.namedItem('amountOut') as HTMLOutputElement).value = amt(Number(range.value), p.g);
-      (form.elements.namedItem('refillOut') as HTMLOutputElement).value = amt(Number((form.elements.namedItem('refill') as HTMLInputElement).value), p.g);
+      (form.elements.namedItem('refillOut') as HTMLOutputElement).value = amt(Number(refillIn.value), p.g);
     },
     run(form) {
       const p = pick(form);

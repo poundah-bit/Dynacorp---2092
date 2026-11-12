@@ -224,6 +224,9 @@ export interface Route {
   owner: string;
   from: string; // facility id
   to: string; // facility id
+  /** planets of source and target, kept for messages after a plant is gone (missing in older saves) */
+  fromPlanet?: string;
+  toPlanet?: string;
   good: string;
   amount: number; // per trip
   refillBelow: number; // only ship when target stock + incoming is below this

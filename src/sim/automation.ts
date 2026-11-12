@@ -3,7 +3,7 @@
 // same actions a player would (postDemand with an own supplier, own transport, assignShip).
 
 import { CONFIG, TERRA, facilityDef, good, planet, shipDef, unitOf } from './data';
-import { assignShip, debt, incoming, postDemand, postTransportForDemand, setRepairAtTerra, type Result } from './actions';
+import { assignShip, debt, incoming, postDemand, postTransportForDemand, sendShipToTerra, setRepairAtTerra, type Result } from './actions';
 import type { Route, World } from './types';
 import { available, company, facilitiesOf, facility, freeCapacity, isCritical, lineRoute, log, newId, pay, ship, storageCapacity } from './world';
 
@@ -61,9 +61,9 @@ export function routeGoods(w: World, from: string, to: string): string[] {
 }
 
 const routesOf = (w: World, c: string) => (w.routes ?? []).filter((r) => r.owner === c);
-export const routeName = (w: World, r: { from: string; to: string }) => {
-  const name = (id: string) => planet(facility(w, id)?.planet ?? TERRA).name;
-  return `${name(r.from)} → ${name(r.to)}`;
+export const routeName = (w: World, r: { from: string; to: string; fromPlanet?: string; toPlanet?: string }) => {
+  const name = (id: string, kept?: string) => planet(kept ?? facility(w, id)?.planet ?? TERRA).name;
+  return `${name(r.from, r.fromPlanet)} → ${name(r.to, r.toPlanet)}`;
 };
 
 export function addRoute(w: World, c: string, input: RouteInput): Result<Route> {
@@ -83,13 +83,17 @@ export function addRoute(w: World, c: string, input: RouteInput): Result<Route> 
   if (def.cargo !== g.cargo) return fail(`${def.name} transportiert kein ${g.name}.`);
   if (lineRoute(w, s.id)) return fail('Das Schiff ist schon Linienschiff einer anderen Lieferroute.');
   const cap = storageCapacity(to, input.good);
-  const amount = Math.round(input.amount ?? Math.min(def.capacity, cap));
+  const srcCap = storageCapacity(from, input.good);
+  const unit = unitOf(input.good);
+  // a trip starts below the refill limit and must still fit: amount + refill limit ≤ storage at the target
+  const refillBelow = Math.round(input.refillBelow ?? Math.min(cap / 2, cap - (input.amount ?? cap / 2)));
+  const amount = Math.round(input.amount ?? Math.min(def.capacity, cap - refillBelow, srcCap));
   if (amount <= 0) return fail('Menge muss positiv sein.');
-  if (amount > def.capacity) return fail(`Höchstens ${def.capacity} ${unitOf(input.good)} – so viel fasst ${def.name}.`);
-  if (amount > cap) return fail(`Höchstens ${cap} ${unitOf(input.good)} – so viel fasst das Lager am Ziel.`);
-  const refillBelow = Math.round(input.refillBelow ?? cap / 2);
-  if (refillBelow <= 0 || refillBelow > cap) return fail('Die Nachschubgrenze muss zwischen 1 und der Lagergröße am Ziel liegen.');
-  const r: Route = { id: newId(w, 'r'), owner: c, from: from.id, to: to.id, good: input.good, amount, refillBelow, ship: s.id, active: true, status: 'Wartet auf den nächsten Tag', demand: null, trips: 0, delivered: 0 };
+  if (amount > def.capacity) return fail(`Höchstens ${def.capacity} ${unit} – so viel fasst ${def.name}.`);
+  if (amount > srcCap) return fail(`Höchstens ${srcCap} ${unit} – so viel fasst das Lager an der Quelle.`);
+  if (refillBelow <= 0 || refillBelow >= cap) return fail('Die Nachschubgrenze muss zwischen 1 und der Lagergröße am Ziel liegen.');
+  if (amount + refillBelow > cap) return fail(`Menge und Nachschubgrenze zusammen höchstens ${cap} ${unit} – so viel fasst das Lager am Ziel.`);
+  const r: Route = { id: newId(w, 'r'), owner: c, from: from.id, to: to.id, fromPlanet: from.planet, toPlanet: to.planet, good: input.good, amount, refillBelow, ship: s.id, active: true, status: 'Wartet auf den nächsten Tag', demand: null, trips: 0, delivered: 0 };
   (w.routes ??= []).push(r);
   log(w, c, `Neue Lieferroute ${routeName(w, r)}: ${g.name}, ${def.name} fährt ab jetzt als Linienschiff.`, 2);
   return ok(r);
@@ -147,6 +151,8 @@ export function routesTick(w: World): void {
       continue;
     }
     const unit = unitOf(r.good);
+    // an active route costs every day, also while a trip is under way
+    if (r.active) pay(w, r.owner, null, CONFIG.automation.dailyCostPerRoute);
     if (r.demand) {
       const d = w.demands.find((x) => x.id === r.demand);
       if (d?.status === 'done') {
@@ -164,9 +170,10 @@ export function routesTick(w: World): void {
       r.status = 'Pausiert';
       continue;
     }
-    pay(w, r.owner, null, CONFIG.automation.dailyCostPerRoute);
     if (isCritical(s!)) {
       if (!s!.repairAtTerra) setRepairAtTerra(w, r.owner, s!.id, true);
+      // trips end at the target, so send the idle ship home for the marked repair
+      if (s!.phase === 'idle' && s!.at !== TERRA) sendShipToTerra(w, r.owner, s!.id);
       r.status = 'Linienschiff kritisch – zur Reparatur auf Terra vorgemerkt';
       continue;
     }
@@ -181,7 +188,7 @@ export function routesTick(w: World): void {
       continue;
     }
     if (freeCapacity(to!, r.good) - coming < r.amount) {
-      r.status = 'Lager am Ziel voll';
+      r.status = `Wartet auf Platz am Ziel: ${fmt(Math.max(0, freeCapacity(to!, r.good) - coming))} / ${fmt(r.amount)} ${unit} frei`;
       continue;
     }
     const free = available(from!, r.good);

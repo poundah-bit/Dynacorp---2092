@@ -77,8 +77,9 @@ describe('managing routes', () => {
     expect(routeGoods(w, well.id, plastic.id)).toEqual(['oil']);
     const r = addRoute(w, me, { from: well.id, to: plastic.id, good: 'oil', ship: tanker.id });
     if (!r.ok) throw new Error(r.error);
-    expect(r.value.amount).toBe(Math.min(shipDef(tanker.model).capacity, storageCapacity(plastic, 'oil')));
+    // refill below half the target storage, the amount fills the other half (and fits hold and source)
     expect(r.value.refillBelow).toBe(storageCapacity(plastic, 'oil') / 2);
+    expect(r.value.amount).toBe(Math.min(shipDef(tanker.model).capacity, storageCapacity(plastic, 'oil') / 2, storageCapacity(well, 'oil')));
     expect(lineRoute(w, tanker.id)?.id).toBe(r.value.id);
   });
   it('limits, cargo and one route per ship', () => {
@@ -261,5 +262,88 @@ describe('views', () => {
     expect(body).toContain('Erdöl');
     expect(body).toContain('Vesta Nova → Aquilon');
     expect(body).not.toContain('Vesta Nova → Ferrox');
+  });
+});
+
+import { CONFIG as CFG, ship as shipOf, storageCapacity as capOf } from '../src/sim/index';
+import { cueTracker } from '../src/ui/cues';
+
+describe('review fixes', () => {
+  function started() {
+    const s = routeSetup();
+    const r = addRoute(s.w, s.me, { from: s.well.id, to: s.plastic.id, good: 'oil', ship: s.tanker.id });
+    if (!r.ok) throw new Error(r.error);
+    return { ...s, route: r.value };
+  }
+  it('a critical Linienschiff away from Terra is sent there for repair', () => {
+    const { w, tanker } = started();
+    const s = shipOf(w, tanker.id)!;
+    s.at = 'aquilon';
+    s.condition = CFG.ships.criticalBelow - 1;
+    step(w);
+    expect(s.repairAtTerra).toBe(true);
+    expect(s.phase).toBe('toTerra');
+  });
+  it('defaults leave room: amount + refill limit fit into the target storage, settings that cannot work are refused', () => {
+    const { w, me, well, plastic, route } = started();
+    expect(route.amount + route.refillBelow).toBeLessThanOrEqual(capOf(plastic, 'oil'));
+    const cap = capOf(plastic, 'oil');
+    const bad = addRoute(w, me, { from: well.id, to: plastic.id, good: 'oil', ship: shipsOf(w, me).find((s) => s.model === 'tank-a')!.id, amount: cap, refillBelow: cap / 2 });
+    expect(bad.ok).toBe(false);
+  });
+  it('the default route refills before the target runs dry', () => {
+    const { w, well, plastic, route } = started();
+    well.stock.oil = 30_000;
+    plastic.stock.oil = route.refillBelow - 1;
+    step(w);
+    expect(route.demand).not.toBeNull();
+  });
+  it('the amount must fit the source storage too', () => {
+    const { w, me, well, plastic } = routeSetup();
+    const big = buyShip(w, me, 'tank-e');
+    if (!big.ok) throw new Error(big.error);
+    // pretend the target is huge: only the source (30.000 l) limits
+    const huge = { ...plastic, units: 10 };
+    w.facilities = w.facilities.map((f) => (f.id === plastic.id ? huge : f));
+    const r = addRoute(w, me, { from: well.id, to: plastic.id, good: 'oil', ship: big.value.id, amount: 40_000, refillBelow: 20_000 });
+    expect(!r.ok && r.error).toContain('Quelle');
+  });
+  it('an active route pays every day, also while a trip is under way', () => {
+    const { w, me, well, route } = started();
+    well.stock.oil = 30_000;
+    step(w);
+    expect(route.demand).not.toBeNull();
+    const twin = structuredClone(w);
+    setRouteActive(twin, me, twin.routes![0]!.id, false);
+    step(w);
+    step(twin);
+    expect(company(twin, me).cash - company(w, me).cash).toBe(1_500);
+  });
+  it('the end-of-route message names the right planets', () => {
+    const { w, plastic } = started();
+    w.facilities = w.facilities.filter((f) => f !== plastic);
+    step(w);
+    expect(w.log.some((l) => l.text.includes('Vesta Nova → Aquilon beendet'))).toBe(true);
+  });
+  it('a slow trip is still counted after its demand would be cleaned up', () => {
+    const { w, well, route } = started();
+    well.stock.oil = 30_000;
+    step(w);
+    const d = w.demands.find((x) => x.id === route.demand)!;
+    d.createdDay -= 100;
+    runUntil(w, () => route.trips === 1, 150);
+    expect(route.delivered).toBe(route.amount);
+  });
+  it('a Linienschiff finishing a trip does not play the ship-free cue', () => {
+    const { w, me, well, route } = started();
+    well.stock.oil = 30_000;
+    const cues = cueTracker(w, me);
+    const heard: string[] = [];
+    for (let i = 0; i < 80 && route.trips === 0; i++) {
+      step(w);
+      heard.push(...cues.next(w));
+    }
+    expect(route.trips).toBe(1);
+    expect(heard).not.toContain('idle');
   });
 });
