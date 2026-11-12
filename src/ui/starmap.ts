@@ -3,6 +3,7 @@
 // (tablet in landscape) and the "Karte" tab (phone, portrait).
 
 import { CONFIG, PLANETS, facilityDef, good, shipSpeed, type PlanetDef, type World } from '../sim/index';
+import { FX_DURATION, createFx, trailLength, type DayEvents } from './mapfx';
 import { planetInfo } from './mapinfo';
 import { lookOf, planetRadius, planetSprite } from './planets';
 import { buildSkyLayers, drawSky, skyKey } from './sky';
@@ -13,6 +14,12 @@ export interface StarMap {
   draw(w: World, me: string, frac?: number, info?: boolean, running?: boolean): void;
   selected: string;
   select(id: string): void;
+  /** what happened on the new game day: pulses, sparks, storm */
+  dayEvents(e: DayEvents): void;
+  /** effects still running (the game keeps drawing in pause until they end) */
+  busy(): boolean;
+  /** forget running effects (new or loaded game) */
+  reset(): void;
 }
 
 type Tier = 'raw' | 'intermediate' | 'final' | 'terra';
@@ -84,6 +91,7 @@ export function createStarMap(): StarMap {
   let cy = 0;
   let last: { w: World; me: string; frac: number; running: boolean } | null = null;
   let sky: HTMLCanvasElement[] = [];
+  const fx = createFx();
   let skyFor = '';
   let infoFor: string | null = null;
 
@@ -100,6 +108,11 @@ export function createStarMap(): StarMap {
         info.innerHTML = planetInfo(w, me, map.selected);
       }
     },
+    dayEvents(e) {
+      if (!reducedMotion() || e.storm) fx.add(reducedMotion() ? { pulses: [], arrivals: [], storm: e.storm } : e, performance.now());
+    },
+    busy: () => fx.busy(performance.now()),
+    reset: () => fx.clear(),
     select(id) {
       map.selected = id;
       if (last) map.draw(last.w, last.me, last.frac, true, last.running);
@@ -262,6 +275,52 @@ export function createStarMap(): StarMap {
       }
     }
 
+    // effects: production pulse, arrival spark, storm flicker
+    const now = performance.now();
+    const calm = reducedMotion();
+    for (const e of fx.active(now)) {
+      const p = pos(e.planet);
+      const [x, y] = toScreen(p.x, p.y, r);
+      const rad = planetRadius(!p.facility, zoom);
+      const k = (now - e.start) / FX_DURATION[e.kind];
+      if (e.kind === 'pulse') {
+        ctx.strokeStyle = withAlpha(col.accent, 0.7 * (1 - k));
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(x, y, rad + 3.5 + 18.5 * k, 0, Math.PI * 2);
+        ctx.stroke();
+      } else if (e.kind === 'spark') {
+        const a = 1 - k;
+        const g = ctx.createRadialGradient(x, y, 0, x, y, 14);
+        g.addColorStop(0, `rgba(255, 240, 180, ${(0.9 * a).toFixed(3)})`);
+        g.addColorStop(1, 'rgba(255, 240, 180, 0)');
+        ctx.fillStyle = g;
+        ctx.beginPath();
+        ctx.arc(x, y, 14, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = `rgba(255, 240, 180, ${a.toFixed(3)})`;
+        ctx.lineWidth = 1.5;
+        for (let i = 0; i < 8; i++) {
+          const ang = (i / 8) * Math.PI * 2;
+          const r0 = rad + 2 + 14 * k;
+          ctx.beginPath();
+          ctx.moveTo(x + Math.cos(ang) * r0, y + Math.sin(ang) * r0);
+          ctx.lineTo(x + Math.cos(ang) * (r0 + 6), y + Math.sin(ang) * (r0 + 6));
+          ctx.stroke();
+        }
+      } else {
+        // flicker: quick, irregular brightness changes; steady when motion is reduced
+        const flick = calm ? 0.45 : 0.25 + 0.35 * Math.abs(Math.sin(now / 47) * Math.sin(now / 131 + e.start));
+        const g = ctx.createRadialGradient(x, y, rad, x, y, rad * 2.5);
+        g.addColorStop(0, withAlpha(col.bad, flick * (1 - k * 0.5)));
+        g.addColorStop(1, withAlpha(col.bad, 0));
+        ctx.fillStyle = g;
+        ctx.beginPath();
+        ctx.arc(x, y, rad * 2.5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
     // ships: others as small dots, own ships as triangles pointing along their route
     for (const s of ships) {
       let x: number;
@@ -273,6 +332,26 @@ export function createStarMap(): StarMap {
         const t = Math.min(1, (s.route.traveled + shipSpeed(s) * frac) / (s.route.distance || 1));
         [x, y] = toScreen(a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t, r);
         angle = Math.atan2(b.y - a.y, b.x - a.x);
+        // light trail back along the route
+        const flown = Math.hypot(b.x - a.x, b.y - a.y) * t * scale;
+        const mineShip = s.owner === me;
+        const len = mineShip ? trailLength(flown) : Math.min(15, flown);
+        if (len > 1) {
+          const ex = x - Math.cos(angle) * len;
+          const ey = y - Math.sin(angle) * len;
+          const g = ctx.createLinearGradient(ex, ey, x, y);
+          const c = mineShip ? col.accent : col.muted;
+          g.addColorStop(0, withAlpha(c, 0));
+          g.addColorStop(1, withAlpha(c, mineShip ? 0.9 : 0.25));
+          ctx.strokeStyle = g;
+          ctx.lineWidth = mineShip ? 3 : 1.5;
+          ctx.lineCap = 'round';
+          ctx.beginPath();
+          ctx.moveTo(ex, ey);
+          ctx.lineTo(x, y);
+          ctx.stroke();
+          ctx.lineCap = 'butt';
+        }
       } else if (s.at) {
         if (s.owner !== me) continue; // parked ships of others would just clutter the planets
         const p = pos(s.at);

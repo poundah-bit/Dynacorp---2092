@@ -72,3 +72,13 @@ describe('effect list', () => {
     expect(fx.active(0)).toEqual([]);
   });
 });
+
+import { trailLength } from '../src/ui/mapfx';
+
+describe('ship trail', () => {
+  it('is the flown way on screen, at most 40 px', () => {
+    expect(trailLength(12)).toBe(12);
+    expect(trailLength(300)).toBe(40);
+    expect(trailLength(-3)).toBe(0);
+  });
+});

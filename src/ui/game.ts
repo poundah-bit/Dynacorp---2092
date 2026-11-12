@@ -33,6 +33,7 @@ import { clearSave, loadGame, saveGame, type SaveData } from './save';
 import { SLOT_COUNT, deleteSlot, listSlots, loadSlot, saveSlot, type SlotMeta } from './slots';
 import { createStarMap } from './starmap';
 import * as S from './sheets';
+import { mapEvents } from './mapfx';
 import { musicSettings, nowPlaying, setMusicSettings, skipTrack, startMusic, trackCredit } from './music';
 import { CUE_INFO, play, playDay, preview, setSoundSettings, soundSettings, unlockSound } from './sound';
 import * as V from './views';
@@ -168,6 +169,7 @@ function begin(world: World, hideGuide: boolean) {
   marketGood = '';
   marketSort = 'ready';
   chainGood = '';
+  map.reset();
   map.select('');
   // what is on the exchange at the start is not news
   seenOffers.clear();
@@ -253,7 +255,7 @@ function placeMap() {
     return;
   }
   if (map.el.parentElement !== host) host.appendChild(map.el);
-  map.draw(w!, me, acc, true);
+  map.draw(w!, me, acc, true, speed > 0);
 }
 
 function checkGameOver() {
@@ -290,11 +292,14 @@ function frame(now: number) {
     if (acc >= 1) {
       acc -= 1;
       advance();
-    } else if (map.el.isConnected) map.draw(w, me, acc);
-  } else if (w && map.el.isConnected && now - lastBlink > 175 && w.ships.some((s) => s.owner === me && isCriticalShip(s))) {
-    // paused: keep critical ships blinking on the map
-    lastBlink = now;
-    map.draw(w, me, acc);
+    } else if (map.el.isConnected) map.draw(w, me, acc, false, true);
+  } else if (w && map.el.isConnected) {
+    // paused: let running effects end, keep critical ships blinking – otherwise don't redraw
+    const blink = now - lastBlink > 175 && w.ships.some((s) => s.owner === me && isCriticalShip(s));
+    if (map.busy() || blink) {
+      if (blink) lastBlink = now;
+      map.draw(w, me, acc);
+    }
   }
   requestAnimationFrame(frame);
 }
@@ -304,6 +309,7 @@ function advance() {
   priceHistory.push({ ...w.prices });
   if (priceHistory.length > 6) priceHistory.shift();
   step(w);
+  map.dayEvents(mapEvents(w, me));
   if (cues) playDay(cues.next(w));
   notifyOffers();
   persist();
