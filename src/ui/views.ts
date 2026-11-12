@@ -47,7 +47,7 @@ import {
   unshippedDemands,
   waitingTransports,
 } from './play';
-import { lineRoute, routeName, unitOf, unshippedAmount } from '../sim/index';
+import { automationLevel, automationName, lineRoute, nextAutomation, routeLimit, routeName, unitOf, unshippedAmount } from '../sim/index';
 import { chainDetail, chainSvg } from './chain';
 import {
   cr,
@@ -251,11 +251,59 @@ export function terraView({ w, me }: ViewCtx): string {
     <p class="hint">Jeder Planet erlaubt genau eine Anlagenart. Eine gekaufte Anlage steht als Stückgut auf Terra und muss mit einem Stückgutfrachter hingeflogen werden; danach wird sie ${days(CONFIG.constructionDays)} gebaut. Eine zweite gleiche Anlage am selben Ort vergrößert die erste.</p>
     ${facilityRows}
   </section>
+  ${automationCard(w, me)}
   <section class="card">
     <h2>Werft – Frachter</h2>
     <p class="hint">Jedes Schiff transportiert nur eine Frachtart. Kosten/Tag: Wartung immer, Betrieb nur unterwegs.</p>
     ${shipRows}
   </section>`;
+}
+
+// ---------- Logistikzentrale (Dynacore) ----------
+
+function automationCard(w: World, me: string): string {
+  const level = automationLevel(w, me);
+  const next = nextAutomation(w, me);
+  const routes = (w.routes ?? []).filter((r) => r.owner === me);
+  const have = level
+    ? `<p><b>${automationName(level)}</b> · ${routes.length} von ${routeLimit(w, me)} ${routeLimit(w, me) === 1 ? 'Lieferroute' : 'Lieferrouten'} angelegt</p>`
+    : '<p>Automatische Lieferrouten zwischen deinen eigenen Anlagen: Ein festes Linienschiff holt die Ware, sobald genug da ist und das Ziel Nachschub braucht.</p>';
+  if (!next) return `<section class="card automation"><h2>${icon('orders')} Logistikzentrale</h2>${have}<p class="good">Voll ausgebaut.</p><div class="acts">${btn('Zu den Lieferrouten', 'tab', 'orders')}</div></section>`;
+  const n = facilitiesOf(w, me).length;
+  const c = w.companies.find((x) => x.id === me)!;
+  const cond = (okay: boolean, text: string) => `<li class="${okay ? 'good' : 'muted'}">${icon(okay ? 'running' : 'stopped')} ${text}</li>`;
+  const min = CONFIG.automation.minFacilities;
+  return `<section class="card automation">
+    <h2>${icon('orders')} Logistikzentrale</h2>
+    ${have}
+    <p>Nächste Stufe: <b>${automationName(next.level)}</b> – ${next.routes} ${next.routes === 1 ? 'Lieferroute' : 'Lieferrouten'} · <span class="price">${cr(next.price)}</span> · laufend ${cr(CONFIG.automation.dailyCostPerRoute)} pro aktive Route und Tag</p>
+    <ul class="plain conds">
+      ${cond(n >= min, `${min} eigene Anlagen (du hast ${n})`)}
+      ${cond(debt(w, me) === 0, 'schuldenfrei – kein offener Kredit')}
+      ${cond(c.cash >= next.price, `Barkapital ${cr(next.price)} (du hast ${cr(c.cash)})`)}
+    </ul>
+    <div class="acts">${btn(`${automationName(next.level)} kaufen (${cr(next.price)})`, 'buy-automation', '', 'class="primary" data-tip="Ein teures Ziel für große Firmen: Lieferrouten liefern Ware zwischen deinen Anlagen von selbst."')}${level ? btn('Zu den Lieferrouten', 'tab', 'orders') : ''}</div>
+  </section>`;
+}
+
+/** The Lieferrouten section at the top of the Aufträge tab. */
+function routesSection(w: World, me: string): string {
+  if (!automationLevel(w, me)) return '';
+  const routes = (w.routes ?? []).filter((r) => r.owner === me);
+  const rows = routes
+    .map((r) => {
+      const s = w.ships.find((x) => x.id === r.ship);
+      return `<div class="row route${r.active ? '' : ' dim'}"><div class="grow">${cargoIcon(good(r.good).cargo)} <b>${gName(r.good)}: ${esc(routeName(w, r))}</b>
+        <div class="small">${s ? `Linienschiff ${shipLabel(s)} · ` : ''}${amt(r.amount, r.good)} pro Fahrt · Nachschub unter ${amt(r.refillBelow, r.good)}</div>
+        <div class="small ${r.active ? '' : 'muted'}">${esc(r.status)}</div>
+        <div class="small muted">automatisch geliefert: ${amt(r.delivered, r.good)} in ${num(r.trips)} ${r.trips === 1 ? 'Fahrt' : 'Fahrten'}</div></div>
+        <div class="acts">${r.active ? btn('Pausieren', 'route-pause', r.id, 'data-tip="Hält die Route an und gibt das Linienschiff frei. Eine laufende Fahrt wird noch zu Ende gebracht."') : btn('Fortsetzen', 'route-resume', r.id, 'class="primary"')}${btn('Löschen', 'route-delete', r.id, 'class="ghost"')}</div></div>`;
+    })
+    .join('');
+  const full = routes.length >= routeLimit(w, me);
+  return `<section class="card routes"><h2>${icon('orders')} Lieferrouten <span class="muted small">${routes.length} von ${routeLimit(w, me)}</span></h2>
+    ${rows || empty('Noch keine Lieferroute. Lege eine an: Quelle, Ziel und ein Linienschiff.')}
+    <div class="acts">${full ? `<span class="hint">Alle Plätze belegt – baue die Logistikzentrale bei Dynacore aus.</span>` : btn('Neue Lieferroute…', 'route-new', '', 'class="primary"')}</div></section>`;
 }
 
 // ---------- Anlagen ----------
@@ -536,10 +584,11 @@ export function ordersView({ w, me }: ViewCtx): string {
     })
     .join('');
 
+  const routes = routesSection(w, me);
   if (!unshipped && !waiting && !running && !mine) {
-    return `<section class="card">${empty('Keine laufenden Aufträge. Neue Aufträge findest du an der Börse; Rohstoffe für deine Anlagen bestellst du unter „Anlagen“ → „Ware bestellen“.')}<div class="acts">${btn('Zur Börse', 'tab', 'market')}</div></section>`;
+    return `${routes}<section class="card">${empty('Keine laufenden Aufträge. Neue Aufträge findest du an der Börse; Rohstoffe für deine Anlagen bestellst du unter „Anlagen“ → „Ware bestellen“.')}<div class="acts">${btn('Zur Börse', 'tab', 'market')}</div></section>`;
   }
-  return `
+  return `${routes}
     ${unshipped ? `<section class="card"><h2>Zugesagte Lieferungen ohne Transport</h2>${unshipped}</section>` : ''}
     ${waiting ? `<section class="card"><h2>Wartet auf ein Schiff</h2>${waiting}</section>` : ''}
     ${running ? `<section class="card"><h2>Unterwegs</h2>${running}</section>` : ''}

@@ -2,6 +2,8 @@
 // A sheet is static HTML plus a run() that reads the form and performs the move via play.ts / actions.
 
 import {
+  addRoute,
+  routeGoods,
   CONFIG,
   STORAGES,
   TERRA,
@@ -34,6 +36,7 @@ import {
   type World,
 } from '../sim/index';
 import {
+  plannableShips,
   acceptDeadline,
   carry,
   cheapestShipFor,
@@ -432,6 +435,70 @@ export function orderSheet(w: World, me: string, facilityId: string): Sheet {
       if (!r.ok) return { error: r.error };
       if (r.value.own) return { message: 'Eigen-Nachfrage angelegt. Jetzt fehlt noch der Transport.', next: arrangeSheet(w, me, r.value.id) };
       return { message: 'Nachfrage an der Börse eingestellt.' };
+    },
+  };
+}
+
+// ---------- Logistikzentrale: new Lieferroute ----------
+
+/** Source → target → good, a Linienschiff, amount per trip and refill limit. */
+export function routeSheet(w: World, me: string): Sheet {
+  const built = facilitiesOf(w, me).filter((f) => f.status !== 'construction');
+  const pairs = built.flatMap((a) => built.filter((b) => b.id !== a.id).flatMap((b) => routeGoods(w, a.id, b.id).map((g) => ({ from: a, to: b, g }))));
+  if (!pairs.length) {
+    return { title: 'Neue Lieferroute', body: '<p class="empty">Keine passende Kette: Du brauchst eine eigene Anlage, die eine Ware herstellt, und eine andere eigene Anlage, die sie als Rohstoff braucht.</p>' };
+  }
+  const key = (p: (typeof pairs)[number]) => `${p.from.id}|${p.to.id}|${p.g}`;
+  const opts = pairs
+    .map(
+      (p, i) =>
+        `<label class="opt"><input type="radio" name="pair" value="${key(p)}" ${i === 0 ? 'checked' : ''}><span><b>${gName(p.g)}: ${pName(p.from.planet)} → ${pName(p.to.planet)}</b><br><small>${facilityDef(p.from.type).name} liefert an ${facilityDef(p.to.type).name}</small></span></label>`,
+    )
+    .join('');
+  const pick = (form: HTMLFormElement) => pairs.find((p) => key(p) === val(form, 'pair')) ?? pairs[0]!;
+  let shown = '';
+  return {
+    title: 'Neue Lieferroute',
+    body: `<p class="hint">Das Linienschiff fährt nur noch diese Route: Es holt die Menge an der Quelle, sobald sie frei ist und das Ziel unter die Nachschubgrenze fällt. Pro aktive Route ${cr(CONFIG.automation.dailyCostPerRoute)} am Tag.</p>
+      <h3>Quelle → Ziel</h3><div class="opts">${opts}</div>
+      <h3>Linienschiff</h3><div class="opts" data-ships></div>
+      <label class="field">Menge pro Fahrt: <output name="amountOut"></output><input type="range" name="amount" min="500" step="500" value="500"></label>
+      <label class="field">Nachschub, wenn am Ziel weniger als: <output name="refillOut"></output><input type="range" name="refill" min="500" step="500" value="500"></label>`,
+    confirm: 'Lieferroute anlegen',
+    live(form) {
+      const p = pick(form);
+      const cargo = good(p.g).cargo;
+      const cap = storageCapacity(p.to, p.g);
+      const ships = plannableShips(w, me).filter((s) => shipDef(s.model).cargo === cargo).sort((a, b) => shipDef(b.model).capacity - shipDef(a.model).capacity);
+      const box = form.querySelector('[data-ships]')!;
+      const k = key(p);
+      if (shown !== k) {
+        // new pair: fresh ship list and defaults (biggest ship, full hold, refill below half the storage)
+        shown = k;
+        box.innerHTML = ships.length
+          ? ships.map((s, i) => `<label class="opt"><input type="radio" name="ship" value="${s.id}" ${i === 0 ? 'checked' : ''}><span><b>${shipDef(s.model).name} #${s.id.slice(1)}</b> – ${qty(shipDef(s.model).capacity, cargo)} Laderaum – ${shipStatus(w, s).text}</span></label>`).join('')
+          : `<p class="empty">Kein freies Schiff für ${cargoName(cargo)} – kaufe eines in der Werft auf Terra.</p>`;
+        const refill = form.elements.namedItem('refill') as HTMLInputElement;
+        refill.max = String(cap);
+        refill.value = String(Math.round(cap / 2 / 500) * 500);
+        // the max first: a range input clamps a value above its current max
+        const amountIn = form.elements.namedItem('amount') as HTMLInputElement;
+        amountIn.max = String(Math.min(ships[0] ? shipDef(ships[0].model).capacity : cap, cap));
+        amountIn.value = amountIn.max;
+      }
+      const sid = val(form, 'ship');
+      const hold = sid ? shipDef(w.ships.find((s) => s.id === sid)!.model).capacity : cap;
+      const range = form.elements.namedItem('amount') as HTMLInputElement;
+      range.max = String(Math.min(hold, cap));
+      if (Number(range.value) > Number(range.max)) range.value = range.max;
+      (form.elements.namedItem('amountOut') as HTMLOutputElement).value = amt(Number(range.value), p.g);
+      (form.elements.namedItem('refillOut') as HTMLOutputElement).value = amt(Number((form.elements.namedItem('refill') as HTMLInputElement).value), p.g);
+    },
+    run(form) {
+      const p = pick(form);
+      if (!val(form, 'ship')) return { error: 'Wähle ein Linienschiff.' };
+      const r = addRoute(w, me, { from: p.from.id, to: p.to.id, good: p.g, ship: val(form, 'ship'), amount: numVal(form, 'amount'), refillBelow: numVal(form, 'refill') });
+      return done(r, 'Lieferroute angelegt – sie startet, sobald die Bedingungen erfüllt sind.');
     },
   };
 }

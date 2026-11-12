@@ -224,3 +224,42 @@ describe('player side', () => {
     expect(areaStats(w, me).fleet.idle).toBe(freeBefore);
   });
 });
+
+import { routeSheet } from '../src/ui/sheets';
+import { ordersView, terraView } from '../src/ui/views';
+
+describe('views', () => {
+  const ctxOf = (w: World) => ({ w, me: player(w), marketAll: true, marketGood: '', marketSort: 'ready', priceTrend: () => 0, chainGood: '' }) as ViewCtx;
+  it('Dynacore offers the Logistikzentrale with its conditions', () => {
+    const w = soloWorld();
+    const html = terraView(ctxOf(w));
+    expect(html).toContain('Logistikzentrale I');
+    expect(html).toContain('2.500.000 Cr');
+    expect(html).toContain('5 eigene Anlagen');
+    expect(html).toContain('schuldenfrei');
+    expect(html).toContain('data-act="buy-automation"');
+  });
+  it('after level I it offers level II', () => {
+    const { w } = routeSetup();
+    expect(terraView(ctxOf(w))).toContain('Logistikzentrale II');
+  });
+  it('the Aufträge tab lists routes with status and buttons', () => {
+    const { w, me, well, plastic, tanker } = routeSetup();
+    const r = addRoute(w, me, { from: well.id, to: plastic.id, good: 'oil', ship: tanker.id, amount: 20_000 });
+    if (!r.ok) throw new Error(r.error);
+    well.stock.oil = 0;
+    step(w);
+    const html = ordersView(ctxOf(w));
+    expect(html).toContain('Lieferrouten');
+    expect(html).toContain('Wartet auf Ware');
+    expect(html).toContain('data-act="route-pause"');
+    expect(html).toContain('data-act="route-delete"');
+  });
+  it('the new-route sheet lists only fitting chains', () => {
+    const { w, me } = routeSetup();
+    const body = routeSheet(w, me).body;
+    expect(body).toContain('Erdöl');
+    expect(body).toContain('Vesta Nova → Aquilon');
+    expect(body).not.toContain('Vesta Nova → Ferrox');
+  });
+});
