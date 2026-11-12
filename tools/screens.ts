@@ -47,7 +47,15 @@ for (const [name, vp] of [['tablet', { width: 1280, height: 800 }], ['phone', { 
   await page.addInitScript((s) => localStorage.setItem('dynacorp2092.save.v1', s), save);
   await page.goto('http://localhost:5199/');
   await page.click('[data-act="continue"]');
-  for (const tab of ['facilities', 'fleet', 'market', 'orders']) {
+  if (name === 'tablet') {
+    await page.locator('.map-card').screenshot({ path: 'screens/tablet-map.png' });
+    await page.click('[data-zoom="1.4"]');
+    await page.click('[data-zoom="1.4"]');
+    await page.waitForTimeout(100);
+    await page.locator('.map-card canvas').screenshot({ path: 'screens/tablet-map-zoom.png' });
+    await page.click('[data-zoom="0"]');
+  }
+  for (const tab of [...(name === 'phone' ? ['map'] : []), 'facilities', 'fleet', 'market', 'orders']) {
     await page.click(`#nav [data-a="${tab}"]`);
     await page.waitForTimeout(150);
     await page.screenshot({ path: `screens/${name}-${tab}.png`, fullPage: name === 'phone' });

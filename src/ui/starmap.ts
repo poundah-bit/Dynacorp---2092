@@ -4,11 +4,12 @@
 
 import { CONFIG, PLANETS, facilityDef, good, shipSpeed, type PlanetDef, type World } from '../sim/index';
 import { planetInfo } from './mapinfo';
+import { buildSkyLayers, drawSky, skyKey } from './sky';
 
 export interface StarMap {
   el: HTMLElement;
   /** redraw; `frac` is the part of the current day that has passed (ships move smoothly), `info` rebuilds the panel */
-  draw(w: World, me: string, frac?: number, info?: boolean): void;
+  draw(w: World, me: string, frac?: number, info?: boolean, running?: boolean): void;
   selected: string;
   select(id: string): void;
 }
@@ -44,6 +45,14 @@ const SHORT: Record<string, string> = {
 };
 export const shortFacility = (type: string) => SHORT[type] ?? facilityDef(type).name;
 
+const reducedMotion = () => typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+/** '#rrggbb' → 'rgba(r, g, b, a)' */
+export function withAlpha(hex: string, a: number): string {
+  const m = /^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(hex.trim());
+  if (!m) return hex;
+  return `rgba(${parseInt(m[1]!, 16)}, ${parseInt(m[2]!, 16)}, ${parseInt(m[3]!, 16)}, ${a})`;
+}
+
 const css = (name: string, fallback: string) => getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback;
 
 export function createStarMap(): StarMap {
@@ -71,14 +80,16 @@ export function createStarMap(): StarMap {
   let scale = 0; // 0 = fit on next draw
   let cx = 0;
   let cy = 0;
-  let last: { w: World; me: string; frac: number } | null = null;
+  let last: { w: World; me: string; frac: number; running: boolean } | null = null;
+  let sky: HTMLCanvasElement[] = [];
+  let skyFor = '';
   let infoFor: string | null = null;
 
   const map: StarMap = {
     el,
     selected: '',
-    draw(w, me, frac = 0, refresh = false) {
-      last = { w, me, frac };
+    draw(w, me, frac = 0, refresh = false, running = false) {
+      last = { w, me, frac, running };
       paint();
       // the panel is rebuilt with the views (game.ts passes refresh) or when the selection changes –
       // not on every animation frame, which would swap its buttons away under a finger
@@ -89,7 +100,7 @@ export function createStarMap(): StarMap {
     },
     select(id) {
       map.selected = id;
-      if (last) map.draw(last.w, last.me, last.frac, true);
+      if (last) map.draw(last.w, last.me, last.frac, true, last.running);
     },
   };
 
@@ -118,6 +129,7 @@ export function createStarMap(): StarMap {
   function paint() {
     if (!last) return;
     const { w, me, frac } = last;
+    const frame = last;
     const r = canvas.getBoundingClientRect();
     if (!r.width || !r.height) return; // not on screen
     const dpr = window.devicePixelRatio || 1;
@@ -144,17 +156,29 @@ export function createStarMap(): StarMap {
     };
     ctx.fillStyle = col.bg;
     ctx.fillRect(0, 0, r.width, r.height);
+    const key = skyKey(r.width, r.height, dpr);
+    if (key !== skyFor) {
+      sky = buildSkyLayers(r.width, r.height, dpr);
+      skyFor = key;
+    }
+    drawSky(ctx, r.width, r.height, cx * scale, cy * scale, sky);
 
-    // gravo storm zone: everything beyond the outer ring
+    // gravo storm zone: a soft red veil on the outer ring, slowly breathing while time runs
     const [tx, ty] = toScreen(0, 0, r);
-    ctx.setLineDash([6, 6]);
-    ctx.strokeStyle = col.bad;
-    ctx.globalAlpha = 0.45;
+    const ring = CONFIG.events.outerRingParsec;
+    const inner = Math.max(0, (ring - 40) * scale);
+    const outer = (ring + 40) * scale;
+    const breathe = frame.running && !reducedMotion() ? 0.04 * Math.sin((performance.now() / 8000) * Math.PI * 2) : 0;
+    const veil = ctx.createRadialGradient(tx, ty, inner, tx, ty, outer);
+    const a = (0.13 + breathe).toFixed(3);
+    veil.addColorStop(0, withAlpha(col.bad, 0));
+    veil.addColorStop(0.5, withAlpha(col.bad, Number(a)));
+    veil.addColorStop(1, withAlpha(col.bad, 0));
+    ctx.fillStyle = veil;
     ctx.beginPath();
-    ctx.arc(tx, ty, CONFIG.events.outerRingParsec * scale, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.globalAlpha = 1;
-    ctx.setLineDash([]);
+    ctx.arc(tx, ty, outer, 0, Math.PI * 2);
+    ctx.arc(tx, ty, inner, 0, Math.PI * 2, true);
+    ctx.fill();
 
     // routes of own ships
     const ships = w.ships;

@@ -30,3 +30,28 @@ describe('planet looks', () => {
     expect(planetRadius(true, 0.3)).toBe(11);
   });
 });
+
+import { makeStars, skyKey } from '../src/ui/sky';
+
+describe('sky', () => {
+  it('stars are deterministic, inside the area and in three layers', () => {
+    const a = makeStars(400, 1000, 600);
+    expect(makeStars(400, 1000, 600)).toEqual(a);
+    expect(a).toHaveLength(400);
+    for (const s of a) {
+      expect(s.x).toBeGreaterThanOrEqual(0);
+      expect(s.x).toBeLessThan(1000);
+      expect(s.y).toBeGreaterThanOrEqual(0);
+      expect(s.y).toBeLessThan(600);
+    }
+    const avg = (l: number) => {
+      const xs = a.filter((s) => s.layer === l);
+      expect(xs.length, `layer ${l}`).toBeGreaterThan(0);
+      return xs.reduce((t, s) => t + s.size, 0) / xs.length;
+    };
+    expect(avg(2)).toBeGreaterThan(avg(0));
+  });
+  it('sky key', () => {
+    expect(skyKey(800.4, 600, 2)).toBe('800x600@2');
+  });
+});
