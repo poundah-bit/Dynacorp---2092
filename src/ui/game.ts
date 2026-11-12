@@ -33,6 +33,7 @@ import { clearSave, loadGame, saveGame, type SaveData } from './save';
 import { SLOT_COUNT, deleteSlot, listSlots, loadSlot, saveSlot, type SlotMeta } from './slots';
 import { createStarMap } from './starmap';
 import * as S from './sheets';
+import { musicSettings, nowPlaying, setMusicSettings, skipTrack, startMusic, trackCredit } from './music';
 import { CUE_INFO, play, playDay, preview, setSoundSettings, soundSettings, unlockSound } from './sound';
 import * as V from './views';
 
@@ -481,7 +482,7 @@ const ACTS: Record<string, (a: string) => void> = {
       body: `<p>Das Spiel wird automatisch gespeichert. Dazu gibt es ${SLOT_COUNT} Speicherplätze für eigene Spielstände.</p><div class="acts col">
         <button type="button" data-act="slots-save">Spiel speichern…</button>
         <button type="button" data-act="slots-load">Spielstand laden…</button>
-        <button type="button" data-act="sound">Töne…</button>
+        <button type="button" data-act="sound">Musik und Töne…</button>
         <button type="button" data-act="guide-show">Hilfe einblenden</button>
         <button type="button" data-act="intro">Einführung zeigen</button>
         <button type="button" data-act="to-start">Zum Startbildschirm</button></div>`,
@@ -495,6 +496,10 @@ const ACTS: Record<string, (a: string) => void> = {
   },
   'sound-test'(cue) {
     preview(cue as Cue);
+  },
+  'music-next'() {
+    skipTrack();
+    openSheet(soundSheet());
   },
   'to-start'() {
     persist();
@@ -569,7 +574,7 @@ const ACTS: Record<string, (a: string) => void> = {
 // sheet buttons that switch state should also close the sheet
 const CLOSES_SHEET = new Set(['guide-show', 'guide-hide', 'to-start', 'intro']);
 /** actions that also work on the start screen, without a running game */
-const NO_WORLD = new Set(['sound', 'sound-test', 'continue', 'sheet-close', 'slots-load', 'slot-load', 'slot-delete']);
+const NO_WORLD = new Set(['sound', 'sound-test', 'music-next', 'continue', 'sheet-close', 'slots-load', 'slot-load', 'slot-delete']);
 
 document.addEventListener('click', (e) => {
   const target = e.target as HTMLElement;
@@ -590,6 +595,7 @@ document.addEventListener(
     pointerDown = true;
     // browsers allow sound only after a tap
     unlockSound();
+    startMusic();
   },
   true,
 );
@@ -613,10 +619,18 @@ function soundSheet(): S.Sheet {
       <p class="muted">${CUE_INFO[c].text}</p></div>`,
     )
     .join('');
+  const m = musicSettings();
+  const track = nowPlaying();
   return {
-    title: 'Töne',
-    body: `<label class="check"><input type="checkbox" name="on" ${s.on ? 'checked' : ''}> Töne an</label>
-      <label class="field">Lautstärke <input type="range" name="volume" min="0" max="100" step="5" value="${Math.round(s.volume * 100)}"></label>
+    title: 'Musik und Töne',
+    body: `<h3>Musik</h3>
+      <label class="check"><input type="checkbox" name="music-on" ${m.on ? 'checked' : ''}> Musik an</label>
+      <label class="field">Lautstärke Musik <input type="range" name="music-volume" min="0" max="100" step="5" value="${Math.round(m.volume * 100)}"></label>
+      <div class="sound-row"><span class="muted">${esc(track ? trackCredit(track) : 'Musik: Thamanoidis')}</span>
+      <button type="button" class="ghost" data-act="music-next">Nächstes Stück</button></div>
+      <h3>Töne</h3>
+      <label class="check"><input type="checkbox" name="on" ${s.on ? 'checked' : ''}> Töne an</label>
+      <label class="field">Lautstärke Töne <input type="range" name="volume" min="0" max="100" step="5" value="${Math.round(s.volume * 100)}"></label>
       <p class="muted">Dezente Töne für wenige, wichtige Ereignisse. Neue Börsenangebote bleiben still – nur seltene Großaufträge von Terra klingen. Bei hoher Geschwindigkeit werden Töne zusammengefasst.</p>
       <div class="sound-list">${rows}</div>`,
     live(form) {
@@ -624,6 +638,7 @@ function soundSheet(): S.Sheet {
       const next = { on: data.has('on'), volume: Number(data.get('volume') ?? 60) / 100, cues: { ...s.cues } };
       for (const c of Object.keys(CUE_INFO) as Cue[]) next.cues[c] = data.has(`cue-${c}`);
       setSoundSettings(next);
+      setMusicSettings({ on: data.has('music-on'), volume: Number(data.get('music-volume') ?? 40) / 100 });
     },
   };
 }

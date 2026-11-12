@@ -506,3 +506,12 @@ Konzept: `docs/superpowers/specs/2026-11-12-lesbarkeit-design.md`.
 | Icons | eigene Linien-Icons im Code, keine Bild- oder Schriftdateien | ruhig, passt zum späteren Stil, nichts aus dem Original |
 | Balken | Lager (Rohstoff fast leer / Produkt fast voll = Gefahr), Zustand, Laderaum, Flug, Frist – jeweils mit kleiner Beschriftung | drohender Stillstand und knappe Fristen fallen auf, bevor sie passieren |
 | Flotte | Karten behalten ihre Frachtart-Farbe am Rand | die Farbe trägt schon eine Information |
+
+## Entscheidungen zum Soundtrack
+
+| Thema | Entscheidung | Grund |
+|---|---|---|
+| Musik | drei Stücke von Thamanoidis („The Nu Jazz Klassik Experiment“ B, C Klassik, C XMAS) in zufälliger Reihenfolge, nie zweimal hintereinander dasselbe, 3 s Pause dazwischen | Abwechslung ohne Wiederholung (Rocco) |
+| Format | Opus mit 80 kbit/s, ≈ 2,4 MB pro Stück statt 5 MB als MP3; gestreamt, nicht vorab geladen | kleines Spiel und späteres APK; auf älteren iPhones/iPads bleibt es dann still (Rocco) |
+| XMAS-Stück | läuft das ganze Jahr gleichberechtigt mit | Entscheidung Rocco |
+| Einstellungen | eigener Schalter und Lautstärkeregler für Musik (Vorgabe an, 40 %) im Menü „Musik und Töne“, getrennt von den Ereignis-Tönen, dazu „Nächstes Stück“ | Ereignis-Töne bleiben hörbar |
