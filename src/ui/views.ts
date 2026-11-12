@@ -77,6 +77,7 @@ import {
   SHIP_KIND,
   bar,
   facilityConditionTone,
+  shipConditionTone,
   stockTone,
 } from './format';
 import { facilityIcon, icon, type IconName } from './icons';
@@ -100,6 +101,9 @@ const btn = (label: string, act: string, a = '', extra = '') =>
   `<button data-act="${act}" data-a="${esc(a)}" ${extra}>${label}</button>`;
 const empty = (text: string) => `<p class="empty">${text}</p>`;
 const route = (from: string, to: string) => `${pName(from)} → ${pName(to)} <span class="muted">(${pc(distance(from, to))})</span>`;
+
+/** A small caption in front of a fill bar. */
+const meterRow = (label: string, b: string) => `<span class="meter-label">${label}</span>${b}`;
 
 const CARGO_GOODS = (cargo: Cargo) => GOODS.filter((g) => g.cargo === cargo).map((g) => g.name).join(', ');
 
@@ -287,7 +291,7 @@ export function facilitiesView({ w, me }: ViewCtx): string {
       ].join('');
       return `<section class="card">
         <h2>${icon(facilityIcon(f.type))}${facilityLabel(f)}${f.units > 1 ? ` <span class="muted">× ${f.units}</span>` : ''} <span class="badge ${st.cls}">${icon(st.icon)} ${st.text}</span></h2>
-        ${bar({ value: f.condition, max: 100, tone: facilityConditionTone(f.condition), label: 'Zustand' })}
+        <div class="meters">${meterRow('Zustand', bar({ value: f.condition, max: 100, tone: facilityConditionTone(f.condition), label: 'Zustand' }))}</div>
         <p class="small">Zustand <b class="${f.condition < CONFIG.facilities.repairBelow ? 'bad' : ''}">${dec(f.condition)} %</b> · Auslastung ${eff} % · Kosten heute ${cr(cost)} · liefert bis zu ${flows(def.outputs, f.units)} pro Tag${Object.keys(def.inputs).length ? ` aus ${flows(def.inputs, f.units)}` : ''}</p>
         ${f.status === 'running' && eff === 0 ? `<p class="bad small">Steht still: ${Object.keys(def.inputs).some((g) => (f.stock[g] ?? 0) <= 0) ? 'Rohstoffe fehlen – „Ware bestellen“.' : 'Lager voll – liefere Ware aus.'}</p>` : ''}
         <table><tr><th>Ware</th><th class="n">Lager</th><th class="n">Kapazität</th><th class="n">Aufträge</th><th class="n"></th></tr>${stock}</table>
@@ -340,15 +344,23 @@ export function fleetView({ w, me }: ViewCtx): string {
           : '',
         atTerra ? btn(`Verkaufen (${cr(Math.round(shipValue(s) * 0.6))})`, 'sell-ship', s.id, 'class="ghost"') : '',
       ].join('');
+      const stateIc: IconName = critical ? 'critical' : s.phase === 'idle' ? 'idle' : s.phase === 'loading' || s.phase === 'unloading' ? 'loading' : 'travelling';
       const badge = critical
-        ? '<span class="badge bad">kritisch</span>'
-        : `<span class="badge ${st.cls}">${s.phase === 'idle' ? 'frei' : 'unterwegs'}</span>`;
+        ? `<span class="badge bad">${icon(stateIc)} kritisch</span>`
+        : `<span class="badge ${st.cls}">${icon(stateIc)} ${s.phase === 'idle' ? 'frei' : 'unterwegs'}</span>`;
+      const cap = def.capacity;
+      const bars = [
+        meterRow('Zustand', bar({ value: s.condition, max: 100, tone: shipConditionTone(s.condition), label: 'Zustand' })),
+        loads.length ? meterRow('Laderaum', bar({ value: cap - shipRoom(w, s), max: cap, tone: 'neutral', label: 'Laderaum' })) : '',
+        s.route ? meterRow('Flug', bar({ value: s.route.traveled, max: s.route.distance, tone: 'neutral', label: 'Flug' })) : '',
+      ].join('');
       return `<section class="card ship-card cargo-${def.cargo}${critical ? ' critical' : ''}">
         <h2>${cargoIcon(def.cargo)} ${shipLabel(s)} ${badge}</h2>
+        <div class="meters">${bars}</div>
         <p>${st.text}</p>
         ${critical ? `<p class="bad small"><b>Kritischer Zustand:</b> fliegt nur noch mit ${Math.round(CONFIG.ships.criticalSpeedFactor * 100)} % Tempo und nimmt keine neuen Aufträge an. ${s.phase === 'idle' ? (s.at === TERRA ? 'Jetzt reparieren.' : 'Schick es zur Reparatur nach Terra.') : 'Nach diesem Flug zur Reparatur nach Terra.'}</p>` : ''}
         ${loads.length > 1 ? `<p class="small">An Bord für diesen Flug: ${loads.map((t) => loadName(w, t)).join(' · ')}</p>` : ''}
-        <p class="small muted">${qty(def.capacity, def.cargo)} Laderaum${room > 0 ? ` (noch ${qty(room, def.cargo)} frei für Zuladung)` : ''} · ${critical ? `<span class="bad">${num(shipSpeed(s))} Pc/Tag</span> (sonst ${num(def.speed)})` : `${num(def.speed)} Pc/Tag`} · Zustand <span class="${s.condition < 50 ? 'bad' : ''}">${dec(s.condition)} %</span>${s.condition < 50 && !critical ? ' – bald zur Reparatur nach Terra' : ''}${s.repairAtTerra ? ' · <span class="warn">Reparatur auf Terra vorgemerkt</span>' : ''}</p>
+        <p class="small muted">${qty(def.capacity, def.cargo)} Laderaum${room > 0 ? ` (noch ${qty(room, def.cargo)} frei für Zuladung)` : ''} · ${critical ? `<span class="bad">${num(shipSpeed(s))} Pc/Tag</span> (sonst ${num(def.speed)})` : `${num(def.speed)} Pc/Tag`} · Zustand <span class="${s.condition < 50 ? 'bad' : ''}">${dec(s.condition)} %</span>${s.condition < 50 && !critical ? ' – bald zur Reparatur nach Terra' : ''}${s.repairAtTerra ? ` · <span class="warn">${icon('repairMarked')} Reparatur auf Terra vorgemerkt</span>` : ''}</p>
         ${acts ? `<div class="acts">${acts}</div>` : ''}
       </section>`;
   };

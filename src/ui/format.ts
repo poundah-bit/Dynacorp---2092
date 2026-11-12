@@ -1,7 +1,7 @@
 // Formatting for the game UI: German number format, labels, HTML escaping.
 
 import { CARGO_UNIT, CONFIG, cargoName, facility, facilityDef, good, planet, shipDef, shipLoads, storageDef, unitOf, type Cargo, type Facility, type Ship, type Transport, type World } from '../sim/index';
-import type { IconName } from './icons';
+import { cargoIconName, icon, type IconName } from './icons';
 import { companyName, shipLegDays } from './play';
 
 const nf = new Intl.NumberFormat('de-DE', { maximumFractionDigits: 0 });
@@ -47,10 +47,9 @@ export function loadsName(w: World, loads: Transport[]): string {
 }
 
 /** Symbol and name per cargo type, so ships can be told apart at a glance. */
-export const CARGO_ICON: Record<Cargo, string> = { tank: '🛢', bulk: '⛰', piece: '📦', cooled: '❄', live: '🐄' };
 export const SHIP_KIND: Record<Cargo, string> = { tank: 'Tanker', bulk: 'Schüttgutfrachter', piece: 'Stückgutfrachter', cooled: 'Kühlfrachter', live: 'Viehfrachter' };
 /** Small coloured badge with the cargo symbol. */
-export const cargoIcon = (cargo: Cargo) => `<span class="cargo-ic cargo-${cargo}" title="${cargoName(cargo)}" aria-label="${cargoName(cargo)}">${CARGO_ICON[cargo]}</span>`;
+export const cargoIcon = (cargo: Cargo) => `<span class="cargo-ic cargo-${cargo}" title="${cargoName(cargo)}" role="img" aria-label="${cargoName(cargo)}">${icon(cargoIconName(cargo))}</span>`;
 export const isCriticalShip = (s: Ship) => s.condition < CONFIG.ships.criticalBelow;
 
 export const pc = (x: number) => `${num(x)} Pc`;

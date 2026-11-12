@@ -74,3 +74,34 @@ describe('facility view', () => {
     expect(planetInfo(w, player(w), 'vesta-nova')).toContain(ICONS.oilwell[0]);
   });
 });
+
+import { assignShip, buyFacility, buyShip, shipsOf, takeLoan } from '../src/sim/index';
+import { cargoIcon } from '../src/ui/format';
+import { runUntil } from './helpers';
+
+describe('fleet view', () => {
+  it('cargo icons are svg, not emoji', () => {
+    const c = cargoIcon('tank');
+    expect(c).toContain('<svg');
+    expect(c).not.toMatch(/\p{Extended_Pictographic}/u);
+  });
+  it('shows condition always, load and flight bars only while travelling', () => {
+    const w = soloWorld();
+    const me = player(w);
+    expect(takeLoan(w, me, 1_000_000, 2).ok).toBe(true);
+    const t = buyFacility(w, me, 'oilwell', 'vesta-nova');
+    if (!t.ok) throw new Error(t.error);
+    const s = buyShip(w, me, 'piece-a');
+    if (!s.ok) throw new Error(s.error);
+    let html = fleetView(ctx(w));
+    expect(meters(html, 'Zustand')).toBe(1);
+    expect(meters(html, 'Flug')).toBe(0);
+    expect(meters(html, 'Laderaum')).toBe(0);
+    expect(assignShip(w, me, s.value.id, t.value.id).ok).toBe(true);
+    runUntil(w, () => shipsOf(w, me)[0]!.phase === 'toDelivery');
+    html = fleetView(ctx(w));
+    expect(meters(html, 'Flug')).toBe(1);
+    expect(meters(html, 'Laderaum')).toBe(1);
+    expect(html).toContain('noch ');
+  });
+});
