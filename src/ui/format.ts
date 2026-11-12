@@ -1,6 +1,7 @@
 // Formatting for the game UI: German number format, labels, HTML escaping.
 
-import { CARGO_UNIT, CONFIG, cargoName, facility, facilityDef, good, planet, shipDef, shipLoads, storageDef, unitOf, type Cargo, type Facility, type Ship, type Transport, type World } from '../sim/index';
+import { CARGO_UNIT, CONFIG, productionEfficiency, cargoName, facility, facilityDef, good, planet, shipDef, shipLoads, storageDef, unitOf, type Cargo, type Facility, type Ship, type Transport, type World } from '../sim/index';
+import { cargoIconName, icon, type IconName } from './icons';
 import { companyName, shipLegDays } from './play';
 
 const nf = new Intl.NumberFormat('de-DE', { maximumFractionDigits: 0 });
@@ -46,10 +47,9 @@ export function loadsName(w: World, loads: Transport[]): string {
 }
 
 /** Symbol and name per cargo type, so ships can be told apart at a glance. */
-export const CARGO_ICON: Record<Cargo, string> = { tank: '🛢', bulk: '⛰', piece: '📦', cooled: '❄', live: '🐄' };
 export const SHIP_KIND: Record<Cargo, string> = { tank: 'Tanker', bulk: 'Schüttgutfrachter', piece: 'Stückgutfrachter', cooled: 'Kühlfrachter', live: 'Viehfrachter' };
 /** Small coloured badge with the cargo symbol. */
-export const cargoIcon = (cargo: Cargo) => `<span class="cargo-ic cargo-${cargo}" title="${cargoName(cargo)}" aria-label="${cargoName(cargo)}">${CARGO_ICON[cargo]}</span>`;
+export const cargoIcon = (cargo: Cargo) => `<span class="cargo-ic cargo-${cargo}" title="${cargoName(cargo)}" role="img" aria-label="${cargoName(cargo)}">${icon(cargoIconName(cargo))}</span>`;
 export const isCriticalShip = (s: Ship) => s.condition < CONFIG.ships.criticalBelow;
 
 export const pc = (x: number) => `${num(x)} Pc`;
@@ -65,10 +65,11 @@ export const gName = (id: string) => good(id).name;
 export const who = (w: World, id: string | null) => esc(companyName(w, id));
 export { cargoName };
 
-export function facilityStatus(f: Facility): { text: string; cls: string } {
-  if (f.status === 'construction') return { text: `Im Bau – noch ${days(f.buildDaysLeft)}`, cls: 'warn' };
-  if (f.status === 'stopped') return { text: 'Stillgelegt', cls: 'bad' };
-  return { text: 'In Betrieb', cls: 'good' };
+export function facilityStatus(f: Facility): { text: string; cls: string; icon: IconName } {
+  if (f.status === 'construction') return { text: `Im Bau – noch ${days(f.buildDaysLeft)}`, cls: 'warn', icon: 'construction' };
+  if (f.status === 'stopped') return { text: 'Stillgelegt', cls: 'bad', icon: 'stopped' };
+  if (productionEfficiency(f) <= 0) return { text: 'Steht still', cls: 'bad', icon: 'stopped' };
+  return { text: 'In Betrieb', cls: 'good', icon: 'running' };
 }
 
 export function shipStatus(w: World, s: Ship): { text: string; cls: string } {
@@ -109,4 +110,61 @@ export const facilityLabel = (f: Facility) => `${facilityDef(f.type).name} auf $
 export function flows(rec: Record<string, number>, units = 1): string {
   const parts = Object.entries(rec).map(([g, n]) => `${amt(n * units, g)} ${gName(g)}`);
   return parts.length ? parts.join(' + ') : '–';
+}
+
+// ---------- fill bars ----------
+
+export type Tone = 'good' | 'warn' | 'bad' | 'neutral';
+
+export interface BarOpts {
+  value: number;
+  max: number;
+  /** part of the fill that is already promised to someone (hatched, drawn at the top of the fill) */
+  reserved?: number;
+  /** amount on its way (dashed outline after the fill) */
+  incoming?: number;
+  tone: Tone;
+  label: string;
+}
+
+export const STOCK_IN_BAD = 0.1;
+export const STOCK_IN_WARN = 0.25;
+export const STOCK_OUT_WARN = 0.75;
+export const STOCK_OUT_BAD = 0.9;
+export const FACILITY_BAD_BELOW = 30;
+export const SHIP_WARN_BELOW = 50;
+
+const clamp01 = (x: number) => (Number.isFinite(x) ? Math.min(1, Math.max(0, x)) : 0);
+const pct = (x: number) => Math.round(clamp01(x) * 1000) / 10;
+
+/** A raw material running empty or a product running full stops the plant. */
+export function stockTone(isInput: boolean, ratio: number): Tone {
+  if (isInput) return ratio < STOCK_IN_BAD ? 'bad' : ratio < STOCK_IN_WARN ? 'warn' : 'neutral';
+  return ratio > STOCK_OUT_BAD ? 'bad' : ratio > STOCK_OUT_WARN ? 'warn' : 'neutral';
+}
+
+export const facilityConditionTone = (c: number): Tone => (c < FACILITY_BAD_BELOW ? 'bad' : c < CONFIG.facilities.repairBelow ? 'warn' : 'good');
+export const shipConditionTone = (c: number): Tone => (c < CONFIG.ships.criticalBelow ? 'bad' : c < SHIP_WARN_BELOW ? 'warn' : 'good');
+
+/** Days a full deadline bar stands for. Deadlines restart when an order is accepted, so the bar shows
+ * absolute days left instead of a share of the time since posting. */
+export const DEADLINE_SCALE_DAYS = 30;
+export const DEADLINE_WARN_DAYS = 3;
+
+export const deadlineShare = (day: number, deadline: number) => clamp01((deadline - day) / DEADLINE_SCALE_DAYS);
+
+export function deadlineTone(day: number, deadline: number): Tone {
+  const left = deadline - day;
+  return left < 0 ? 'bad' : left <= DEADLINE_WARN_DAYS ? 'warn' : 'neutral';
+}
+
+/** A thin fill bar (HTML) with optional reserved and incoming parts. */
+export function bar(o: BarOpts): string {
+  const share = (x: number) => (o.max > 0 ? x / o.max : 0);
+  const fill = pct(share(o.value));
+  const res = o.reserved ? Math.min(pct(share(o.reserved)), fill) : 0;
+  const inc = o.incoming ? Math.min(pct(share(o.incoming)), Math.round((100 - fill) * 10) / 10) : 0;
+  return `<span class="bar ${o.tone}" role="meter" aria-valuenow="${Math.round(Math.min(Math.max(0, o.value), Math.max(0, o.max)))}" aria-valuemin="0" aria-valuemax="${Math.round(Math.max(0, o.max))}" aria-label="${esc(o.label)}"><span class="bar-fill" style="width:${fill}%"></span>${
+    res > 0 ? `<span class="bar-res" style="left:${Math.round((fill - res) * 10) / 10}%;width:${res}%"></span>` : ''
+  }${inc > 0 ? `<span class="bar-in" style="left:${fill}%;width:${inc}%"></span>` : ''}</span>`;
 }

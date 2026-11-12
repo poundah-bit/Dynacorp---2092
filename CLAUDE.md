@@ -11,6 +11,7 @@ Non-commercial Android fan game inspired by Dynatech (1992). Owner: Rocco (GitHu
 - No assets, code, texts or names from the original Dynatech. Planets, companies and values are our own design.
 - No combat, sabotage or piracy. Cooperation via the order exchange is the core idea.
 - Single player against 1–20 AI companies (chosen before the game, default 10). No split-screen / local multiplayer (decided). Online multiplayer is a maybe-later.
+- Music: the soundtrack is by Thamanoidis (Rocco's Suno account name). Every music credit or reference (credits, start screen, settings, docs) names Thamanoidis, never Rocco.
 - Target: Android tablet first, then phone. Delivered as PWA (GitHub Pages) and later APK via Capacitor.
 
 ## Architecture
@@ -33,6 +34,7 @@ Non-commercial Android fan game inspired by Dynatech (1992). Owner: Rocco (GitHu
   - `chain.ts` chain graph in the Statistik tab: goods as SVG nodes in columns by their longest production path, tap for producers, consumers and market (pure HTML/SVG)
   - `sheets.ts` dialogs (loan, repay, deliver, transport, order goods); `format.ts` German number formatting and labels; `save.ts` one autosave slot in localStorage; `slots.ts` ten save slots in IndexedDB (a late game is ≈ 0.5 MB, too big for ten slots in localStorage)
   - `cues.ts` pure detection of the sound cues of one game day (`cueTracker`): big Terra order for an own good, plant stops producing, ship critical, plant built, ship idle again; `repair` is played on the player's tap. `sound.ts` makes the sounds with the Web Audio API (no sound files: soft sine/triangle notes, low-pass, short generated room echo), settings in localStorage (`dynacorp2092.sound.v1`), at most two cues per day and a cooldown per cue; the menu has a "Töne" sheet with volume, on/off per cue and a listening test
+  - Readability (Optik Teil 1): `icons.ts` own line icons (24 grid, stroke 2, `currentColor`) for tabs, cargo types, the 17 facility types and states – `icon(name)` returns inline SVG, the path data is reusable with `Path2D`; `format.ts` `bar()` fill bars (`role="meter"`) and the tone rules `stockTone`, `facilityConditionTone`, `shipConditionTone`, `deadlineTone`; `play.ts` `areaStats()` key figures; `views.ts` `areaHead()` header of Anlagen/Flotte/Börse/Aufträge. Area colours `--area-facilities/-fleet/-market/-orders` colour only frame elements (tab, header, card edge); green/yellow/red stay status only. `npx tsx tools/screens.ts` takes screenshots of the four area tabs (tablet + phone) with a local Chrome into `screens/`
   - `debug.ts` + `observe.html` – observation page where 20 AI companies play alone
 - `tools/simulate.ts` – headless run: `npm run sim -- <days> <seed> <difficulty>`
 - `tools/balance.ts` – balancing report against the target values: `npm run balance -- <days> <seeds,comma> <difficulty>` (default 1000 days, seeds 1,2,3, med)

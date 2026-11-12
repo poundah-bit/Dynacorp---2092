@@ -27,7 +27,8 @@ import {
 } from '../sim/index';
 import { cueTracker, type Cue, type CueTracker } from './cues';
 import { cr, esc, isCriticalShip, logText } from './format';
-import { AI_DEFAULT, AI_MAX, AI_MIN, clampAi, fittingOffers, guide, newGame, newOffers, type GuideTab } from './play';
+import { icon, type IconName } from './icons';
+import { AI_DEFAULT, AI_MAX, AI_MIN, areaStats, clampAi, fittingOffers, guide, newGame, newOffers, type GuideTab } from './play';
 import { clearSave, loadGame, saveGame, type SaveData } from './save';
 import { SLOT_COUNT, deleteSlot, listSlots, loadSlot, saveSlot, type SlotMeta } from './slots';
 import { createStarMap } from './starmap';
@@ -37,15 +38,17 @@ import * as V from './views';
 
 type Tab = GuideTab | 'map';
 
-const TABS: { id: Tab; label: string; icon: string; tip: string; badge?: keyof ReturnType<typeof V.badges> }[] = [
-  { id: 'terra', label: 'Terra', icon: '◉', tip: 'Bank (Kredite), Dynacore (Anlagen und Lager kaufen) und Werft (Schiffe kaufen).' },
-  { id: 'map', label: 'Karte', icon: '✦', tip: 'Sternkarte mit allen Planeten, deinen Anlagen und Schiffen.' },
-  { id: 'facilities', label: 'Anlagen', icon: '⚙', badge: 'facilities', tip: 'Deine Anlagen: Lager, Betrieb, Ware bestellen, Lager erweitern. Die Zahl zählt stillgelegte Anlagen und wartende Transporte.' },
-  { id: 'fleet', label: 'Flotte', icon: '➤', badge: 'fleet', tip: 'Deine Schiffe: zuweisen, nach Terra schicken, reparieren. Die Zahl zählt freie Schiffe.' },
-  { id: 'market', label: 'Börse', icon: '⇄', badge: 'market', tip: 'Nachfragen nach deinen Waren und Transportaufträge anderer Firmen. Blinkt, wenn ein neuer Auftrag zu einem freien Schiff passt.' },
-  { id: 'orders', label: 'Aufträge', icon: '☰', badge: 'orders', tip: 'Was du zugesagt hast und was unterwegs ist. Die Zahl zählt Aufträge, denen noch ein Transport fehlt.' },
-  { id: 'stats', label: 'Statistik', icon: '▤', tip: 'Warenketten, Rangliste, Kurse und alle Meldungen.' },
+const TABS: { id: Tab; label: string; icon: IconName; tip: string; badge?: keyof ReturnType<typeof V.badges> }[] = [
+  { id: 'terra', label: 'Terra', icon: 'terra', tip: 'Bank (Kredite), Dynacore (Anlagen und Lager kaufen) und Werft (Schiffe kaufen).' },
+  { id: 'map', label: 'Karte', icon: 'map', tip: 'Sternkarte mit allen Planeten, deinen Anlagen und Schiffen.' },
+  { id: 'facilities', label: 'Anlagen', icon: 'facilities', badge: 'facilities', tip: 'Deine Anlagen: Lager, Betrieb, Ware bestellen, Lager erweitern. Die Zahl zählt stillgelegte Anlagen und wartende Transporte.' },
+  { id: 'fleet', label: 'Flotte', icon: 'fleet', badge: 'fleet', tip: 'Deine Schiffe: zuweisen, nach Terra schicken, reparieren. Die Zahl zählt freie Schiffe.' },
+  { id: 'market', label: 'Börse', icon: 'market', badge: 'market', tip: 'Nachfragen nach deinen Waren und Transportaufträge anderer Firmen. Blinkt, wenn ein neuer Auftrag zu einem freien Schiff passt.' },
+  { id: 'orders', label: 'Aufträge', icon: 'orders', badge: 'orders', tip: 'Was du zugesagt hast und was unterwegs ist. Die Zahl zählt Aufträge, denen noch ein Transport fehlt.' },
+  { id: 'stats', label: 'Statistik', icon: 'stats', tip: 'Warenketten, Rangliste, Kurse und alle Meldungen.' },
 ];
+
+const isArea = (t: Tab): t is V.Area => (V.AREAS as readonly string[]).includes(t);
 
 const VIEWS: Record<Tab, (ctx: V.ViewCtx) => string> = {
   terra: V.terraView,
@@ -219,10 +222,13 @@ function render() {
     const n = t.badge ? b[t.badge] : 0;
     const hot = !guideHidden && step.tab === t.id && t.id !== tab;
     const blink = t.id === 'market' && marketAlert > 0 && tab !== 'market';
-    return `<button data-act="tab" data-a="${t.id}" data-tip="${esc(t.tip)}" class="tab-${t.id} ${t.id === tab ? 'on' : ''} ${hot ? 'hot' : ''} ${blink ? 'blink' : ''}"><span class="ic">${t.icon}</span>${t.label}${n ? `<span class="count ${t.badge === 'fleet' ? 'soft' : ''}">${n}</span>` : ''}</button>`;
+    return `<button data-act="tab" data-a="${t.id}" data-tip="${esc(t.tip)}" ${isArea(t.id) ? `data-area="${t.id}" ` : ''}class="tab-${t.id} ${t.id === tab ? 'on' : ''} ${hot ? 'hot' : ''} ${blink ? 'blink' : ''}">${icon(t.icon)}${t.label}${n ? `<span class="count ${t.badge === 'fleet' ? 'soft' : ''}">${n}</span>` : ''}</button>`;
   }).join('');
 
-  $('view').innerHTML = VIEWS[tab]({ w, me, marketAll, marketGood, marketSort, priceTrend, chainGood });
+  const view = $('view');
+  if (isArea(tab)) view.dataset.area = tab;
+  else delete view.dataset.area;
+  view.innerHTML = (isArea(tab) ? V.areaHead(tab, areaStats(w, me)) : '') + VIEWS[tab]({ w, me, marketAll, marketGood, marketSort, priceTrend, chainGood });
   placeMap();
 
   // the header is not re-rendered, so clear old highlights before setting the current one
