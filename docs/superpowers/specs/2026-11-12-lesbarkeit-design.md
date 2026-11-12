@@ -19,7 +19,7 @@ Die Optik wird in vier Teilen aufgewertet, jeder mit eigenem Konzept, Plan und U
 1. **Lesbarkeit** (dieses Dokument)
 2. Atmosphäre und Sternkarte
 3. Eigener Stil
-4. Soundtrack aus Roccos MP3s mit eigenem Lautstärkeregler (unabhängig von 1–3)
+4. Soundtrack von Thamanoidis mit eigenem Lautstärkeregler (unabhängig von 1–3)
 
 ## Leitplanken
 
