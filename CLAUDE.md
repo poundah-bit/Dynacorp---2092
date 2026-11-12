@@ -11,6 +11,7 @@ Non-commercial Android fan game inspired by Dynatech (1992). Owner: Rocco (GitHu
 - No assets, code, texts or names from the original Dynatech. Planets, companies and values are our own design.
 - No combat, sabotage or piracy. Cooperation via the order exchange is the core idea.
 - Single player against 1–20 AI companies (chosen before the game, default 10). No split-screen / local multiplayer (decided). Online multiplayer is a maybe-later.
+- Music: the soundtrack is by Thamanoidis (Rocco's Suno account name). Every music credit or reference (credits, start screen, settings, docs) names Thamanoidis, never Rocco.
 - Target: Android tablet first, then phone. Delivered as PWA (GitHub Pages) and later APK via Capacitor.
 
 ## Architecture
