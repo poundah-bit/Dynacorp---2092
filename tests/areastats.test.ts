@@ -9,7 +9,7 @@ describe('areaStats', () => {
     const s = areaStats(w, player(w));
     expect(s.facilities).toEqual({ total: 0, running: 0, stopped: 0, building: 0, pending: 0 });
     expect(s.fleet).toEqual({ total: 0, idle: 0, moving: 0, critical: 0 });
-    expect(s.orders).toEqual({ promised: 0, unshipped: 0, nextDeadline: null, overdue: false });
+    expect(s.orders).toEqual({ promised: 0, unshipped: 0, nextDeadline: null, overdue: false, routes: 0 });
     expect(s.market.big).toBe(0);
   });
   it('counts ships and critical ones', () => {

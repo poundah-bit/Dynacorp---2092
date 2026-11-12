@@ -12,6 +12,7 @@ export interface SoundSettings {
 }
 
 export const CUE_INFO: Record<Cue, { name: string; text: string }> = {
+  automation: { name: 'Logistikzentrale', text: 'Du hast die Logistikzentrale eröffnet oder ausgebaut.' },
   big: { name: 'Großauftrag', text: 'Terra bietet einen seltenen Großauftrag für eine Ware an, die du herstellst.' },
   stall: { name: 'Anlage steht', text: 'Eine laufende Anlage produziert nichts mehr: Rohstoffe fehlen oder das Lager ist voll.' },
   critical: { name: 'Schiff kritisch', text: 'Ein Schiff ist in kritischem Zustand und fliegt nur noch langsam.' },
@@ -24,7 +25,7 @@ const KEY = 'dynacorp2092.sound.v1';
 const DEFAULTS: SoundSettings = {
   on: true,
   volume: 0.6,
-  cues: { big: true, stall: true, critical: true, built: true, idle: true, repair: true },
+  cues: { automation: true, big: true, stall: true, critical: true, built: true, idle: true, repair: true },
 };
 
 let settings: SoundSettings = load();
@@ -144,6 +145,14 @@ const GLASS: [number, number][] = [[3, 0.12]];
 
 /** The sound of each cue. Pitches stay in a calm major / pentatonic range. */
 const CUES: Record<Cue, Note[]> = {
+  // a small fanfare: three rising bell notes and a held chord – a milestone you saved for
+  automation: [
+    { f: 523.25, at: 0, len: 0.5, vol: 0.4, partials: BELL },
+    { f: 659.25, at: 0.14, len: 0.5, vol: 0.4, partials: BELL },
+    { f: 783.99, at: 0.28, len: 0.6, vol: 0.42, partials: BELL },
+    { f: 1046.5, at: 0.46, len: 2.0, vol: 0.4, partials: BELL },
+    { f: 783.99, at: 0.46, len: 2.0, vol: 0.25, partials: MARIMBA },
+  ],
   // a small bell, two notes a fifth apart: rare and pleasant
   big: [
     { f: 783.99, at: 0, len: 1.6, vol: 0.5, partials: BELL },
@@ -177,7 +186,7 @@ const CUES: Record<Cue, Note[]> = {
 // ---------- playing ----------
 
 /** real seconds a cue stays quiet after it played, so fast game speeds don't turn into chimes */
-const COOLDOWN: Record<Cue, number> = { big: 4, stall: 8, critical: 8, built: 4, idle: 5, repair: 0.3 };
+const COOLDOWN: Record<Cue, number> = { automation: 1, big: 4, stall: 8, critical: 8, built: 4, idle: 5, repair: 0.3 };
 /** at most this many cues per game day */
 const MAX_PER_DAY = 2;
 /** gap between two cues of the same day */

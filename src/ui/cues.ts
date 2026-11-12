@@ -4,10 +4,10 @@
 import { facilitiesOf, facilityDef, type ShipPhase, type World } from '../sim/index';
 
 /** Every cue the game can play. `repair` comes from the player's own taps, the others from the day loop. */
-export type Cue = 'big' | 'stall' | 'critical' | 'built' | 'idle' | 'repair';
+export type Cue = 'automation' | 'big' | 'stall' | 'critical' | 'built' | 'idle' | 'repair';
 
 /** Order of importance: if a day has many cues, the first ones win. */
-export const CUE_ORDER: Cue[] = ['big', 'stall', 'critical', 'built', 'idle', 'repair'];
+export const CUE_ORDER: Cue[] = ['automation', 'big', 'stall', 'critical', 'built', 'idle', 'repair'];
 
 export interface CueTracker {
   /** cues for the day that just passed, most important first, each at most once */

@@ -532,7 +532,7 @@ const ACTS: Record<string, (a: string) => void> = {
   loan: () => openSheet(S.loanSheet(w!, me)),
   'buy-automation'() {
     const r = buyAutomation(w!, me);
-    result(r, r.ok ? `${automationName(r.value)} eröffnet!` : '');
+    result(r, r.ok ? `${automationName(r.value)} eröffnet!` : '', 'automation');
     // the first level comes with its first route right away
     if (r.ok && r.value === 1) openSheet(S.routeSheet(w!, me));
   },

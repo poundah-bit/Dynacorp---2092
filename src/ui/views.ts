@@ -186,6 +186,7 @@ function areaChips(area: Area, s: AreaStats): Chip[] {
       return [
         { text: `${num(o.promised)} zugesagt`, tip: 'Lieferungen, die du zugesagt hast und die noch nicht angekommen sind.' },
         { text: `${num(o.unshipped)} ohne Transport`, tone: 'warn', count: o.unshipped, tip: 'Zugesagte Lieferungen, für die noch kein Schiff organisiert ist.' },
+        { text: `${plural(o.routes, 'Lieferroute', 'Lieferrouten')} aktiv`, ic: 'travelling', count: o.routes, tip: 'Lieferrouten der Logistikzentrale, die gerade von selbst fahren.' },
         ...(d ? [d] : []),
       ];
     }
@@ -617,7 +618,12 @@ export function statsView({ w, me, priceTrend, chainGood }: ViewCtx): string {
     .map((l) => `<li class="${l.company === me ? 'mine' : ''} p${l.priority}"><span class="d">Tag ${l.day}</span>${logText(l.text)}</li>`)
     .join('');
   const c = company(w, me);
-  return `
+  const myRoutes = (w.routes ?? []).filter((r) => r.owner === me);
+  const routeStats = myRoutes.length
+    ? `<section class="card routes"><h2>${icon('orders')} ${automationName(automationLevel(w, me))}</h2>
+      <p>Automatisch erledigt: <b>${num(myRoutes.reduce((t, r) => t + r.trips, 0))} Fahrten</b> – ${myRoutes.map((r) => `${gName(r.good)} ${amt(r.delivered, r.good)}`).join(' · ')}</p></section>`
+    : '';
+  return `${routeStats}
   <section class="card"><h2>Warenketten</h2>
     <p class="hint">Von den Rohstoffen links bis zu den Endprodukten rechts, die Terra kauft. Türkis umrandet: das stellst du her. Gelb: das brauchst du. Rot: das fehlt einer deiner Anlagen gerade.</p>
     <div class="chain-scroll">${chainSvg(w, me, chainGood, priceTrend)}</div>

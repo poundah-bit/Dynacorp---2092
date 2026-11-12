@@ -87,3 +87,10 @@ describe('Töne', () => {
     expect(cues.filter((c) => c === 'critical')).toHaveLength(1);
   });
 });
+
+import { CUE_ORDER } from '../src/ui/cues';
+describe('Logistikzentrale cue', () => {
+  it('has its own cue, first in line', () => {
+    expect(CUE_ORDER[0]).toBe('automation');
+  });
+});

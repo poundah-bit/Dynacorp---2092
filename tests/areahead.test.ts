@@ -7,7 +7,7 @@ const base: AreaStats = {
   facilities: { total: 0, running: 0, stopped: 0, building: 0, pending: 0 },
   fleet: { total: 7, idle: 3, moving: 3, critical: 1 },
   market: { fitting: 0, transports: 0, big: 0 },
-  orders: { promised: 0, unshipped: 0, nextDeadline: null, overdue: false },
+  orders: { promised: 0, unshipped: 0, nextDeadline: null, overdue: false, routes: 0 },
 };
 
 describe('area header', () => {
@@ -21,7 +21,7 @@ describe('area header', () => {
     expect(h).toContain('1 Schiff<');
   });
   it('orders header shows overdue deadlines and hides a missing one', () => {
-    const over = areaHead('orders', { ...base, orders: { promised: 2, unshipped: 1, nextDeadline: -2, overdue: true } });
+    const over = areaHead('orders', { ...base, orders: { promised: 2, unshipped: 1, nextDeadline: -2, overdue: true, routes: 0 } });
     expect(over).toMatch(/class="chip bad"[^>]*>.*Frist überzogen/);
     expect(over).toContain('1 ohne Transport');
     const none = areaHead('orders', base);
@@ -40,5 +40,12 @@ describe('area header', () => {
     const targets = [...play.matchAll(/target: '([a-z-]+)'/g)].map((m) => m[1]!);
     expect(targets.length).toBeGreaterThan(5);
     for (const t of new Set(targets)) expect(markup, t).toContain(`data-guide="${t}"`);
+  });
+});
+
+describe('routes chip', () => {
+  it('shows active Lieferrouten in the orders header', () => {
+    expect(areaHead('orders', { ...base, orders: { ...base.orders, routes: 2 } })).toContain('2 Lieferrouten aktiv');
+    expect(areaHead('orders', base)).not.toContain('Lieferroute');
   });
 });

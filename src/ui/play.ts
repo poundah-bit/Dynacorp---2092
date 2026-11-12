@@ -557,7 +557,7 @@ export interface AreaStats {
   facilities: { total: number; running: number; stopped: number; building: number; pending: number };
   fleet: { total: number; idle: number; moving: number; critical: number };
   market: { fitting: number; transports: number; big: number };
-  orders: { promised: number; unshipped: number; nextDeadline: number | null; overdue: boolean };
+  orders: { promised: number; unshipped: number; nextDeadline: number | null; overdue: boolean; routes: number };
 }
 
 /** What the header of Anlagen, Flotte, Börse and Aufträge shows. */
@@ -588,6 +588,6 @@ export function areaStats(w: World, me: string): AreaStats {
       transports: openTransports(w, me).filter((t) => carryState(w, me, t) !== 'none').length,
       big: w.demands.filter((d) => d.status === 'open' && d.requester === 'terra' && d.big && myGoods.has(d.good)).length,
     },
-    orders: { promised: promised.length, unshipped: unshippedDemands(w, me).length, nextDeadline, overdue: nextDeadline !== null && nextDeadline < 0 },
+    orders: { promised: promised.length, unshipped: unshippedDemands(w, me).length, nextDeadline, overdue: nextDeadline !== null && nextDeadline < 0, routes: (w.routes ?? []).filter((r) => r.owner === me && r.active).length },
   };
 }
