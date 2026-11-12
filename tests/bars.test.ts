@@ -105,3 +105,32 @@ describe('fleet view', () => {
     expect(html).toContain('noch ');
   });
 });
+
+import { acceptDemand, facilitiesOf } from '../src/sim/index';
+import { terraOilDemand } from './helpers';
+
+describe('market and orders view', () => {
+  it('market rows carry the cargo icon and mark big Terra orders', () => {
+    const w = soloWorld();
+    oilWellWithTanker(w);
+    const d = terraOilDemand(w, 500);
+    d.big = true;
+    const html = marketView(ctx(w));
+    expect(html).toContain(ICONS.tank[0]);
+    expect(html).toContain(ICONS.bigOrder[0]);
+    expect(html).toContain('Großauftrag');
+  });
+  it('a promised delivery shows a deadline bar that turns red when overdue', () => {
+    const w = soloWorld();
+    const me = player(w);
+    const well = oilWellWithTanker(w);
+    const d = terraOilDemand(w, 500);
+    expect(acceptDemand(w, me, d.id, well.id).ok).toBe(true);
+    let html = ordersView(ctx(w));
+    expect(meters(html, 'Frist')).toBeGreaterThanOrEqual(1);
+    w.day = d.deadlineDay + 2;
+    html = ordersView(ctx(w));
+    expect(html).toMatch(/class="bar bad"[^>]*aria-label="Frist"><span class="bar-fill" style="width:100%"/);
+    expect(facilitiesOf(w, me).length).toBe(1);
+  });
+});

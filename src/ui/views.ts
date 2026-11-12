@@ -78,6 +78,8 @@ import {
   bar,
   facilityConditionTone,
   shipConditionTone,
+  deadlineRatio,
+  deadlineTone,
   stockTone,
 } from './format';
 import { facilityIcon, icon, type IconName } from './icons';
@@ -104,6 +106,12 @@ const route = (from: string, to: string) => `${pName(from)} → ${pName(to)} <sp
 
 /** A small caption in front of a fill bar. */
 const meterRow = (label: string, b: string) => `<span class="meter-label">${label}</span>${b}`;
+
+/** Time left until a deadline as a bar; full red once it has passed. */
+const deadlineBar = (w: World, created: number, deadline: number) => {
+  const overdue = deadline < w.day;
+  return `<div class="meters">${meterRow('Frist', bar({ value: overdue ? 100 : deadlineRatio(w.day, created, deadline) * 100, max: 100, tone: deadlineTone(w.day, created, deadline), label: 'Frist' }))}</div>`;
+};
 
 const CARGO_GOODS = (cargo: Cargo) => GOODS.filter((g) => g.cargo === cargo).map((g) => g.name).join(', ');
 
@@ -419,7 +427,7 @@ export function marketView(ctx: ViewCtx): string {
         : o.ready
           ? `<span class="good">Lager reicht (${amt(available(f, d.good), d.good)} frei)</span>`
           : `<span class="warn">Lager: ${amt(Math.max(0, available(f, d.good)), d.good)} frei${o.daysToReady < Infinity ? ` – genug ${inDays(o.daysToReady)}` : ' – die Anlage produziert gerade nicht'}. Annehmen geht, ist aber riskant.</span>`;
-      return `<div class="row"><div class="grow"><b>${amt(d.amount, d.good)} ${gName(d.good)}</b> für ${who(w, d.requester)} <span class="price">${cr(value)}</span>
+      return `<div class="row"><div class="grow">${cargoIcon(good(d.good).cargo)} <b>${amt(d.amount, d.good)} ${gName(d.good)}</b> für ${who(w, d.requester)} <span class="price">${cr(value)}</span>${d.big ? ` <span class="chip warn">${icon('bigOrder')}Großauftrag</span>` : ''}
         <div class="small">${perUnit(d.pricePerFe, d.good)} · ${route(f.planet, d.toPlanet)} · ${cargoName(good(d.good).cargo)} · seit ${days(w.day - d.createdDay)} offen</div>
         <div class="small">${state}</div></div>
         <div class="acts">${btn('Liefern…', 'deliver', d.id, `class="${o.ready ? 'primary' : ''}" ${guide} data-tip="Nimmt die Nachfrage an und wählt die Schiffe dafür. Wer zuerst annimmt, bekommt den Auftrag." ${o.tooBig ? 'disabled' : ''}`)}</div></div>`;
@@ -434,7 +442,7 @@ export function marketView(ctx: ViewCtx): string {
     .map(({ t, can }) => {
       const what = loadName(w, t);
       const tag = can === 'idle' ? '<span class="good">passt zu freiem Schiff</span>' : can === 'busy' ? '<span class="muted">passendes Schiff gerade unterwegs</span>' : `<span class="muted">kein passendes Schiff</span>`;
-      return `<div class="row"><div class="grow"><b>${what}</b> für ${who(w, t.issuer)} <span class="price">${cr(t.fee)}</span>
+      return `<div class="row"><div class="grow">${cargoIcon(t.cargo)} <b>${what}</b> für ${who(w, t.issuer)} <span class="price">${cr(t.fee)}</span>
         <div class="small">${route(t.fromPlanet, t.toPlanet)} · ${cargoName(t.cargo)} ${qty(t.amount, t.cargo)} · ${deadlineIn(w, t.deadlineDay)}</div><div class="small">${tag}</div></div>
         <div class="acts">${btn('Übernehmen…', 'carry', t.id, `class="primary" data-tip="Fährt die Ladung einer anderen Firma mit einem freien eigenen Schiff – gegen das genannte Honorar." ${can === 'idle' ? '' : 'disabled'}`)}</div></div>`;
     })
@@ -446,7 +454,7 @@ export function marketView(ctx: ViewCtx): string {
         (d) => d,
       )
         .map(
-          (d) => `<tr><td>${gName(d.good)}</td><td>${who(w, d.requester)}</td><td>${pName(d.toPlanet)}</td><td class="n">${amt(d.amount, d.good)}</td><td class="n">${perUnit(d.pricePerFe, d.good)}</td><td class="n">${cr(d.amount * d.pricePerFe)}</td></tr>`,
+          (d) => `<tr><td>${cargoIcon(good(d.good).cargo)} ${gName(d.good)}${d.big ? ` ${icon('bigOrder', 'warn')}` : ''}</td><td>${who(w, d.requester)}</td><td>${pName(d.toPlanet)}</td><td class="n">${amt(d.amount, d.good)}</td><td class="n">${perUnit(d.pricePerFe, d.good)}</td><td class="n">${cr(d.amount * d.pricePerFe)}</td></tr>`,
         )
         .join('')
     : '';
@@ -473,7 +481,7 @@ export function marketView(ctx: ViewCtx): string {
 export function ordersView({ w, me }: ViewCtx): string {
   const unshipped = unshippedDemands(w, me)
     .map(
-      (d) => `<div class="row"><div class="grow"><b>${amt(d.amount, d.good)} ${gName(d.good)}</b> an ${who(w, d.requester)} <div class="small">Zugesagt – ${deadlineIn(w, d.deadlineDay)}. ${unshippedAmount(d) < d.amount ? `${amt(d.amount - unshippedAmount(d), d.good)} sind unterwegs, für ${amt(unshippedAmount(d), d.good)} fehlt noch der Transport.` : 'Es fehlt noch der Transport.'}</div></div>
+      (d) => `<div class="row"><div class="grow">${cargoIcon(good(d.good).cargo)} <b>${amt(d.amount, d.good)} ${gName(d.good)}</b> an ${who(w, d.requester)}${deadlineBar(w, d.createdDay, d.deadlineDay)}<div class="small">Zugesagt – ${deadlineIn(w, d.deadlineDay)}. ${unshippedAmount(d) < d.amount ? `${amt(d.amount - unshippedAmount(d), d.good)} sind unterwegs, für ${amt(unshippedAmount(d), d.good)} fehlt noch der Transport.` : 'Es fehlt noch der Transport.'}</div></div>
       <div class="acts">${btn('Transport organisieren…', 'arrange', d.id, 'class="primary" data-guide="arrange" data-tip="Wählt eigene Schiffe für die zugesagte Lieferung oder schreibt den Transport an der Börse aus."')}</div></div>`,
     )
     .join('');
@@ -482,7 +490,7 @@ export function ordersView({ w, me }: ViewCtx): string {
     .map((t) => {
       const what = loadName(w, t);
       const ships = idleFittingShips(w, me, t.cargo, t.amount);
-      return `<div class="row"><div class="grow"><b>${what}</b> ${route(t.fromPlanet, t.toPlanet)}
+      return `<div class="row"><div class="grow">${cargoIcon(t.cargo)} <b>${what}</b> ${route(t.fromPlanet, t.toPlanet)}${deadlineBar(w, t.createdDay, t.deadlineDay)}
         <div class="small">${t.own ? 'Eigener Transport' : `Für ${who(w, t.issuer)}, Honorar ${cr(t.fee)}`} · ${deadlineIn(w, t.deadlineDay)} · ${ships.length ? `${ships.length} passende freie Schiffe` : '<span class="bad">kein passendes freies Schiff</span>'}</div></div>
         <div class="acts">${btn('Schiff wählen…', 'move', t.id, 'class="primary" data-guide="waiting"')}</div></div>`;
     })
@@ -499,7 +507,7 @@ export function ordersView({ w, me }: ViewCtx): string {
           : s
             ? `${t.carrier === me ? '' : `${who(w, t.carrier)}: `}${shipStatus(w, s).text}`
             : `Übernommen von ${who(w, t.carrier)}`;
-      return `<div class="row"><div class="grow"><b>${amt(t.amount, t.good!)} ${gName(t.good!)}</b> ${route(t.fromPlanet, t.toPlanet)}<div class="small">${state}${t.late ? ' · <span class="bad">Frist überzogen</span>' : ` · ${deadlineIn(w, t.deadlineDay)}`}</div></div>${t.status === 'open' && t.issuer === me ? `<div class="acts">${btn('Zurückziehen', 'unrelease', t.id)}</div>` : ''}</div>`;
+      return `<div class="row"><div class="grow">${cargoIcon(t.cargo)} <b>${amt(t.amount, t.good!)} ${gName(t.good!)}</b> ${route(t.fromPlanet, t.toPlanet)}${deadlineBar(w, t.createdDay, t.deadlineDay)}<div class="small">${state}${t.late ? ' · <span class="bad">Frist überzogen</span>' : ` · ${deadlineIn(w, t.deadlineDay)}`}</div></div>${t.status === 'open' && t.issuer === me ? `<div class="acts">${btn('Zurückziehen', 'unrelease', t.id)}</div>` : ''}</div>`;
     })
     .join('');
 
@@ -507,7 +515,7 @@ export function ordersView({ w, me }: ViewCtx): string {
     .filter((d) => d.requester === me && ['open', 'accepted', 'shipping'].includes(d.status))
     .map((d) => {
       const state = d.status === 'open' ? 'Offen – wartet auf einen Lieferanten' : d.own ? 'Aus eigener Anlage' : `Liefert ${who(w, d.supplier)}`;
-      return `<div class="row"><div class="grow"><b>${amt(d.amount, d.good)} ${gName(d.good)}</b> nach ${pName(d.toPlanet)} <span class="price">${perUnit(d.pricePerFe, d.good)}</span><div class="small">${state}</div></div>
+      return `<div class="row"><div class="grow">${cargoIcon(good(d.good).cargo)} <b>${amt(d.amount, d.good)} ${gName(d.good)}</b> nach ${pName(d.toPlanet)}${deadlineBar(w, d.createdDay, d.deadlineDay)} <span class="price">${perUnit(d.pricePerFe, d.good)}</span><div class="small">${state}</div></div>
       <div class="acts">${d.status === 'open' ? btn('Stornieren', 'cancel-demand', d.id, 'class="ghost"') : ''}</div></div>`;
     })
     .join('');
