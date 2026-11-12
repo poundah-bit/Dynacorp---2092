@@ -2,6 +2,7 @@
 // Storage can be unavailable (private mode, blocked site data) – then the game simply runs without saves.
 
 import type { World } from '../sim/index';
+import type { ListOrder } from './order';
 
 const KEY = 'dynacorp2092.save.v1';
 
@@ -9,6 +10,8 @@ export interface SaveData {
   version: 1;
   world: World;
   guideHidden: boolean;
+  /** the player's order of facilities and cargo groups (missing in older saves) */
+  order?: ListOrder;
 }
 
 export function saveGame(data: SaveData): void {
