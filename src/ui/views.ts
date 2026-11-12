@@ -183,7 +183,7 @@ function areaChips(area: Area, s: AreaStats): Chip[] {
 
 /** The header of an area tab: its icon, name and key figures. */
 export const areaHead = (area: Area, s: AreaStats) =>
-  `<header class="area-head" data-area="${area}">${icon(area)}<h2 class="area-name">${AREA_NAME[area]}</h2><div class="chips">${areaChips(area, s).map(chip).join('')}</div></header>`;
+  `<header class="area-head" data-area="${area}">${icon(area)}<h2 class="area-name">${AREA_NAME[area]}</h2><div class="area-chips">${areaChips(area, s).map(chip).join('')}</div></header>`;
 
 // ---------- Terra: bank, Dynacore, shipyard ----------
 

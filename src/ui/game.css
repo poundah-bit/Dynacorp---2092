@@ -331,7 +331,7 @@ svg.ic { width: 16px; height: 16px; flex: none; vertical-align: -3px; }
 }
 .area-head > .ic { width: 24px; height: 24px; color: var(--area); }
 .area-name { font-size: 17px; color: var(--area); min-width: 76px; }
-.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.area-chips { display: flex; flex-wrap: wrap; gap: 6px; flex: 1; min-width: 0; }
 .chip {
   display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 6px;
   background: var(--panel-2); color: var(--text); font-size: 13px; font-variant-numeric: tabular-nums;
@@ -343,7 +343,7 @@ svg.ic { width: 16px; height: 16px; flex: none; vertical-align: -3px; }
 #view[data-area] .card > h2 > .ic:first-child { width: 20px; height: 20px; color: var(--area); }
 @media (max-width: 699px) {
   .area-name { display: none; }
-  .area-head { padding: 8px 12px; }
+  .area-head { padding: 8px 12px; flex-wrap: nowrap; }
 }
 
 /* ---------- fill bars ---------- */

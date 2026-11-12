@@ -494,3 +494,15 @@ Bei der Umsetzung des Wirtschaftskerns kamen diese Festlegungen hinzu. Sie stehe
 | Börse bleibt still | normale neue Angebote machen keinen Ton (die Börse blinkt weiter), nur die seltenen Großaufträge von Terra (etwa jeder zehnte Terra-Auftrag) | ständig neue Angebote würden zu oft klingen (Rocco) |
 | Kein Dauerbimmeln | höchstens zwei Töne pro Spieltag, jeder Ton hat eine Pause, bevor er wieder klingt | bei 4× Tempo |
 | Einstellungen | Menü → Töne: an/aus, Lautstärke, jeder Ton einzeln abschaltbar, Probehören | |
+
+## Entscheidungen zur Optik, Teil 1: Lesbarkeit
+
+Konzept: `docs/superpowers/specs/2026-11-12-lesbarkeit-design.md`.
+
+| Thema | Entscheidung | Grund |
+|---|---|---|
+| Bereiche unterscheidbar | Anlagen Kupfer, Flotte Blau, Börse Rosé, Aufträge Violett – nur an Tab, Kopfzeile und Kartenkante; Grün/Gelb/Rot bleiben Status | man erkannte ohne Lesen nicht, in welchem Tab man ist (Rocco) |
+| Kopfzeile | Symbol, Name und Kennzahlen je Bereich; auf dem Handy ohne Namen | Lage auf einen Blick, ohne zu scrollen |
+| Icons | eigene Linien-Icons im Code, keine Bild- oder Schriftdateien | ruhig, passt zum späteren Stil, nichts aus dem Original |
+| Balken | Lager (Rohstoff fast leer / Produkt fast voll = Gefahr), Zustand, Laderaum, Flug, Frist – jeweils mit kleiner Beschriftung | drohender Stillstand und knappe Fristen fallen auf, bevor sie passieren |
+| Flotte | Karten behalten ihre Frachtart-Farbe am Rand | die Farbe trägt schon eine Information |
