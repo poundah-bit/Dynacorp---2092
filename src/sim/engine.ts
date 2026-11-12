@@ -3,6 +3,7 @@
 import { CONFIG, FACILITIES, GOODS, PLANETS, SHIPS, TERRA, distance, facilityDef, good, planet, shipDef, storageDef, unitOf } from './data';
 import { companyValue, debt, diff, repairShip, shipLoads, startRoute, transportDeadline } from './actions';
 import { runAi } from './ai';
+import { routesTick } from './automation';
 import type { Cargo, Demand, Facility, Ship, Transport, World } from './types';
 import {
   asset,
@@ -30,6 +31,7 @@ export function step(w: World): void {
   terraDemands(w);
   updatePrices(w);
   gravoStorms(w);
+  routesTick(w);
   runAi(w);
   checkBankruptcies(w);
   checkCollapse(w);

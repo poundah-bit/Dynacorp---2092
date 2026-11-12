@@ -3,9 +3,9 @@
 // same actions a player would (postDemand with an own supplier, own transport, assignShip).
 
 import { CONFIG, TERRA, facilityDef, good, planet, shipDef, unitOf } from './data';
-import { debt, type Result } from './actions';
+import { assignShip, debt, incoming, postDemand, postTransportForDemand, setRepairAtTerra, type Result } from './actions';
 import type { Route, World } from './types';
-import { company, facilitiesOf, facility, lineRoute, log, newId, pay, ship, storageCapacity } from './world';
+import { available, company, facilitiesOf, facility, freeCapacity, isCritical, lineRoute, log, newId, pay, ship, storageCapacity } from './world';
 
 const ok = <T>(value: T): Result<T> => ({ ok: true, value });
 const fail = (error: string): Result<never> => ({ ok: false, error });
@@ -115,4 +115,94 @@ export function removeRoute(w: World, c: string, routeId: string): Result<undefi
   w.routes = (w.routes ?? []).filter((x) => x !== r);
   log(w, c, `Lieferroute ${routeName(w, r)} aufgelöst.`);
   return ok(undefined);
+}
+
+// ---------- daily tick ----------
+
+const fmt = (x: number) => new Intl.NumberFormat('de-DE').format(Math.round(x));
+
+/** Takes back an own trip that could not be set up completely (reservation, demand, transport). */
+function undoTrip(w: World, demandId: string) {
+  const d = w.demands.find((x) => x.id === demandId);
+  if (!d) return;
+  const src = d.supplierFacility ? facility(w, d.supplierFacility) : undefined;
+  if (src) src.reserved[d.good] = Math.max(0, (src.reserved[d.good] ?? 0) - d.amount);
+  d.status = 'cancelled';
+  for (const t of w.transports) if (t.demand === d.id && t.status !== 'done') t.status = 'cancelled';
+}
+
+/** One game day for every Lieferroute: book finished trips, pay, check the conditions, start a trip. */
+export function routesTick(w: World): void {
+  const routes = w.routes;
+  if (!routes?.length) return;
+  for (const r of [...routes]) {
+    const owner = company(w, r.owner);
+    const from = facility(w, r.from);
+    const to = facility(w, r.to);
+    const s = ship(w, r.ship);
+    const gone = owner.bankrupt ? 'Firma bankrott' : !from ? 'Quelle gibt es nicht mehr' : !to ? 'Ziel gibt es nicht mehr' : !s ? 'Linienschiff gibt es nicht mehr' : '';
+    if (gone) {
+      w.routes = w.routes!.filter((x) => x !== r);
+      log(w, r.owner, `Lieferroute ${routeName(w, r)} beendet: ${gone}.`, 2);
+      continue;
+    }
+    const unit = unitOf(r.good);
+    if (r.demand) {
+      const d = w.demands.find((x) => x.id === r.demand);
+      if (d?.status === 'done') {
+        r.trips += 1;
+        r.delivered += d.amount;
+        r.demand = null;
+      } else if (!d || d.status === 'cancelled') {
+        r.demand = null;
+      } else {
+        r.status = `Unterwegs: ${fmt(d.amount)} ${unit} ${good(r.good).name}`;
+        continue;
+      }
+    }
+    if (!r.active) {
+      r.status = 'Pausiert';
+      continue;
+    }
+    pay(w, r.owner, null, CONFIG.automation.dailyCostPerRoute);
+    if (isCritical(s!)) {
+      if (!s!.repairAtTerra) setRepairAtTerra(w, r.owner, s!.id, true);
+      r.status = 'Linienschiff kritisch – zur Reparatur auf Terra vorgemerkt';
+      continue;
+    }
+    if (s!.phase !== 'idle') {
+      r.status = 'Linienschiff ist noch unterwegs';
+      continue;
+    }
+    const coming = incoming(w, to!.id, r.good);
+    const have = (to!.stock[r.good] ?? 0) + coming;
+    if (have >= r.refillBelow) {
+      r.status = `Ziel hat genug: ${fmt(have)} ${unit}, Nachschub unter ${fmt(r.refillBelow)} ${unit}`;
+      continue;
+    }
+    if (freeCapacity(to!, r.good) - coming < r.amount) {
+      r.status = 'Lager am Ziel voll';
+      continue;
+    }
+    const free = available(from!, r.good);
+    if (free < r.amount) {
+      r.status = `Wartet auf Ware: ${fmt(Math.max(0, free))} / ${fmt(r.amount)} ${unit}`;
+      continue;
+    }
+    const d = postDemand(w, r.owner, to!.id, r.good, r.amount, from!.id);
+    if (!d.ok) {
+      r.status = d.error;
+      continue;
+    }
+    const t = postTransportForDemand(w, r.owner, d.value.id, 'own');
+    const a = t.ok ? assignShip(w, r.owner, s!.id, t.value.id, r.id) : t;
+    if (!a.ok) {
+      undoTrip(w, d.value.id);
+      r.status = a.error;
+      continue;
+    }
+    r.demand = d.value.id;
+    r.status = 'Fahrt gestartet';
+    log(w, r.owner, `Lieferroute ${routeName(w, r)}: ${fmt(r.amount)} ${unit} ${good(r.good).name} unterwegs.`, 1);
+  }
 }

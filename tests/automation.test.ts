@@ -118,3 +118,85 @@ describe('managing routes', () => {
     expect(w.routes).toHaveLength(0);
   });
 });
+
+import { step } from '../src/sim/index';
+import { runUntil } from './helpers';
+
+const only = (w: World) => w.routes![0]!;
+
+describe('routes run by themselves', () => {
+  function started() {
+    const s = routeSetup();
+    const r = addRoute(s.w, s.me, { from: s.well.id, to: s.plastic.id, good: 'oil', ship: s.tanker.id, amount: 20_000 });
+    if (!r.ok) throw new Error(r.error);
+    s.plastic.stock.oil = 0;
+    return { ...s, route: r.value };
+  }
+  it('waits for goods, then starts a trip with the Linienschiff', () => {
+    const { w, well, tanker } = started();
+    well.stock.oil = 0;
+    step(w);
+    expect(only(w).status).toContain('Wartet auf Ware');
+    expect(only(w).demand).toBeNull();
+    well.stock.oil = 25_000;
+    step(w);
+    expect(only(w).status).toContain('Fahrt gestartet');
+    const d = w.demands.find((x) => x.id === only(w).demand)!;
+    expect(d.own).toBe(true);
+    expect(w.transports.some((t) => t.demand === d.id && t.ship === tanker.id)).toBe(true);
+  });
+  it('counts the finished trip', () => {
+    const { w, well } = started();
+    well.stock.oil = 25_000;
+    runUntil(w, () => only(w).trips === 1, 120);
+    expect(only(w).delivered).toBe(20_000);
+    expect(only(w).demand).toBeNull();
+  });
+  it('waits while the target has enough', () => {
+    const { w, well, plastic } = started();
+    well.stock.oil = 25_000;
+    plastic.stock.oil = only(w).refillBelow + 1_000;
+    step(w);
+    expect(only(w).status).toContain('Ziel hat genug');
+    expect(only(w).demand).toBeNull();
+  });
+  it('costs 1.500 Cr per day only while active', () => {
+    const { w, me, plastic } = started();
+    plastic.stock.oil = only(w).refillBelow + 5_000;
+    const paused = structuredClone(w);
+    setRouteActive(paused, me, paused.routes![0]!.id, false);
+    step(w);
+    step(paused);
+    expect(company(paused, me).cash - company(w, me).cash).toBe(1_500);
+  });
+  it('a trip under way finishes after pausing, then the ship is free', () => {
+    const { w, me, well, tanker } = started();
+    well.stock.oil = 25_000;
+    step(w);
+    expect(setRouteActive(w, me, only(w).id, false).ok).toBe(true);
+    runUntil(w, () => only(w).trips === 1, 120);
+    expect(lineRoute(w, tanker.id)).toBeUndefined();
+  });
+  it('two routes from one source share its stock', () => {
+    const { w, me, well, plastic } = started();
+    company(w, me).cash = 10_000_000;
+    expect(buyAutomation(w, me).ok).toBe(true);
+    const refinery = w.facilities.find((f) => f.id === 'f-fake-1')!;
+    refinery.type = 'refinery';
+    refinery.stock = {};
+    const second = buyShip(w, me, 'tank-c');
+    if (!second.ok) throw new Error(second.error);
+    expect(addRoute(w, me, { from: well.id, to: refinery.id, good: 'oil', ship: second.value.id, amount: 20_000 }).ok).toBe(true);
+    plastic.stock.oil = 0;
+    well.stock.oil = 25_000;
+    step(w);
+    expect(w.routes!.filter((r) => r.demand).length).toBe(1);
+  });
+  it('ends when its target is gone', () => {
+    const { w, plastic } = started();
+    w.facilities = w.facilities.filter((f) => f !== plastic);
+    step(w);
+    expect(w.routes).toHaveLength(0);
+    expect(w.log.some((l) => l.text.includes('beendet'))).toBe(true);
+  });
+});
