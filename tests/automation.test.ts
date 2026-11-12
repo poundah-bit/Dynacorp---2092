@@ -52,3 +52,69 @@ describe('buying the Logistikzentrale', () => {
     expect(automationLevel(w, me)).toBe(0);
   });
 });
+
+import { addRoute, assignShip, buyShip, lineRoute, postDemand, postTransportForDemand, removeRoute, routeGoods, sellShip, setRouteActive, shipDef, shipsOf, storageCapacity } from '../src/sim/index';
+
+/** Level-1 player with an oil well, a plastic plant (fake) and a big tanker at Terra. */
+export function routeSetup() {
+  const w = soloWorld();
+  const me = player(w);
+  const well = oilWellWithTanker(w);
+  fakePlants(w, 4, well);
+  const plastic = w.facilities.find((f) => f.id === 'f-fake-0')!;
+  plastic.type = 'plasticplant';
+  company(w, me).loans = [];
+  company(w, me).cash = 10_000_000;
+  expect(buyAutomation(w, me).ok).toBe(true);
+  const big = buyShip(w, me, 'tank-c');
+  if (!big.ok) throw new Error(big.error);
+  return { w, me, well, plastic, tanker: big.value };
+}
+
+describe('managing routes', () => {
+  it('a route with defaults from ship and target storage', () => {
+    const { w, me, well, plastic, tanker } = routeSetup();
+    expect(routeGoods(w, well.id, plastic.id)).toEqual(['oil']);
+    const r = addRoute(w, me, { from: well.id, to: plastic.id, good: 'oil', ship: tanker.id });
+    if (!r.ok) throw new Error(r.error);
+    expect(r.value.amount).toBe(Math.min(shipDef(tanker.model).capacity, storageCapacity(plastic, 'oil')));
+    expect(r.value.refillBelow).toBe(storageCapacity(plastic, 'oil') / 2);
+    expect(lineRoute(w, tanker.id)?.id).toBe(r.value.id);
+  });
+  it('limits, cargo and one route per ship', () => {
+    const { w, me, well, plastic, tanker } = routeSetup();
+    const small = shipsOf(w, me).find((s) => s.model === 'tank-a')!;
+    const piece = shipsOf(w, me).find((s) => s.model === 'piece-a')!;
+    const wrong = addRoute(w, me, { from: well.id, to: plastic.id, good: 'oil', ship: piece.id });
+    expect(!wrong.ok && wrong.error).toContain('Erdöl');
+    expect(addRoute(w, me, { from: well.id, to: plastic.id, good: 'oil', ship: tanker.id, amount: 10_000 }).ok).toBe(true);
+    const second = addRoute(w, me, { from: well.id, to: plastic.id, good: 'oil', ship: small.id, amount: 10_000 });
+    expect(!second.ok && second.error).toContain('Höchstens 1');
+    company(w, me).cash = 10_000_000;
+    expect(buyAutomation(w, me).ok).toBe(true);
+    const same = addRoute(w, me, { from: well.id, to: plastic.id, good: 'oil', ship: tanker.id, amount: 10_000 });
+    expect(!same.ok && same.error).toContain('Linienschiff');
+    const tooBig = addRoute(w, me, { from: well.id, to: plastic.id, good: 'oil', ship: small.id, amount: 999_999 });
+    expect(tooBig.ok).toBe(false);
+  });
+  it('a Linienschiff is protected until its route is paused, deleting frees it', () => {
+    const { w, me, well, plastic, tanker } = routeSetup();
+    const r = addRoute(w, me, { from: well.id, to: plastic.id, good: 'oil', ship: tanker.id, amount: 5_000 });
+    if (!r.ok) throw new Error(r.error);
+    well.stock.oil = 20_000;
+    const d = postDemand(w, me, plastic.id, 'oil', 5_000, well.id);
+    if (!d.ok) throw new Error(d.error);
+    const t = postTransportForDemand(w, me, d.value.id, 'own');
+    if (!t.ok) throw new Error(t.error);
+    const tr = t.value;
+    const blocked = assignShip(w, me, tanker.id, tr.id);
+    expect(!blocked.ok && blocked.error).toContain('Linienschiff');
+    const sell = sellShip(w, me, tanker.id);
+    expect(!sell.ok && sell.error).toContain('Linienschiff');
+    expect(setRouteActive(w, me, r.value.id, false).ok).toBe(true);
+    expect(lineRoute(w, tanker.id)).toBeUndefined();
+    expect(assignShip(w, me, tanker.id, tr.id).ok).toBe(true);
+    expect(removeRoute(w, me, r.value.id).ok).toBe(true);
+    expect(w.routes).toHaveLength(0);
+  });
+});

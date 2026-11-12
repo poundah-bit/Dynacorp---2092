@@ -14,6 +14,7 @@ import {
   facilitiesOf,
   freeCapacity,
   isCritical,
+  lineRoute,
   log,
   newId,
   pay,
@@ -68,6 +69,12 @@ export function creditLimit(w: World, companyId: string): number {
   const byValue = companyValue(w, companyId) * CONFIG.credit.limitShareOfCompanyValue;
   const limit = Math.min(CONFIG.credit.maxLimit, Math.max(base, byValue));
   return Math.max(0, Math.round(limit - debt(w, companyId)));
+}
+
+/** Message for a Linienschiff that a player tries to use otherwise. */
+function lineBusy(w: World, from: string, to: string): string {
+  const name = (id: string) => planet(facility(w, id)?.planet ?? TERRA).name;
+  return `Linienschiff der Lieferroute ${name(from)} → ${name(to)} – erst die Route pausieren.`;
 }
 
 function active(w: World, companyId: string): Result<undefined> {
@@ -212,6 +219,8 @@ function ownIdleShipAtTerra(w: World, companyId: string, shipId: string): Result
 }
 
 export function sellShip(w: World, companyId: string, shipId: string): Result<number> {
+  const line = lineRoute(w, shipId);
+  if (line) return fail(lineBusy(w, line.from, line.to));
   const r = ownIdleShipAtTerra(w, companyId, shipId);
   if (!r.ok) return r;
   const price = Math.round(shipValue(r.value) * 0.6);
@@ -526,9 +535,11 @@ export function canJoin(w: World, s: Ship, t: Pick<Transport, 'cargo' | 'amount'
  * Sends one of the carrier's ships to execute an accepted transport. A ship that is already on its way to
  * the same pickup with the same destination takes the load along if there is room.
  */
-export function assignShip(w: World, companyId: string, shipId: string, transportId: string): Result<undefined> {
+export function assignShip(w: World, companyId: string, shipId: string, transportId: string, viaRoute?: string): Result<undefined> {
   const s = ship(w, shipId);
   if (!s || s.owner !== companyId) return fail('Schiff nicht gefunden.');
+  const line = lineRoute(w, s.id);
+  if (line && line.id !== viaRoute) return fail(lineBusy(w, line.from, line.to));
   const t = transport(w, transportId);
   if (!t || t.carrier !== companyId || t.status !== 'accepted' || t.ship) return fail('Kein passender übernommener Auftrag.');
   const def = shipDef(s.model);
