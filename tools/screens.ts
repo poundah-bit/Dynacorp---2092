@@ -47,11 +47,46 @@ for (const [name, vp] of [['tablet', { width: 1280, height: 800 }], ['phone', { 
   await page.addInitScript((s) => localStorage.setItem('dynacorp2092.save.v1', s), save);
   await page.goto('http://localhost:5199/');
   await page.click('[data-act="continue"]');
-  for (const tab of ['facilities', 'fleet', 'market', 'orders']) {
+  if (name === 'tablet') {
+    await page.locator('.map-card').screenshot({ path: 'screens/tablet-map.png' });
+    await page.click('[data-zoom="1.4"]');
+    await page.click('[data-zoom="1.4"]');
+    await page.waitForTimeout(100);
+    await page.locator('.map-card canvas').screenshot({ path: 'screens/tablet-map-zoom.png' });
+    await page.click('[data-zoom="0"]');
+  }
+  for (const tab of [...(name === 'phone' ? ['map'] : []), 'facilities', 'fleet', 'market', 'orders']) {
     await page.click(`#nav [data-a="${tab}"]`);
     await page.waitForTimeout(150);
     await page.screenshot({ path: `screens/${name}-${tab}.png`, fullPage: name === 'phone' });
   }
+  await page.close();
+}
+// frame time with 20 AI firms at 4× speed: time spent inside each animation frame callback
+{
+  const busy = newGame('Testfirma', 'easy', 5, 20);
+  run(busy, 120);
+  const page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
+  await page.addInitScript((s) => {
+    localStorage.setItem('dynacorp2092.save.v1', s);
+    const raf = window.requestAnimationFrame.bind(window);
+    (window as unknown as { __ft: number[] }).__ft = [];
+    window.requestAnimationFrame = (cb) =>
+      raf((t) => {
+        const a = performance.now();
+        cb(t);
+        (window as unknown as { __ft: number[] }).__ft.push(performance.now() - a);
+      });
+  }, JSON.stringify({ version: 1, world: busy, guideHidden: true }));
+  await page.goto('http://localhost:5199/');
+  await page.click('[data-act="continue"]');
+  await page.click('[data-act="speed"][data-a="4"]');
+  await page.evaluate(() => ((window as unknown as { __ft: number[] }).__ft = []));
+  await page.waitForTimeout(3000);
+  const ft = (await page.evaluate(() => (window as unknown as { __ft: number[] }).__ft)).sort((a, b) => a - b);
+  const q = (p: number) => ft[Math.floor(ft.length * p)]!.toFixed(2);
+  console.log(`frames ${ft.length} · median ${q(0.5)} ms · p95 ${q(0.95)} ms · max ${ft[ft.length - 1]!.toFixed(2)} ms`);
+  await page.locator('.map-card canvas').screenshot({ path: 'screens/tablet-map-busy.png' });
   await page.close();
 }
 await browser.close();

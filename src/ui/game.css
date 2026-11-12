@@ -243,12 +243,14 @@ tr.me td { color: var(--accent); font-weight: 600; }
 .map-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; margin: 8px 4px 0; color: var(--muted); }
 .map-legend span { display: inline-flex; align-items: center; gap: 6px; }
 .map-legend .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
-.map-legend .dot.raw { background: var(--tier-raw); }
-.map-legend .dot.intermediate { background: var(--tier-mid); }
-.map-legend .dot.final { background: var(--tier-final); }
+.map-legend .dot.raw, .map-legend .dot.intermediate, .map-legend .dot.final { background: #1a2238; }
+.map-legend .dot.raw { box-shadow: 0 0 5px 3px var(--tier-raw); }
+.map-legend .dot.intermediate { box-shadow: 0 0 5px 3px var(--tier-mid); }
+.map-legend .dot.final { box-shadow: 0 0 5px 3px var(--tier-final); }
+.map-legend .dot.terra { background: #1a2238; box-shadow: 0 0 5px 3px var(--tier-terra); }
 .map-legend .dot.mine { background: transparent; box-shadow: 0 0 0 3px var(--accent); }
 .map-legend .tri { width: 0; height: 0; border-left: 10px solid var(--accent); border-top: 5px solid transparent; border-bottom: 5px solid transparent; display: inline-block; }
-.map-legend .ring { width: 12px; height: 12px; border-radius: 50%; border: 1.5px dashed var(--bad); display: inline-block; }
+.map-legend .veil { width: 18px; height: 8px; border-radius: 4px; background: linear-gradient(90deg, transparent, rgba(255, 123, 114, 0.45), transparent); display: inline-block; }
 .map-info { padding: 6px 4px 0; }
 .map-info h3 { margin-top: 8px; }
 ul.plain { margin: 6px 0; padding-left: 18px; }

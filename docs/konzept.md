@@ -515,3 +515,15 @@ Konzept: `docs/superpowers/specs/2026-11-12-lesbarkeit-design.md`.
 | Format | Opus mit 80 kbit/s, ≈ 2,4 MB pro Stück statt 5 MB als MP3; gestreamt, nicht vorab geladen | kleines Spiel und späteres APK; auf älteren iPhones/iPads bleibt es dann still (Rocco) |
 | XMAS-Stück | läuft das ganze Jahr gleichberechtigt mit | Entscheidung Rocco |
 | Einstellungen | eigener Schalter und Lautstärkeregler für Musik (Vorgabe an, 40 %) im Menü „Musik und Töne“, getrennt von den Ereignis-Tönen, dazu „Nächstes Stück“ | Ereignis-Töne bleiben hörbar |
+
+## Entscheidungen zur Optik, Teil 2: Atmosphäre und Sternkarte
+
+Konzept: `docs/superpowers/specs/2026-11-12-sternkarte-design.md`.
+
+| Thema | Entscheidung | Grund |
+|---|---|---|
+| Richtung | Weltraum-Panorama plus ausgewählte Bewegung; Leitstand-Optik bleibt für Teil 3 | Stimmung und sichtbares Spielgeschehen (Rocco) |
+| Planeten | im Code erzeugt, Aussehen nach Industrie (Ölwelt, Ozeanwelt, Erzwüste …), keine Bilddateien | unverwechselbar, scharf in jedem Zoom, kein Speicher für Bilder |
+| Stufe | als Atmosphärenleuchten in der Stufenfarbe | Information bleibt, Planeten wirken trotzdem natürlich (Rocco) |
+| Bewegung | Schiffsspuren, Produktionspuls, Ankunftsfunke, Gravo-Sturm als Schleier mit Flackern; keine Handelsbahnen aller Firmen | lebendig, aber ruhig (Rocco) |
+| Leistung | Ebenen vorzeichnen statt WebGL; gemessen 0,7 ms Median, 3,2 ms p95 pro Bild mit 20 KI-Firmen bei 4× | flüssig auf dem Tablet, keine neue Bibliothek |
