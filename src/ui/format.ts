@@ -110,3 +110,57 @@ export function flows(rec: Record<string, number>, units = 1): string {
   const parts = Object.entries(rec).map(([g, n]) => `${amt(n * units, g)} ${gName(g)}`);
   return parts.length ? parts.join(' + ') : '–';
 }
+
+// ---------- fill bars ----------
+
+export type Tone = 'good' | 'warn' | 'bad' | 'neutral';
+
+export interface BarOpts {
+  value: number;
+  max: number;
+  /** part of the fill that is already promised to someone (hatched, drawn at the top of the fill) */
+  reserved?: number;
+  /** amount on its way (dashed outline after the fill) */
+  incoming?: number;
+  tone: Tone;
+  label: string;
+}
+
+export const STOCK_IN_BAD = 0.1;
+export const STOCK_IN_WARN = 0.25;
+export const STOCK_OUT_WARN = 0.75;
+export const STOCK_OUT_BAD = 0.9;
+export const FACILITY_BAD_BELOW = 30;
+export const SHIP_WARN_BELOW = 50;
+
+const clamp01 = (x: number) => (Number.isFinite(x) ? Math.min(1, Math.max(0, x)) : 0);
+const pct = (x: number) => Math.round(clamp01(x) * 1000) / 10;
+
+/** A raw material running empty or a product running full stops the plant. */
+export function stockTone(isInput: boolean, ratio: number): Tone {
+  if (isInput) return ratio < STOCK_IN_BAD ? 'bad' : ratio < STOCK_IN_WARN ? 'warn' : 'neutral';
+  return ratio > STOCK_OUT_BAD ? 'bad' : ratio > STOCK_OUT_WARN ? 'warn' : 'neutral';
+}
+
+export const facilityConditionTone = (c: number): Tone => (c < FACILITY_BAD_BELOW ? 'bad' : c < CONFIG.facilities.repairBelow ? 'warn' : 'good');
+export const shipConditionTone = (c: number): Tone => (c < CONFIG.ships.criticalBelow ? 'bad' : c < SHIP_WARN_BELOW ? 'warn' : 'good');
+
+/** Share of the time between creation and deadline that is still left (0..1). */
+export const deadlineRatio = (day: number, created: number, deadline: number) =>
+  deadline - created <= 0 ? 0 : clamp01((deadline - day) / (deadline - created));
+
+export function deadlineTone(day: number, created: number, deadline: number): Tone {
+  if (deadline - day < 0) return 'bad';
+  return deadlineRatio(day, created, deadline) > 0.5 ? 'neutral' : 'warn';
+}
+
+/** A thin fill bar (HTML) with optional reserved and incoming parts. */
+export function bar(o: BarOpts): string {
+  const share = (x: number) => (o.max > 0 ? x / o.max : 0);
+  const fill = pct(share(o.value));
+  const res = o.reserved ? Math.min(pct(share(o.reserved)), fill) : 0;
+  const inc = o.incoming ? Math.min(pct(share(o.incoming)), Math.round((100 - fill) * 10) / 10) : 0;
+  return `<span class="bar ${o.tone}" role="meter" aria-valuenow="${Math.round(Math.max(0, o.value))}" aria-valuemin="0" aria-valuemax="${Math.round(Math.max(0, o.max))}" aria-label="${esc(o.label)}"><span class="bar-fill" style="width:${fill}%"></span>${
+    res > 0 ? `<span class="bar-res" style="left:${Math.round((fill - res) * 10) / 10}%;width:${res}%"></span>` : ''
+  }${inc > 0 ? `<span class="bar-in" style="left:${fill}%;width:${inc}%"></span>` : ''}</span>`;
+}
