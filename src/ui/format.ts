@@ -1,6 +1,7 @@
 // Formatting for the game UI: German number format, labels, HTML escaping.
 
 import { CARGO_UNIT, CONFIG, cargoName, facility, facilityDef, good, planet, shipDef, shipLoads, storageDef, unitOf, type Cargo, type Facility, type Ship, type Transport, type World } from '../sim/index';
+import type { IconName } from './icons';
 import { companyName, shipLegDays } from './play';
 
 const nf = new Intl.NumberFormat('de-DE', { maximumFractionDigits: 0 });
@@ -65,10 +66,10 @@ export const gName = (id: string) => good(id).name;
 export const who = (w: World, id: string | null) => esc(companyName(w, id));
 export { cargoName };
 
-export function facilityStatus(f: Facility): { text: string; cls: string } {
-  if (f.status === 'construction') return { text: `Im Bau – noch ${days(f.buildDaysLeft)}`, cls: 'warn' };
-  if (f.status === 'stopped') return { text: 'Stillgelegt', cls: 'bad' };
-  return { text: 'In Betrieb', cls: 'good' };
+export function facilityStatus(f: Facility): { text: string; cls: string; icon: IconName } {
+  if (f.status === 'construction') return { text: `Im Bau – noch ${days(f.buildDaysLeft)}`, cls: 'warn', icon: 'construction' };
+  if (f.status === 'stopped') return { text: 'Stillgelegt', cls: 'bad', icon: 'stopped' };
+  return { text: 'In Betrieb', cls: 'good', icon: 'running' };
 }
 
 export function shipStatus(w: World, s: Ship): { text: string; cls: string } {

@@ -3,6 +3,7 @@
 
 import { CONFIG, TERRA, company, distance, facilityDef, planet, shipDef, shipsOf, type World } from '../sim/index';
 import { cr, dec, esc, flows, num, pc, shipStatus } from './format';
+import { facilityIcon, icon } from './icons';
 
 const btn = (label: string, act: string, a = '', extra = '') => `<button data-act="${act}" data-a="${esc(a)}" ${extra}>${label}</button>`;
 
@@ -38,7 +39,7 @@ export function planetInfo(w: World, me: string, id: string): string {
     `class="${mine ? '' : 'primary'}" ${c.cash < def.price ? 'disabled' : ''} data-tip="Die Anlage wird bei Dynacore auf Terra gekauft und muss dann mit einem Stückgutfrachter hierher geflogen werden."`,
   );
   return `<h3>${esc(p.name)} <span class="muted small">${pc(far)} von Terra</span></h3>
-    <p class="small"><b>${def.name}</b>: liefert ${flows(def.outputs)} pro Tag${Object.keys(def.inputs).length ? ` aus ${flows(def.inputs)}` : ''}</p>
+    <p class="small">${icon(facilityIcon(p.facility))} <b>${def.name}</b>: liefert ${flows(def.outputs)} pro Tag${Object.keys(def.inputs).length ? ` aus ${flows(def.inputs)}` : ''}</p>
     ${storm ? '<p class="small warn">Liegt in der Gravo-Sturm-Zone: Stürme beschädigen hier Anlagen und Schiffe.</p>' : ''}
     <p class="small">${mine ? `<b class="good">Deine Anlage</b> × ${num(mine.units)} · Zustand ${dec(mine.condition)} %` : 'Du hast hier noch nichts.'}${owners ? ` · Auch hier: ${owners}` : ''}</p>
     ${shipList}

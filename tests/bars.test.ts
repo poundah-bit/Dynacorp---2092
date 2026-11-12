@@ -53,3 +53,24 @@ describe('bar', () => {
     expect(full).toContain('left:95%;width:5%');
   });
 });
+
+import { ICONS } from '../src/ui/icons';
+import { planetInfo } from '../src/ui/mapinfo';
+import { facilitiesView, fleetView, marketView, ordersView, type ViewCtx } from '../src/ui/views';
+import { oilWellWithTanker, player, soloWorld } from './helpers';
+import type { World } from '../src/sim/index';
+
+export const ctx = (w: World): ViewCtx => ({ w, me: player(w), marketAll: true, marketGood: '', marketSort: 'ready', priceTrend: () => 0, chainGood: '' });
+const meters = (html: string, label: string) => html.split(`aria-label="${label}"`).length - 1;
+
+describe('facility view', () => {
+  it('shows a condition bar, a stock bar per good and the facility icon', () => {
+    const w = soloWorld();
+    oilWellWithTanker(w);
+    const html = facilitiesView(ctx(w));
+    expect(meters(html, 'Zustand')).toBe(1);
+    expect(meters(html, 'Erdöl')).toBe(1);
+    expect(html).toContain(ICONS.oilwell[0]);
+    expect(planetInfo(w, player(w), 'vesta-nova')).toContain(ICONS.oilwell[0]);
+  });
+});

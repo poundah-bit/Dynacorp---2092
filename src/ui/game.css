@@ -345,3 +345,16 @@ svg.ic { width: 16px; height: 16px; flex: none; vertical-align: -3px; }
   .area-name { display: none; }
   .area-head { padding: 8px 12px; }
 }
+
+/* ---------- fill bars ---------- */
+.bar { position: relative; display: block; height: 6px; margin: 4px 0 2px; border-radius: 3px; background: var(--line); overflow: hidden; --tone: var(--muted); }
+td .bar { height: 8px; min-width: 64px; margin-left: auto; }
+.bar.good { --tone: var(--good); }
+.bar.warn { --tone: var(--warn); }
+.bar.bad { --tone: var(--bad); }
+.bar-fill, .bar-res, .bar-in { position: absolute; top: 0; bottom: 0; left: 0; }
+.bar-fill { background: var(--tone); border-radius: 3px; }
+.bar-res { background: repeating-linear-gradient(135deg, rgba(0, 0, 0, 0.55) 0 3px, transparent 3px 6px); }
+.bar-in { border: 1px dashed var(--tone); border-left: 0; border-radius: 0 3px 3px 0; }
+@media (prefers-reduced-motion: no-preference) { .bar-fill, .bar-res, .bar-in { transition: width 0.3s ease, left 0.3s ease; } }
+.badge .ic { width: 16px; height: 16px; vertical-align: -4px; }

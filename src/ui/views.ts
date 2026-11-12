@@ -75,8 +75,11 @@ import {
   perUnit,
   qty,
   SHIP_KIND,
+  bar,
+  facilityConditionTone,
+  stockTone,
 } from './format';
-import { icon, type IconName } from './icons';
+import { facilityIcon, icon, type IconName } from './icons';
 import type { AreaStats } from './play';
 
 export type MarketSort = 'ready' | 'price' | 'value';
@@ -265,7 +268,10 @@ export function facilitiesView({ w, me }: ViewCtx): string {
           const isIn = g in def.inputs;
           const res = f.reserved[g] ?? 0;
           const inc = isIn ? incoming(w, f.id, g) : 0;
-          return `<tr><td>${gName(g)} <span class="muted small">${isIn ? 'Rohstoff' : 'Produkt'}</span></td><td class="n">${amt(f.stock[g] ?? 0, g)}</td><td class="n">${amt(storageCapacity(f, g), g)}</td>
+          const cap = storageCapacity(f, g);
+          const have = f.stock[g] ?? 0;
+          const fill = bar({ value: have, max: cap, reserved: isIn ? undefined : res, incoming: isIn ? inc : undefined, tone: stockTone(isIn, cap > 0 ? have / cap : 0), label: gName(g) });
+          return `<tr><td>${gName(g)} <span class="muted small">${isIn ? 'Rohstoff' : 'Produkt'}</span></td><td class="n stock">${amt(have, g)}${fill}</td><td class="n">${amt(cap, g)}</td>
           <td class="n">${isIn ? (inc ? `${amt(inc, g)} bestellt` : '–') : res ? `${amt(res, g)} zugesagt` : '–'}</td><td class="n">${isIn ? '' : available(f, g) >= 0 ? `${amt(available(f, g), g)} frei` : `<span class="bad">${amt(-available(f, g), g)} fehlen</span>`}</td></tr>`;
         })
         .join('');
@@ -280,7 +286,8 @@ export function facilitiesView({ w, me }: ViewCtx): string {
         btn('Verschrotten', 'scrap', f.id, 'class="ghost"'),
       ].join('');
       return `<section class="card">
-        <h2>${facilityLabel(f)}${f.units > 1 ? ` <span class="muted">× ${f.units}</span>` : ''} <span class="badge ${st.cls}">${st.text}</span></h2>
+        <h2>${icon(facilityIcon(f.type))}${facilityLabel(f)}${f.units > 1 ? ` <span class="muted">× ${f.units}</span>` : ''} <span class="badge ${st.cls}">${icon(st.icon)} ${st.text}</span></h2>
+        ${bar({ value: f.condition, max: 100, tone: facilityConditionTone(f.condition), label: 'Zustand' })}
         <p class="small">Zustand <b class="${f.condition < CONFIG.facilities.repairBelow ? 'bad' : ''}">${dec(f.condition)} %</b> · Auslastung ${eff} % · Kosten heute ${cr(cost)} · liefert bis zu ${flows(def.outputs, f.units)} pro Tag${Object.keys(def.inputs).length ? ` aus ${flows(def.inputs, f.units)}` : ''}</p>
         ${f.status === 'running' && eff === 0 ? `<p class="bad small">Steht still: ${Object.keys(def.inputs).some((g) => (f.stock[g] ?? 0) <= 0) ? 'Rohstoffe fehlen – „Ware bestellen“.' : 'Lager voll – liefere Ware aus.'}</p>` : ''}
         <table><tr><th>Ware</th><th class="n">Lager</th><th class="n">Kapazität</th><th class="n">Aufträge</th><th class="n"></th></tr>${stock}</table>
