@@ -72,6 +72,23 @@
     "priceIndexBelow": 0.45,
     "insolventShare": 0.5
   },
+  "stories": {
+    "firstDay": 40,
+    "firstDayJitter": 20,
+    "pauseDays": [20, 50],
+    "maxActive": 2,
+    "planetBaseChance": 0.06,
+    "recessionMinDay": 250,
+    "recessionEveryDays": 300,
+    "recentStormDays": 20,
+    "innerParsec": 350,
+    "risePart": [0.2, 0.3],
+    "peakPart": [0.3, 0.5],
+    "factorLimits": [0.5, 3],
+    "bonusMax": 0.4,
+    "daysLimits": [20, 120],
+    "keepDoneDays": 200
+  },
   "automation": {
     "levels": [
       { "price": 2500000, "routes": 1 },

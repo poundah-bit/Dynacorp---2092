@@ -1,0 +1,523 @@
+{
+  "names": {
+    "pathogenStart": ["Kessler", "Varn", "Oduya", "Telmar", "Brissot", "Hallorin", "Quell", "Sabrac", "Ithon", "Morvay", "Dresk", "Lunhaven", "Pell", "Zarenko"],
+    "pathogenEnd": ["-Fieber", "-Syndrom", "-Virus", "-Fleckfieber", "-Sumpffieber", "-Nervenfieber"],
+    "tech": ["Quantenrechner", "Neuralgreifer", "Plasmaschweißer", "Gravitationsdämpfer", "Schwarmmonteur", "Fusionsreaktor Typ K", "Nanoformer", "Lichtgitterspeicher", "Feldkern-Antrieb", "Spinprozessor", "Haftgreifer Gecko-9", "Kristallrechner"],
+    "fashion": ["Nebula-Look", "Retro-Raumanzug", "Schimmerstoff", "Kometenschleier", "Orbitalkragen", "Sternstaub-Stil", "Glimmerlook", "Polarlicht-Schnitt", "Pionier-Overall", "Mondfaltenrock", "Gravitonmantel", "Ringwelten-Stil"],
+    "first": ["Mira", "Joran", "Tessa", "Ilko", "Noemi", "Arvid", "Selin", "Kaito", "Liv", "Oskar", "Amaru", "Fenna", "Rahul", "Zoe", "Bastien", "Imani"],
+    "last": ["Talvén", "Okoro", "Brandt", "Lindqvist", "Sarrazin", "Mbeki", "Hollis", "Varga", "Castellan", "Nakamura", "Ferreira", "Dumont", "Kowal", "Aydın", "Rask", "Quiroga"],
+    "cityStart": ["Neu-", "Port ", "Fort ", "Hoch-", "Alt-", "Kap ", "Sankt ", "", "", ""],
+    "cityEnd": ["Arvel", "Kessandra", "Morrow", "Tilden", "Brakas", "Ostrel", "Veyra", "Lunetta", "Garrow", "Selvin", "Dunmar", "Pyrrha", "Calden", "Iskar"],
+    "institute": ["Institut für Xenomedizin {ort}", "Forschungszentrum {stadt}", "Kolleg von {ort}", "{last}-Institut", "Polytechnikum {stadt}", "Amt für Statistik {ort}", "Zentrum für Raumökonomie {stadt}", "Observatorium {stadt}", "Wirtschaftsinstitut {ort}", "Labor {last} & Partner", "Institut für Siedlungsbau {ort}", "Technikum {stadt}"]
+  },
+  "causes": [
+    {
+      "id": "technologiesprung", "category": "boom", "weight": 3, "minDay": 120,
+      "place": { "kind": "terra" },
+      "effects": [{ "good": "robots", "factor": [2, 3], "at": "terra" }],
+      "days": [70, 120],
+      "title": ["Technologiesprung auf Terra", "Durchbruch: {technik}"],
+      "start": [
+        "Das {institut} stellt den {technik} vor. Terras Industrie will umrüsten – Roboter sind plötzlich überall gefragt.",
+        "Mit dem {technik} beginnt auf Terra eine neue Fertigungswelle. Betriebe in {stadt} bestellen Roboter in großen Mengen.",
+        "Der {technik} ist serienreif. Terras Werkhallen rüsten um, und die Nachfrage nach Robotern zieht an."
+      ],
+      "peak": [
+        "Höhepunkt der Umrüstung: Die Nachfrage nach Robotern ist {faktor}. Lieferzeiten sind das neue Gesprächsthema in {stadt}.",
+        "Der {technik}-Boom erreicht seinen Gipfel. Die Nachfrage nach Robotern ist {faktor}.",
+        "{person} vom Industrierat Terras: „Wir brauchen jeden Roboter, den die Galaxie liefern kann.“"
+      ],
+      "end": [
+        "Die Technik ist ausgereift, die meisten Werke sind umgerüstet. Terra bestellt Roboter wieder wie gewohnt.",
+        "Der {technik} ist Alltag geworden. Die Roboter-Nachfrage auf Terra normalisiert sich.",
+        "Das {institut} erklärt die Umrüstung für abgeschlossen. Die Bestellungen kehren auf das übliche Maß zurück."
+      ]
+    },
+    {
+      "id": "seuche", "category": "notlage", "weight": 3, "minDay": 60,
+      "place": { "kind": "planet" },
+      "effects": [{ "good": "medicine", "factor": [2, 3], "at": "place" }],
+      "priceBonus": [0.2, 0.4],
+      "days": [40, 80],
+      "title": ["Seuche auf {ort}", "{erreger} auf {ort}"],
+      "start": [
+        "In {stadt} auf {ort} häufen sich Fälle von {erreger}. {person} bittet um Medikamente – {ort} zahlt {bonus} über Kurs.",
+        "Das {institut} meldet einen Ausbruch von {erreger}. {ort} bestellt dringend Medikamente und zahlt {bonus} Aufschlag.",
+        "Auf {ort} breitet sich das {erreger} aus. Die Kliniken in {stadt} brauchen Medikamente, {bonus} über Kurs."
+      ]
+      ,
+      "peak": [
+        "Höchststand auf {ort}: Die Nachfrage nach Medikamenten ist {faktor}.",
+        "Das {institut} meldet den Höhepunkt der Welle von {erreger}. {ort} braucht jede Lieferung Medikamente.",
+        "{person}: „Die nächsten Wochen entscheiden.“ Die Nachfrage nach Medikamenten ist {faktor}."
+      ],
+      "end": [
+        "Entwarnung auf {ort}: Das {erreger} geht zurück. Der Planet bestellt keine Medikamente mehr.",
+        "Das {institut} meldet keine neuen Fälle. {ort} dankt allen Lieferanten.",
+        "Das {erreger} ist eingedämmt. In {stadt} kehrt der Alltag zurück."
+      ]
+    },
+    {
+      "id": "kolonisierung", "category": "boom", "weight": 2, "minDay": 100,
+      "place": { "kind": "terra" },
+      "effects": [
+        { "good": "machines", "factor": [1.5, 2.2], "at": "terra" },
+        { "good": "plasticware", "factor": [1.5, 2], "at": "terra" },
+        { "good": "textiles", "factor": [1.4, 1.8], "at": "terra" }
+      ],
+      "days": [50, 100],
+      "title": ["Kolonisierungswelle", "Siedlerschiffe für den Randsektor"],
+      "start": [
+        "Terra rüstet eine Flotte von Siedlerschiffen aus. Gebraucht werden {waren}.",
+        "Der Siedlungsrat in {stadt} gibt neue Kolonien frei. Terra kauft {waren} für die Ausrüstung.",
+        "Tausende melden sich für die Randwelten. Terra bestellt {waren} für die Siedlerschiffe."
+      ],
+      "peak": [
+        "Die Werften von {stadt} arbeiten rund um die Uhr. Die Nachfrage nach Maschinen ist {faktor}.",
+        "Höhepunkt der Auswanderung: Terra braucht {waren} wie selten zuvor.",
+        "{person} vom Siedlungsrat: „Jedes Schiff, das fertig wird, startet sofort.“"
+      ],
+      "end": [
+        "Die letzten Siedlerschiffe sind gestartet. Terra bestellt wieder in normalen Mengen.",
+        "Die Kolonisierungswelle flaut ab. Die Werften von {stadt} gehen in den Normalbetrieb.",
+        "Die Siedler sind unterwegs. Die Nachfrage nach {warenDativ} beruhigt sich."
+      ]
+    },
+    {
+      "id": "bauboom", "category": "boom", "weight": 2, "minDay": 80,
+      "place": { "kind": "planet" },
+      "effects": [
+        { "good": "steel", "factor": [1.8, 2.6], "at": "place" },
+        { "good": "machines", "factor": [1.5, 2.2], "at": "place" }
+      ],
+      "days": [40, 90],
+      "title": ["Bauboom auf {ort}", "Neuer Habitatring für {ort}"],
+      "start": [
+        "{ort} baut einen neuen Habitatring über {stadt}. Der Planet bestellt {waren}.",
+        "Das {institut} hat die Pläne genehmigt: {ort} wächst. Gesucht werden {waren}.",
+        "Auf {ort} beginnt der Bau neuer Wohnkuppeln. {person} sucht Lieferanten für {waren}."
+      ],
+      "peak": [
+        "Die Baustellen auf {ort} laufen auf Hochtouren. Die Nachfrage nach Stahl ist {faktor}.",
+        "Richtfest in {stadt}: Der Rohbau steht, die Nachfrage nach {warenDativ} ist am höchsten.",
+        "{person}: „Wir bauen schneller, als geliefert wird.“ {ort} braucht {waren}."
+      ],
+      "end": [
+        "Der Habitatring über {stadt} ist fertig. {ort} bestellt nichts mehr für den Bau.",
+        "Die letzten Kuppeln auf {ort} sind bezogen. Der Bauboom ist vorbei.",
+        "{ort} feiert die Einweihung. Die Bestellungen für den Bau sind abgeschlossen."
+      ]
+    },
+    {
+      "id": "jahrhundertfest", "category": "boom", "weight": 2, "minDay": 40,
+      "place": { "kind": "terra" },
+      "effects": [
+        { "good": "beverages", "factor": [2.2, 3], "at": "terra" },
+        { "good": "food", "factor": [1.4, 1.8], "at": "terra" }
+      ],
+      "days": [20, 35],
+      "title": ["Jahrhundertfest auf Terra", "Terra feiert"],
+      "start": [
+        "Terra feiert den Jahrestag der ersten Sternenfahrt. In {stadt} wird gefeiert – gebraucht werden {waren}.",
+        "Das große Jahrhundertfest beginnt. Terra bestellt {waren} für die Feiern.",
+        "Ganz {stadt} schmückt die Straßen. Für das Fest kauft Terra {waren} in großen Mengen."
+      ],
+      "peak": [
+        "Höhepunkt des Festes: Die Nachfrage nach Getränken ist {faktor}.",
+        "Die Festnacht in {stadt} bricht Rekorde. Terra braucht {waren}.",
+        "{person} eröffnet den Festumzug. Die Lager für Getränke leeren sich schnell."
+      ],
+      "end": [
+        "Das Fest ist vorbei, {stadt} räumt auf. Terra bestellt wieder wie gewohnt.",
+        "Nach dem Jahrhundertfest kehrt Ruhe ein. Die Nachfrage normalisiert sich.",
+        "Die letzten Gäste sind heimgekehrt. Terras Bestellungen sinken auf das übliche Maß."
+      ]
+    },
+    {
+      "id": "modewelle", "category": "boom", "weight": 2, "minDay": 60,
+      "place": { "kind": "terra" },
+      "effects": [{ "good": "textiles", "factor": [1.8, 2.6], "at": "terra" }],
+      "days": [30, 70],
+      "title": ["Modewelle: {mode}", "Alle wollen den {mode}"],
+      "start": [
+        "Der {mode} erobert die Straßen von {stadt}. Terra bestellt Textilien.",
+        "Eine neue Mode geht um: der {mode}. Terras Schneidereien kaufen Textilien.",
+        "{person} zeigt den {mode} – und ganz Terra will ihn tragen. Textilien sind gefragt."
+      ],
+      "peak": [
+        "Der {mode} ist überall. Die Nachfrage nach Textilien ist {faktor}.",
+        "Höhepunkt der Modewelle: Terras Läden sind leergekauft.",
+        "In {stadt} trägt jede zweite Person den {mode}. Textilien bleiben knapp."
+      ],
+      "end": [
+        "Der {mode} ist aus der Mode. Terra bestellt Textilien wieder wie gewohnt.",
+        "Die Modewelle ebbt ab. Die Nachfrage nach Textilien normalisiert sich.",
+        "Niemand will mehr den {mode}. Die Schneidereien in {stadt} bestellen weniger."
+      ]
+    },
+    {
+      "id": "automatisierung", "category": "boom", "weight": 2, "minDay": 150,
+      "place": { "kind": "planet", "industry": ["factory", "machineworks", "steelworks", "robotworks"] },
+      "effects": [
+        { "good": "robots", "factor": [1.8, 2.6], "at": "place" },
+        { "good": "machines", "factor": [1.5, 2], "at": "place" }
+      ],
+      "days": [50, 100],
+      "title": ["Automatisierung auf {ort}", "{ort} modernisiert"],
+      "start": [
+        "{ort} startet ein Automatisierungsprogramm. Die Werke um {stadt} bestellen {waren}.",
+        "Das {institut} empfiehlt die volle Automatisierung. {ort} kauft {waren}.",
+        "{person} kündigt neue Fertigungsstraßen an. {ort} braucht {waren}."
+      ],
+      "peak": [
+        "Die Umrüstung auf {ort} läuft auf Hochtouren. Die Nachfrage nach Robotern ist {faktor}.",
+        "In {stadt} wird jede Halle umgebaut. {ort} braucht {waren}.",
+        "Höhepunkt der Modernisierung: {ort} nimmt alle Roboter, die kommen."
+      ],
+      "end": [
+        "Die Werke auf {ort} sind modernisiert. Der Planet bestellt nichts mehr.",
+        "Das Automatisierungsprogramm von {ort} ist abgeschlossen.",
+        "{person} zieht Bilanz: Die neuen Anlagen laufen. Die Bestellungen enden."
+      ]
+    },
+    {
+      "id": "flottenausbau", "category": "boom", "weight": 2, "minDay": 80,
+      "place": { "kind": "terra" },
+      "effects": [
+        { "good": "fuel", "factor": [1.6, 2.4], "at": "terra" },
+        { "good": "steel", "factor": [1.5, 2.2], "at": "terra" }
+      ],
+      "days": [40, 80],
+      "title": ["Flottenausbau der Raumfahrtbehörde", "Terra baut neue Frachtfähren"],
+      "start": [
+        "Die Raumfahrtbehörde in {stadt} lässt neue Frachtfähren bauen. Terra kauft {waren}.",
+        "Terras Linienflotte wird erneuert. Gebraucht werden {waren}.",
+        "{person} gibt den Ausbau der Raumhäfen frei. Terra bestellt {waren}."
+      ],
+      "peak": [
+        "Die Docks von {stadt} sind voll belegt. Die Nachfrage nach Brennstoff ist {faktor}.",
+        "Höhepunkt des Flottenausbaus: Terra braucht {waren}.",
+        "Jede Woche läuft eine neue Fähre vom Stapel. Die Nachfrage nach {warenDativ} bleibt hoch."
+      ],
+      "end": [
+        "Die neue Flotte ist im Dienst. Terra bestellt wieder in normalen Mengen.",
+        "Der Flottenausbau ist abgeschlossen. Die Nachfrage nach {warenDativ} sinkt.",
+        "Die Raumfahrtbehörde meldet: Ausbau beendet. Die Docks von {stadt} werden ruhiger."
+      ]
+    },
+    {
+      "id": "agrarreform", "category": "boom", "weight": 2, "minDay": 80,
+      "place": { "kind": "planet", "industry": ["agrofarm", "plantation"] },
+      "effects": [
+        { "good": "fertilizer", "factor": [1.8, 2.6], "at": "place" },
+        { "good": "chemicals", "factor": [1.4, 2], "at": "place" }
+      ],
+      "days": [40, 80],
+      "title": ["Agrarreform auf {ort}", "Neue Felder für {ort}"],
+      "start": [
+        "{ort} erschließt neue Anbauflächen bei {stadt}. Der Planet bestellt {waren}.",
+        "Das {institut} hat neue Böden freigegeben. {ort} kauft {waren}.",
+        "{person} verkündet die Agrarreform. {ort} braucht {waren} für die neuen Felder."
+      ],
+      "peak": [
+        "Die Aussaat auf {ort} läuft. Die Nachfrage nach Dünger ist {faktor}.",
+        "Höhepunkt der Agrarreform: {ort} braucht {waren}.",
+        "Die neuen Felder bei {stadt} wachsen schnell – und mit ihnen der Bedarf an Dünger."
+      ],
+      "end": [
+        "Die neuen Felder auf {ort} tragen. Der Planet bestellt keinen Dünger mehr.",
+        "Die Agrarreform ist abgeschlossen. {ort} versorgt sich wieder selbst.",
+        "{person} zieht Bilanz: Die Ernte steigt. Die Bestellungen enden."
+      ]
+    },
+    {
+      "id": "kaelteeinbruch", "category": "notlage", "weight": 2, "minDay": 60,
+      "place": { "kind": "planet" },
+      "effects": [
+        { "good": "food", "factor": [1.8, 2.6], "at": "place" },
+        { "good": "textiles", "factor": [1.5, 2.2], "at": "place" },
+        { "good": "fuel", "factor": [1.5, 2.2], "at": "place" }
+      ],
+      "priceBonus": [0.1, 0.3],
+      "days": [30, 60],
+      "title": ["Kälteeinbruch auf {ort}", "Polarnacht über {ort}"],
+      "start": [
+        "Eine lange Polarnacht legt sich über {ort}. {stadt} braucht {waren} – {bonus} über Kurs.",
+        "Der Klimaschild von {ort} ist ausgefallen. Es wird bitterkalt, gebraucht werden {waren}.",
+        "Das {institut} warnt vor Frost. {ort} bestellt {waren} und zahlt {bonus} Aufschlag."
+      ],
+      "peak": [
+        "Tiefstwerte auf {ort}. Die Nachfrage nach Nahrung ist {faktor}.",
+        "{person}: „Wir halten durch, wenn die Lieferungen kommen.“ {ort} braucht {waren}.",
+        "Die Kälte erreicht ihren Höhepunkt. In {stadt} wird jede Lieferung sehnsüchtig erwartet."
+      ],
+      "end": [
+        "Die Sonne kehrt zurück nach {ort}. Der Planet bestellt nicht mehr.",
+        "Der Klimaschild läuft wieder. {ort} kommt ohne Hilfe aus.",
+        "Tauwetter in {stadt}. {person} dankt allen, die geliefert haben."
+      ]
+    },
+    {
+      "id": "missernte", "category": "notlage", "weight": 2, "minDay": 80,
+      "place": { "kind": "terra" },
+      "effects": [
+        { "good": "food", "factor": [1.8, 2.6], "at": "terra" },
+        { "good": "agro", "factor": [1.5, 2.2], "at": "terra" }
+      ],
+      "priceBonus": [0.1, 0.25],
+      "days": [40, 80],
+      "title": ["Missernte auf Terra", "Terras Kornkammern leer"],
+      "start": [
+        "Ein Pilzbefall vernichtet Terras Ernte. Terra kauft {waren} – {bonus} über Kurs.",
+        "Dürre auf Terras Farmen rund um {stadt}. Terra braucht {waren}.",
+        "Das {institut} meldet die schlechteste Ernte seit Jahrzehnten. Terra bestellt {waren}."
+      ],
+      "peak": [
+        "Die Vorräte auf Terra sind knapp. Die Nachfrage nach Nahrung ist {faktor}.",
+        "{person} ruft zur Hilfe auf: Terra braucht {waren}.",
+        "Höhepunkt der Knappheit: In {stadt} werden Lebensmittel rationiert."
+      ],
+      "end": [
+        "Die neue Ernte ist eingebracht. Terra bestellt wieder wie gewohnt.",
+        "Terras Felder tragen wieder. Die Nachfrage nach {warenDativ} normalisiert sich.",
+        "Die Kornkammern füllen sich. {person} dankt der ganzen Galaxie."
+      ]
+    },
+    {
+      "id": "duerre", "category": "notlage", "weight": 2, "minDay": 40,
+      "place": { "kind": "planet", "notIndustry": ["waterstation"] },
+      "effects": [{ "good": "water", "factor": [2, 3], "at": "place" }],
+      "priceBonus": [0.15, 0.35],
+      "days": [25, 50],
+      "title": ["Dürre auf {ort}", "{ort} geht das Wasser aus"],
+      "start": [
+        "Die Grundwasserspeicher von {ort} sind leer. {stadt} braucht Wasser – {bonus} über Kurs.",
+        "Ein Leck im Eismantel von {ort}. Der Planet bestellt Wasser und zahlt {bonus} Aufschlag.",
+        "Das {institut} warnt: {ort} trocknet aus. Wasser wird dringend gebraucht."
+      ],
+      "peak": [
+        "In {stadt} wird Wasser rationiert. Die Nachfrage ist {faktor}.",
+        "{person}: „Jeder Tanker zählt.“ {ort} braucht Wasser.",
+        "Höhepunkt der Dürre auf {ort}. Die Tanks sind fast leer."
+      ],
+      "end": [
+        "Die Speicher von {ort} sind wieder gefüllt. Der Planet bestellt kein Wasser mehr.",
+        "Das Leck ist geschlossen. {ort} kommt wieder allein zurecht.",
+        "Regen über {stadt} – zum ersten Mal seit Wochen. Die Dürre ist vorbei."
+      ]
+    },
+    {
+      "id": "tierseuche", "category": "notlage", "weight": 1, "minDay": 100,
+      "place": { "kind": "planet", "industry": ["ranch"] },
+      "effects": [
+        { "good": "medicine", "factor": [1.8, 2.6], "at": "place" },
+        { "good": "livestock", "factor": [1.6, 2.4], "at": "terra" }
+      ],
+      "priceBonus": [0.1, 0.3],
+      "days": [40, 70],
+      "title": ["Tierseuche auf {ort}", "{erreger} in den Herden von {ort}"],
+      "start": [
+        "Das {erreger} befällt die Herden auf {ort}. Der Planet braucht Medikamente, Terra fehlt Vieh.",
+        "Das {institut} meldet das {erreger} in den Ställen von {stadt}. {ort} bestellt Medikamente.",
+        "Auf {ort} erkranken die Herden. Medikamente werden gebraucht, Terra kauft Vieh woanders."
+      ],
+      "peak": [
+        "Höhepunkt der Tierseuche: Die Nachfrage nach Medikamenten ist {faktor}.",
+        "{person}: „Wir retten, was zu retten ist.“ {ort} braucht Medikamente.",
+        "Die Herden von {ort} schrumpfen. Terra sucht Vieh bei anderen Lieferanten."
+      ],
+      "end": [
+        "Das {erreger} ist besiegt. {ort} bestellt keine Medikamente mehr.",
+        "Die Herden auf {ort} erholen sich. Terras Viehbedarf normalisiert sich.",
+        "Das {institut} hebt die Sperre auf. In {stadt} kehrt Ruhe ein."
+      ]
+    },
+    {
+      "id": "habitatschaden", "category": "notlage", "weight": 2, "minDay": 60,
+      "place": { "kind": "planet" },
+      "effects": [
+        { "good": "steel", "factor": [1.8, 2.6], "at": "place" },
+        { "good": "machines", "factor": [1.5, 2.2], "at": "place" },
+        { "good": "plasticware", "factor": [1.5, 2.2], "at": "place" }
+      ],
+      "priceBonus": [0.15, 0.35],
+      "days": [30, 60],
+      "title": ["Beben auf {ort}", "Habitatschaden in {stadt}"],
+      "start": [
+        "Ein Beben hat die Kuppeln von {stadt} beschädigt. {ort} braucht {waren} – {bonus} über Kurs.",
+        "Risse im Habitat von {ort}! {person} bittet um {waren}.",
+        "Das {institut} meldet schwere Schäden in {stadt}. {ort} bestellt {waren}."
+      ],
+      "peak": [
+        "Der Wiederaufbau auf {ort} läuft. Die Nachfrage nach Stahl ist {faktor}.",
+        "{person}: „In drei Monaten steht {stadt} wieder.“ Gebraucht werden {waren}.",
+        "Höhepunkt der Reparaturen: {ort} nimmt jede Lieferung {waren}."
+      ],
+      "end": [
+        "Die Kuppeln von {stadt} sind repariert. {ort} bestellt nichts mehr.",
+        "Der Wiederaufbau auf {ort} ist abgeschlossen.",
+        "{ort} ist wieder sicher. {person} dankt allen Lieferanten."
+      ]
+    },
+    {
+      "id": "fluechtlinge", "category": "notlage", "weight": 4, "minDay": 40, "needs": "recentStorm",
+      "place": { "kind": "planet", "inner": true },
+      "effects": [
+        { "good": "food", "factor": [1.8, 2.6], "at": "place" },
+        { "good": "medicine", "factor": [1.6, 2.4], "at": "place" },
+        { "good": "textiles", "factor": [1.5, 2], "at": "place" }
+      ],
+      "priceBonus": [0.1, 0.3],
+      "days": [25, 50],
+      "title": ["Flüchtlinge auf {ort}", "Nach dem Sturm: Zuflucht auf {ort}"],
+      "start": [
+        "Nach dem Gravo-Sturm von {sturm} suchen Tausende Zuflucht auf {ort}. Gebraucht werden {waren}.",
+        "Die Fähren aus {sturm} landen in {stadt}. {ort} bestellt {waren} – {bonus} über Kurs.",
+        "{person} öffnet {ort} für die Opfer des Sturms von {sturm}. Der Planet braucht {waren}."
+      ],
+      "peak": [
+        "Die Lager in {stadt} sind voll. Die Nachfrage nach Nahrung ist {faktor}.",
+        "Höhepunkt der Aufnahme: {ort} braucht {waren}.",
+        "{person}: „Niemand wird abgewiesen.“ Die Nachfrage nach {warenDativ} bleibt hoch."
+      ],
+      "end": [
+        "Die Menschen aus {sturm} kehren heim. {ort} bestellt nicht mehr.",
+        "Die Notunterkünfte in {stadt} schließen. Die Hilfe war erfolgreich.",
+        "{sturm} ist wieder bewohnbar. {ort} dankt allen Lieferanten."
+      ]
+    },
+    {
+      "id": "erzausfall", "category": "engpass", "weight": 2, "minDay": 60,
+      "place": { "kind": "terra" },
+      "effects": [
+        { "good": "ore", "factor": [1.8, 2.6], "at": "terra" },
+        { "good": "steel", "factor": [1.4, 2], "at": "terra" }
+      ],
+      "priceBonus": [0.15, 0.35],
+      "days": [30, 60],
+      "title": ["Erz-Engpass auf Terra", "Asteroidengürtel liefert nicht"],
+      "start": [
+        "Die Förderstationen im Asteroidengürtel stehen still. Terra kauft {waren} – {bonus} über Kurs.",
+        "Ein Unglück im Gürtel stoppt Terras Erzzufuhr. Gebraucht werden {waren}.",
+        "Das {institut} meldet: Terras Erzlager reichen nur noch Wochen. Terra bestellt {waren}."
+      ],
+      "peak": [
+        "Die Hütten von {stadt} drosseln die Produktion. Die Nachfrage nach Erz ist {faktor}.",
+        "{person}: „Wir kaufen Erz, egal woher.“ Terra braucht {waren}.",
+        "Höhepunkt des Engpasses: Terra zahlt Aufschläge für {waren}."
+      ],
+      "end": [
+        "Der Asteroidengürtel fördert wieder. Terra bestellt wie gewohnt.",
+        "Die Erzzufuhr ist gesichert. Der Engpass ist vorbei.",
+        "Die Hütten von {stadt} laufen wieder voll. Die Nachfrage normalisiert sich."
+      ]
+    },
+    {
+      "id": "raffineriestreik", "category": "engpass", "weight": 2, "minDay": 60,
+      "place": { "kind": "terra" },
+      "effects": [
+        { "good": "fuel", "factor": [1.8, 2.6], "at": "terra" },
+        { "good": "chemicals", "factor": [1.4, 2], "at": "terra" }
+      ],
+      "priceBonus": [0.1, 0.3],
+      "days": [25, 50],
+      "title": ["Streik in Terras Raffinerien", "Raffinerien in {stadt} stehen still"],
+      "start": [
+        "Die Belegschaft von Terras Raffinerien streikt. Terra kauft {waren} – {bonus} über Kurs.",
+        "In {stadt} stehen die Raffinerien still. Terra braucht {waren} von außerhalb.",
+        "{person} von der Gewerkschaft: „Wir arbeiten erst, wenn die Löhne stimmen.“ Terra kauft {waren}."
+      ],
+      "peak": [
+        "Der Streik dauert an. Die Nachfrage nach Brennstoff ist {faktor}.",
+        "Die Tankstellen in {stadt} sind leer. Terra braucht {waren}.",
+        "Höhepunkt des Streiks: Terra zahlt Aufschläge für {waren}."
+      ],
+      "end": [
+        "Einigung in {stadt}: Die Raffinerien laufen wieder. Terra bestellt wie gewohnt.",
+        "Der Streik ist beendet. Die Nachfrage nach {warenDativ} sinkt.",
+        "{person} unterschreibt den neuen Vertrag. Terras Raffinerien arbeiten wieder."
+      ]
+    },
+    {
+      "id": "rezession", "category": "flaute", "weight": 1, "minDay": 250,
+      "place": { "kind": "terra" },
+      "effects": [
+        { "good": "beverages", "factor": [0.6, 0.8], "at": "terra" },
+        { "good": "machines", "factor": [0.6, 0.8], "at": "terra" },
+        { "good": "robots", "factor": [0.6, 0.8], "at": "terra" },
+        { "good": "medicine", "factor": [0.6, 0.8], "at": "terra" },
+        { "good": "food", "factor": [0.6, 0.8], "at": "terra" },
+        { "good": "textiles", "factor": [0.6, 0.8], "at": "terra" },
+        { "good": "plasticware", "factor": [0.6, 0.8], "at": "terra" }
+      ],
+      "days": [80, 120],
+      "title": ["Rezession auf Terra", "Terras Wirtschaft schwächelt"],
+      "start": [
+        "Das {institut} meldet eine Rezession. Terra kauft weniger Endprodukte.",
+        "Unsichere Zeiten auf Terra: Die Haushalte in {stadt} sparen. Die Nachfrage sinkt.",
+        "{person} vom Wirtschaftsrat warnt vor einer Flaute. Terra bestellt vorsichtiger."
+      ],
+      "peak": [
+        "Tiefpunkt der Rezession: Terras Nachfrage liegt {faktor}.",
+        "Die Läden in {stadt} bleiben leer. Terra bestellt so wenig wie lange nicht.",
+        "{person}: „Wir sehen erste Zeichen der Erholung – noch nicht in den Zahlen.“"
+      ],
+      "end": [
+        "Die Rezession ist überstanden. Terra kauft wieder wie gewohnt.",
+        "Das {institut} meldet Wachstum. Terras Nachfrage hat sich erholt.",
+        "In {stadt} wird wieder eingekauft. Die Flaute ist vorbei."
+      ]
+    },
+    {
+      "id": "sparprogramm", "category": "flaute", "weight": 1, "minDay": 250,
+      "place": { "kind": "terra" },
+      "effects": [
+        { "good": "machines", "factor": [0.6, 0.8], "at": "terra" },
+        { "good": "robots", "factor": [0.6, 0.8], "at": "terra" }
+      ],
+      "days": [50, 90],
+      "title": ["Sparprogramm der Regierung", "Terra spart bei Investitionen"],
+      "start": [
+        "Terras Regierung kürzt die Investitionen. Maschinen und Roboter werden weniger bestellt.",
+        "Das Sparprogramm aus {stadt} trifft die Industrie: Terra kauft weniger {waren}.",
+        "{person} verkündet einen Sparhaushalt. Terras Nachfrage nach {warenDativ} sinkt."
+      ],
+      "peak": [
+        "Das Sparprogramm wirkt: Die Nachfrage nach Maschinen liegt {faktor}.",
+        "Terras Werke verschieben Aufträge. {waren} bleiben liegen.",
+        "{person}: „Wir müssen erst die Kassen füllen.“ Terra bestellt wenig."
+      ],
+      "end": [
+        "Das Sparprogramm läuft aus. Terra investiert wieder.",
+        "Terras Haushalt ist ausgeglichen. Die Nachfrage nach {warenDativ} erholt sich.",
+        "Die Werke in {stadt} bestellen wieder. Die Sparphase ist vorbei."
+      ]
+    },
+    {
+      "id": "gesundheitswelle", "category": "gemischt", "weight": 1, "minDay": 120,
+      "place": { "kind": "terra" },
+      "effects": [
+        { "good": "beverages", "factor": [0.6, 0.8], "at": "terra" },
+        { "good": "food", "factor": [1.3, 1.7], "at": "terra" },
+        { "good": "medicine", "factor": [1.2, 1.5], "at": "terra" }
+      ],
+      "days": [40, 80],
+      "title": ["Gesundheitswelle auf Terra", "Terra lebt gesund"],
+      "start": [
+        "Das {institut} empfiehlt frische Kost statt Getränken. Terra kauft mehr Nahrung, weniger Getränke.",
+        "In {stadt} ist gesundes Leben in Mode. Getränke bleiben stehen, Nahrung und Medikamente sind gefragt.",
+        "{person} startet eine Gesundheitskampagne. Terras Einkaufslisten ändern sich."
+      ],
+      "peak": [
+        "Höhepunkt der Gesundheitswelle: Getränke liegen {faktor}.",
+        "In {stadt} trinkt man nur noch Wasser. Nahrung und Medikamente sind gefragt.",
+        "{person}: „Terra war nie fitter.“ Die Getränkeregale bleiben voll."
+      ],
+      "end": [
+        "Die Gesundheitswelle ebbt ab. Terra kauft wieder wie gewohnt.",
+        "In {stadt} wird wieder gefeiert. Die Nachfrage normalisiert sich.",
+        "Das {institut} beendet die Kampagne. Terras Einkäufe kehren zurück."
+      ]
+    }
+  ]
+}

@@ -241,3 +241,60 @@ export interface Route {
   trips: number;
   delivered: number;
 }
+
+// ---------- story events ----------
+
+export type StoryCategory = 'boom' | 'notlage' | 'engpass' | 'flaute' | 'gemischt';
+
+/** Where a story may happen: Terra, or a planet (optionally only with/without certain industries, or near Terra). */
+export type PlaceRule = { kind: 'terra' } | { kind: 'planet'; industry?: string[]; notIndustry?: string[]; inner?: boolean };
+
+/** One building block of the story catalog (`src/data/stories.json`). */
+export interface StoryCause {
+  id: string;
+  category: StoryCategory;
+  weight: number;
+  place: PlaceRule;
+  /** the first effect is the main one: the texts talk about it */
+  effects: { good: string; factor: [number, number]; at: 'terra' | 'place' }[];
+  priceBonus?: [number, number];
+  days: [number, number];
+  minDay?: number;
+  needs?: 'recentStorm';
+  title: string[];
+  start: string[];
+  peak: string[];
+  end: string[];
+}
+
+/** Names invented once per game: a city, a person and an institute for every planet (and Terra). */
+export type Lore = Record<string, { city: string; leader: string; institute: string }>;
+
+export interface StoryEvent {
+  id: string;
+  cause: string;
+  category: StoryCategory;
+  /** planet id, or 'terra' */
+  place: string;
+  title: string;
+  effects: { good: string; factor: number; at: 'terra' | 'place' }[];
+  priceBonus: number;
+  startDay: number;
+  peakDay: number;
+  fadeDay: number;
+  endDay: number;
+  texts: { start: string; peak: string; end: string };
+  phase: 'rise' | 'peak' | 'fade' | 'done';
+  /** amount delivered for orders of this event (for a later outcome) */
+  delivered: number;
+}
+
+/** What the generator needs to know about the game when it picks a story. */
+export interface StoryContext {
+  day: number;
+  producedGoods: Set<string>;
+  recentStormPlanet: string | null;
+  active: StoryEvent[];
+  lastRecessionDay: number | null;
+  lore: Lore;
+}
