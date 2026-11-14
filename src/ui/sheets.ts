@@ -52,6 +52,8 @@ import {
   idleShipsOfCargo,
   joinableShips,
   moveTransport,
+  bundleCandidates,
+  shipAll,
   shipDemand,
   tripDays,
   tripRoom,
@@ -72,6 +74,8 @@ export interface Sheet {
   confirm?: string;
   run?: (form: HTMLFormElement) => SheetResult;
   live?: (form: HTMLFormElement) => void;
+  /** a second confirm button next to the main one (e.g. „Alle Lieferungen“) */
+  alt?: { label: string; tip?: string; run: (form: HTMLFormElement) => SheetResult };
 }
 
 const val = (form: HTMLFormElement, name: string) => String(new FormData(form).get(name) ?? '');
@@ -169,6 +173,8 @@ function planLive(w: World, l: Load, form: HTMLFormElement) {
     ? `${boxes.length === 1 ? '1 Schiff' : `${boxes.length} Schiffe`} mit ${qty(cap, l.cargo)} Laderaum – ${rest ? `es bleiben <b>${qty(rest, l.cargo)}</b>.` : 'das reicht für die ganze Menge.'}`
     : `Kein eigenes Schiff gewählt – die ganzen ${qty(l.amount, l.cargo)} gehen an die Börse oder warten.`;
   form.querySelector<HTMLElement>('[data-rest]')!.hidden = rest === 0;
+  const alt = form.querySelector<HTMLButtonElement>('[data-alt]');
+  if (alt) alt.disabled = boxes.length === 0;
   const fee = form.elements.namedItem('fee') as HTMLInputElement | null;
   if (fee && rest > 0 && fee.dataset.rest !== String(rest)) {
     const min = minTransportFee(w, l.good, rest, l.from, l.to);
@@ -313,6 +319,7 @@ export function arrangeSheet(w: World, me: string, demandId: string): Sheet {
   const from = facility(w, d.supplierFacility)!;
   const open = unshippedAmount(d);
   const load: Load = { cargo: good(d.good).cargo, amount: open, from: from.planet, to: d.toPlanet, good: d.good, allowPublic: true };
+  const others = bundleCandidates(w, me, demandId);
   return {
     title: `${amt(open, d.good)} ${gName(d.good)} nach ${pName(d.toPlanet)}`,
     body: `${open < d.amount ? `<p>Von ${amt(d.amount, d.good)} sind ${amt(d.amount - open, d.good)} schon unterwegs.</p>` : ''}<p class="small">${deadlineIn(w, d.deadlineDay)}</p>${planBlock(w, me, load)}`,
@@ -322,6 +329,16 @@ export function arrangeSheet(w: World, me: string, demandId: string): Sheet {
       const plan = readPlan(form);
       return done(shipDemand(w, me, demandId, plan), planMessage(plan));
     },
+    alt: others.length
+      ? {
+          label: `Alle Lieferungen (${others.length + 1} · ${qty(open + others.reduce((s, x) => s + unshippedAmount(x), 0), load.cargo)})`,
+          tip: 'Lädt alle zugesagten Lieferungen aus derselben Anlage zum selben Ziel auf die gewählten Schiffe – knappste Frist zuerst, nur ganze Aufträge.',
+          run(form) {
+            const r = shipAll(w, me, demandId, readPlan(form).ships);
+            return r.ok ? { message: `${r.value.count} Lieferungen sind unterwegs (${qty(r.value.amount, load.cargo)}).` } : { error: r.error };
+          },
+        }
+      : undefined,
   };
 }
 

@@ -270,6 +270,56 @@ export function shipDemand(w: World, me: string, demandId: string, plan: ShipPla
   return { ok: true, value: out };
 }
 
+/** Pickup planet of an accepted demand (the supplying plant's planet). */
+const pickupOf = (w: World, d: Demand) => (d.supplierFacility ? facility(w, d.supplierFacility)?.planet : undefined);
+
+/**
+ * Other accepted deliveries of the player that still need a transport and share the route of `demandId`:
+ * same pickup planet, same destination, same cargo. Earliest deadline first.
+ */
+export function bundleCandidates(w: World, me: string, demandId: string): Demand[] {
+  const d = w.demands.find((x) => x.id === demandId);
+  if (!d) return [];
+  const from = pickupOf(w, d);
+  const cargo = good(d.good).cargo;
+  return unshippedDemands(w, me)
+    .filter((x) => x.id !== d.id && x.toPlanet === d.toPlanet && good(x.good).cargo === cargo && pickupOf(w, x) === from && unshippedAmount(x) > 0)
+    .sort((a, b) => a.deadlineDay - b.deadlineDay);
+}
+
+/**
+ * „Alle Lieferungen“: ships this delivery on the chosen ships (split as usual, rest stays for later), then
+ * puts every other delivery of the same route onto them as a whole load while it fits.
+ */
+export function shipAll(w: World, me: string, demandId: string, shipIds: string[]): Result<{ count: number; amount: number }> {
+  if (!shipIds.length) return fail('Bitte wähle mindestens ein Schiff.');
+  const d = w.demands.find((x) => x.id === demandId);
+  if (!d) return fail('Kein passender angenommener Auftrag.');
+  const others = bundleCandidates(w, me, demandId);
+  const before = unshippedAmount(d);
+  const first = shipDemand(w, me, demandId, { ships: shipIds, rest: 'later' });
+  if (!first.ok) return first;
+  let count = 1;
+  let amount = before - unshippedAmount(d);
+  const ships = [...new Set(shipIds)].map((id) => w.ships.find((s) => s.id === id)!);
+  const from = pickupOf(w, d)!;
+  for (const x of others) {
+    const load = { cargo: good(x.good).cargo, amount: unshippedAmount(x), fromPlanet: from, toPlanet: x.toPlanet };
+    // a ship already on this route takes the load along; a chosen ship that stayed idle starts the trip
+    const s =
+      ships.find((s) => canJoin(w, s, load)) ??
+      ships.find((s) => s.phase === 'idle' && shipDef(s.model).cargo === load.cargo && shipDef(s.model).capacity >= load.amount && s.condition >= CONFIG.ships.criticalBelow);
+    if (!s) continue;
+    const t = postTransportForDemand(w, me, x.id, 'own', undefined, load.amount);
+    if (!t.ok) return t;
+    const a = assignShip(w, me, s.id, t.value.id);
+    if (!a.ok) return a;
+    count += 1;
+    amount += load.amount;
+  }
+  return { ok: true, value: { count, amount } };
+}
+
 /** Accept a demand from one of the player's facilities and ship it by plan in one go. */
 export function deliver(w: World, me: string, demandId: string, facilityId: string, plan: ShipPlan): Result<Demand> {
   const d = w.demands.find((x) => x.id === demandId);
