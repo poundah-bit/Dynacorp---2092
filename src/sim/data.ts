@@ -6,6 +6,7 @@ import storagesJson from '../data/storages.json';
 import companiesJson from '../data/companies.json';
 import configJson from '../data/config.json';
 import projectsJson from '../data/projects.json';
+import planetNamesJson from '../data/planetnames.json';
 import type {
   Cargo,
   CompanyDef,
@@ -21,6 +22,8 @@ export const GOODS = goodsJson as unknown as GoodDef[];
 export const FACILITIES = facilitiesJson as unknown as FacilityDef[];
 export const SHIPS = shipsJson as unknown as ShipDef[];
 export const PLANETS = planetsJson as unknown as PlanetDef[];
+/** Name pool for generated module worlds (none of them is used in world 1). */
+export const PLANET_NAMES = planetNamesJson as string[];
 export const STORAGES = storagesJson as unknown as StorageDef[];
 export const COMPANIES = companiesJson as CompanyDef[];
 export const CONFIG = configJson;
@@ -93,6 +96,12 @@ export function validateData(): string[] {
       if (!goodMap.has(g)) problems.push(`${f.id}: unbekannte Ware ${g}`);
     }
     if (planetsFor({}, f.id).length === 0) problems.push(`${f.id}: kein Planet erlaubt diese Anlage`);
+  }
+  {
+    const own = new Set(PLANETS.map((p) => p.name));
+    if (new Set(PLANET_NAMES).size !== PLANET_NAMES.length) problems.push('planetnames.json: doppelte Namen');
+    if (PLANET_NAMES.length < 60) problems.push('planetnames.json: weniger als 60 Namen');
+    for (const n of PLANET_NAMES) if (own.has(n)) problems.push(`planetnames.json: ${n} gibt es schon in Welt 1`);
   }
   for (const p of PLANETS) {
     if (p.facility && !facilityMap.has(p.facility)) problems.push(`${p.id}: unbekannte Anlage ${p.facility}`);

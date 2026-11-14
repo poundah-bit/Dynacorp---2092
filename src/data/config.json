@@ -108,6 +108,11 @@
     "warningDays": 7,
     "buildDays": 200
   },
+  "campaign": {
+    "pathTolerance": 0.1,
+    "minSpacingFactor": 1,
+    "attempts": 200
+  },
   "quark": {
     "warnAt": 0.9
   },
