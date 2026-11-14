@@ -27,6 +27,7 @@ import {
   minTransportFee,
   postDemand,
   repayLoan,
+  daysUntilFree,
   shipDef,
   shipRoom,
   storageCapacity,
@@ -36,6 +37,7 @@ import {
   unshippedAmount,
   type Cargo,
   type Result,
+  type Ship,
   type World,
 } from '../sim/index';
 import {
@@ -52,6 +54,8 @@ import {
   idleShipsOfCargo,
   joinableShips,
   moveTransport,
+  queuedTripDays,
+  soonFreeShips,
   assetBundle,
   moveAll,
   bundleCandidates,
@@ -104,6 +108,10 @@ const feeInput = (min: number) =>
   `Honorar <input type="number" name="fee" min="${min}" step="100" value="${Math.ceil((min * 1.2) / 100) * 100}" inputmode="numeric"> Cr (mindestens <span data-fee-min>${cr(min)}</span>)`;
 const noShipHint = (cargo: Cargo) => `Kein freies eigenes Schiff für ${cargoName(cargo)}. Schiffe gibt es in der Werft auf Terra.`;
 
+/** A busy ship that is free within a few days, offered for a Folgeauftrag. */
+const soonLabel = (w: World, s: Ship, l: Load) =>
+  `<b>${shipDef(s.model).name} #${s.id.slice(1)}</b> – ${qty(shipDef(s.model).capacity, l.cargo)} Laderaum – <span class="warn">frei in ${days(daysUntilFree(w, s) ?? 0)}</span> (Folgeauftrag)<br><small>Ankunft am Ziel ${inDays(queuedTripDays(w, s, l.from, l.to, l.readyIn))}</small>`;
+
 /** One ship for one load (a facility from Terra, another company's transport). */
 function choiceBlock(w: World, me: string, l: Load): string {
   const pick = defaultChoice(w, me, l.cargo, l.amount, l.from, l.allowBuy, l.to);
@@ -117,6 +125,9 @@ function choiceBlock(w: World, me: string, l: Load): string {
     .sort((a, b) => a.d - b.d)
     .map(({ s, d }) => radio(`ship:${s.id}`, `<b>${shipDef(s.model).name} #${s.id.slice(1)}</b> – ${shipStatus(w, s).text}<br><small>Ankunft am Ziel ${inDays(d)}</small>`))
     .join('');
+  const soon = soonFreeShips(w, me, l.cargo, l.amount)
+    .map((s) => radio(`ship:${s.id}`, soonLabel(w, s, l)))
+    .join('');
   const model = l.allowBuy ? cheapestShipFor(l.cargo, l.amount) : undefined;
   const cash = company(w, me).cash;
   const buy = model
@@ -129,7 +140,7 @@ function choiceBlock(w: World, me: string, l: Load): string {
   const pub = l.allowPublic
     ? radio('public', `<b>Öffentlich ausschreiben</b> – eine andere Firma fliegt für ein Honorar<br><small>${feeInput(minTransportFee(w, l.good, l.amount, l.from, l.to))}</small>`)
     : '';
-  return `${route(l)}<div class="opts">${own}${buy}${pub}</div>${!own && !buy ? `<p class="hint">${noShipHint(l.cargo)}</p>` : ''}`;
+  return `${route(l)}<div class="opts">${own}${soon}${buy}${pub}</div>${!own && !soon && !buy ? `<p class="hint">${noShipHint(l.cargo)}</p>` : ''}`;
 }
 
 /**
@@ -152,6 +163,12 @@ function planBlock(w: World, me: string, l: Load): string {
       .map(
         ({ s, d }) => `<label class="opt"><input type="checkbox" name="ship" value="${s.id}" data-cap="${shipDef(s.model).capacity}" ${pick.has(s.id) ? 'checked' : ''}>
         <span><b>${shipDef(s.model).name} #${s.id.slice(1)}</b> – ${qty(shipDef(s.model).capacity, l.cargo)} Laderaum – ${shipStatus(w, s).text}<br><small>Ankunft am Ziel ${inDays(d)}</small></span></label>`,
+      )
+      .join('') +
+    soonFreeShips(w, me, l.cargo)
+      .map(
+        (s) => `<label class="opt"><input type="checkbox" name="ship" value="${s.id}" data-cap="${shipDef(s.model).capacity}">
+        <span>${soonLabel(w, s, l)}</span></label>`,
       )
       .join('');
   return `${route(l)}

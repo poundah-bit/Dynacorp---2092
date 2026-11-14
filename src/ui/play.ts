@@ -13,6 +13,9 @@ import {
   available,
   buyShip,
   canJoin,
+  canQueue,
+  daysUntilFree,
+  queueTransport,
   cargoName,
   company,
   createWorld,
@@ -213,7 +216,31 @@ export interface ShipPlan {
 const fail = (error: string): Result<never> => ({ ok: false, error });
 
 /** Hold a ship offers for a new load: all of it when idle, the rest when it is already booked for the trip. */
-export const tripRoom = (w: World, s: Ship) => (s.phase === 'idle' ? shipDef(s.model).capacity : shipRoom(w, s));
+export const tripRoom = (w: World, s: Ship) =>
+  s.phase === 'idle' || canQueue(w, s) ? shipDef(s.model).capacity : shipRoom(w, s);
+
+/** Own ships that will be free within `ships.queueDays` and can take a Folgeauftrag of this cargo and size. */
+export function soonFreeShips(w: World, me: string, cargo: Cargo, amount = 1): Ship[] {
+  return plannableShips(w, me)
+    .filter((s) => canQueue(w, s, { cargo, amount }))
+    .sort((a, b) => (daysUntilFree(w, a) ?? 0) - (daysUntilFree(w, b) ?? 0));
+}
+
+/** Sends an own ship for a transport: idle or same route → now; busy but soon free → as Folgeauftrag. */
+export function sendShip(w: World, me: string, shipId: string, transportId: string): Result<undefined> {
+  const s = w.ships.find((x) => x.id === shipId);
+  const t = transport(w, transportId);
+  if (s && t && s.phase !== 'idle' && !canJoin(w, s, t) && canQueue(w, s, t)) return queueTransport(w, me, shipId, transportId);
+  return assignShip(w, me, shipId, transportId);
+}
+
+/** Days until a Folgeauftrag ship would reach the destination: free + flight to pickup + loading + flight on. */
+export function queuedTripDays(w: World, s: Ship, from: string, to: string, readyIn = 0): number {
+  const speed = shipDef(s.model).speed;
+  const free = daysUntilFree(w, s) ?? 0;
+  const at = s.route?.to ?? s.at ?? TERRA;
+  return free + tripDays(speed, at, from, to, readyIn);
+}
 
 /** Idle own ships of a cargo type, any size (several of them can share a demand). */
 export function idleShipsOfCargo(w: World, me: string, cargo: Cargo): Ship[] {
@@ -246,7 +273,7 @@ function checkPlan(w: World, me: string, d: Demand, from: string, plan: ShipPlan
     const s = w.ships.find((x) => x.id === id);
     if (!s || s.owner !== me) return fail('Schiff nicht gefunden.');
     if (shipDef(s.model).cargo !== cargo) return fail(`${shipDef(s.model).name} transportiert kein ${cargoName(cargo)}.`);
-    if (s.phase !== 'idle' && !canJoin(w, s, { cargo, amount: 1, fromPlanet: from, toPlanet: d.toPlanet })) return fail(`${shipDef(s.model).name} ist nicht mehr frei.`);
+    if (s.phase !== 'idle' && !canJoin(w, s, { cargo, amount: 1, fromPlanet: from, toPlanet: d.toPlanet }) && !canQueue(w, s)) return fail(`${shipDef(s.model).name} ist nicht mehr frei.`);
     rest -= tripRoom(w, s);
   }
   rest = Math.max(0, rest);
@@ -275,7 +302,7 @@ export function shipDemand(w: World, me: string, demandId: string, plan: ShipPla
     if (open <= 0 || room <= 0) continue;
     const t = postTransportForDemand(w, me, demandId, 'own', undefined, Math.min(open, room));
     if (!t.ok) return t;
-    const a = assignShip(w, me, s.id, t.value.id);
+    const a = sendShip(w, me, s.id, t.value.id);
     if (!a.ok) return a;
     out.push(t.value);
   }
@@ -375,7 +402,7 @@ export function moveTransport(w: World, me: string, transportId: string, choice:
   if (choice === 'public') return releaseTransport(w, me, transportId, fee);
   const s = shipFor(w, me, choice);
   if (!s.ok) return s;
-  const a = assignShip(w, me, s.value, transportId);
+  const a = sendShip(w, me, s.value, transportId);
   return a.ok ? { ok: true, value: t } : a;
 }
 
@@ -414,7 +441,7 @@ export function carry(w: World, me: string, transportId: string, choice: Choice)
   if (!choice.startsWith('ship:')) return fail('Bitte wähle eines deiner freien Schiffe.');
   const acc = acceptTransport(w, me, transportId);
   if (!acc.ok) return acc;
-  const a = assignShip(w, me, choice.slice(5), transportId);
+  const a = sendShip(w, me, choice.slice(5), transportId);
   return a.ok ? acc : a;
 }
 

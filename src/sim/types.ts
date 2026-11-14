@@ -198,6 +198,8 @@ export interface Ship {
   joined?: string[];
   /** the ship has already reported its critical condition */
   critical?: boolean;
+  /** Folgeauftrag: transport the ship starts as soon as it is free (player only) */
+  next?: string;
 }
 
 export interface LogEntry {

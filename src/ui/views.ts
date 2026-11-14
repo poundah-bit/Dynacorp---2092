@@ -47,7 +47,7 @@ import {
   unshippedDemands,
   waitingTransports,
 } from './play';
-import { PROJECTS, QUARK_NAME, latePenaltyRate, automationLevel, automationName, buildingProject, hasProject, lineRoute, nextAutomation, projectState, quarkStatus, routeLimit, routeName, serviceLimit, storyStrength, unitOf, unshippedAmount, type Flavour, type StoryEvent } from '../sim/index';
+import { PROJECTS, QUARK_NAME, canQueue, daysUntilFree, latePenaltyRate, transport, automationLevel, automationName, buildingProject, hasProject, lineRoute, nextAutomation, projectState, quarkStatus, routeLimit, routeName, serviceLimit, storyStrength, unitOf, unshippedAmount, type Flavour, type StoryEvent } from '../sim/index';
 import { chainDetail, chainSvg } from './chain';
 import {
   cr,
@@ -492,7 +492,18 @@ export function fleetView({ w, me, order }: ViewCtx): string {
               .map((t) =>
                 btn(`Zuladen: ${loadName(w, t)} ${pName(t.fromPlanet)} → ${pName(t.toPlanet)}`, 'assign', `${s.id}|${t.id}`, 'class="primary" data-tip="Die Ladung fliegt im selben Flug mit – gleicher Abholort, gleiches Ziel, genug Platz im Laderaum."'),
               )
+              .join('') +
+            // soon free: book the next job now (Folgeauftrag)
+            waiting
+              .filter((t) => canQueue(w, s, t))
+              .map((t) =>
+                btn(`Danach: ${loadName(w, t)} ${pName(t.fromPlanet)} → ${pName(t.toPlanet)}`, 'assign', `${s.id}|${t.id}`, `data-tip="Folgeauftrag: das Schiff ist in ${days(daysUntilFree(w, s) ?? 0)} frei und fliegt dann direkt zum Abholort."`),
+              )
               .join('');
+      const queued = s.next ? transport(w, s.next) : undefined;
+      const nextLine = queued
+        ? `<div class="small">${icon('travelling')} Danach: <b>${loadName(w, queued)}</b> ${pName(queued.fromPlanet)} → ${pName(queued.toPlanet)} ${btn('Lösen', 'unqueue', s.id, 'class="ghost" data-tip="Gibt den Folgeauftrag wieder frei – er wartet dann unter „Aufträge“ auf ein Schiff."')}</div>`
+        : '';
       const atTerra = s.phase === 'idle' && s.at === TERRA;
       const worn = s.condition < 100;
       const loads = shipLoads(w, s);
@@ -531,6 +542,7 @@ export function fleetView({ w, me, order }: ViewCtx): string {
         <h2>${cargoIcon(def.cargo)} ${shipLabel(s)} ${badge}${lineBadge}</h2>
         <div class="meters">${bars}</div>
         <p>${st.text}</p>
+        ${nextLine}
         ${critical ? `<p class="bad small"><b>Kritischer Zustand:</b> fliegt nur noch mit ${Math.round(CONFIG.ships.criticalSpeedFactor * 100)} % Tempo und nimmt keine neuen Aufträge an. ${s.phase === 'idle' ? (s.at === TERRA ? 'Jetzt reparieren.' : 'Schick es zur Reparatur nach Terra.') : 'Nach diesem Flug zur Reparatur nach Terra.'}</p>` : ''}
         ${loads.length > 1 ? `<p class="small">An Bord für diesen Flug: ${loads.map((t) => loadName(w, t)).join(' · ')}</p>` : ''}
         <p class="small muted">${qty(def.capacity, def.cargo)} Laderaum${room > 0 ? ` (noch ${qty(room, def.cargo)} frei für Zuladung)` : ''} · ${critical ? `<span class="bad">${num(shipSpeed(s))} Pc/Tag</span> (sonst ${num(def.speed)})` : `${num(def.speed)} Pc/Tag`} · Zustand <span class="${toneClass(shipConditionTone(s.condition))}">${dec(s.condition)} %</span>${s.condition < 50 && !critical ? ' – bald zur Reparatur nach Terra' : ''}${s.repairAtTerra ? ` · <span class="warn">${icon('repairMarked')} Reparatur auf Terra vorgemerkt</span>` : ''}</p>
