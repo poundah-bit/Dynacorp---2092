@@ -61,7 +61,10 @@ export const AI_MAX = COMPANIES.length;
 export const clampAi = (n: number) => Math.max(AI_MIN, Math.min(AI_MAX, Math.round(Number.isFinite(n) ? n : AI_DEFAULT)));
 
 export function newGame(name: string, difficulty: Difficulty, seed: number, aiCompanies = AI_DEFAULT, stories = true): World {
-  return createWorld({ seed, difficulty, playerName: name.trim() || 'Meine Firma', aiCompanies: clampAi(aiCompanies), stories });
+  const w = createWorld({ seed, difficulty, playerName: name.trim() || 'Meine Firma', aiCompanies: clampAi(aiCompanies), stories });
+  // switched off on the start screen: keep the state, so loading the game does not switch them on
+  if (!stories) initStories(w, false);
+  return w;
 }
 
 export const companyName = (w: World, id: string | null) =>

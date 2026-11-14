@@ -73,7 +73,13 @@ function eligible(c: StoryCause, ctx: StoryContext): { places: string[]; effects
   const effects = c.effects.filter((x) => ctx.producedGoods.has(x.good));
   if (effects[0] !== c.effects[0]) return null; // the texts talk about the main effect
   const busy = new Set(ctx.active.map((e) => e.place));
-  const places = placesFor(c.place).filter((p) => !busy.has(p) && p !== ctx.recentStormPlanet);
+  // a planet never orders what its own industry makes (no plague on the pharma world)
+  const ordered = c.effects.filter((x) => x.at === 'place').map((x) => x.good);
+  const makesOwn = (p: string) => {
+    const f = p === TERRA ? null : planet(p).facility;
+    return !!f && ordered.some((g) => g in facilityDef(f).outputs);
+  };
+  const places = placesFor(c.place).filter((p) => !busy.has(p) && p !== ctx.recentStormPlanet && !makesOwn(p));
   return places.length ? { places, effects } : null;
 }
 

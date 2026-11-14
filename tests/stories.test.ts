@@ -1,6 +1,6 @@
 // Story-Ereignisse: the generator (no economy runs) and, further down, events in the economy.
 import { describe, expect, it } from 'vitest';
-import { CONFIG, GOODS, PLANETS, TERRA, distance, validateData } from '../src/sim/index';
+import { CONFIG, GOODS, PLANETS, TERRA, distance, facilityDef, validateData } from '../src/sim/index';
 import { STORY_CAUSES, makeLore, pickStory, storyStrength, validateStories } from '../src/sim/stories';
 import type { PlaceRule, StoryContext, StoryEvent } from '../src/sim/types';
 
@@ -57,6 +57,9 @@ describe('Story-Baukasten', () => {
         expect(x.factor).toBeLessThanOrEqual(fHi);
       }
       expect(placeFits(cause.place, e!.place), `${cause.id} @ ${e!.place}`).toBe(true);
+      // a planet never orders what its own industry makes
+      const made = PLANETS.find((p) => p.id === e!.place)?.facility;
+      for (const x of e!.effects) if (x.at === 'place' && made) expect(Object.keys(facilityDef(made).outputs), `${cause.id} @ ${e!.place}`).not.toContain(x.good);
       expect(e!.priceBonus).toBeGreaterThanOrEqual(0);
       expect(e!.priceBonus).toBeLessThanOrEqual(CONFIG.stories.bonusMax);
       expect(e!.endDay - e!.startDay).toBeGreaterThanOrEqual(dLo);

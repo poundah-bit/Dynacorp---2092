@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { FACILITIES, GOODS, PLANETS, assignShip, buyFacility, buyShip, facilitiesOf, startFacility, takeLoan, type Demand, type World } from '../src/sim/index';
 import { CHAIN_EDGES, chainDetail, chainLayout, chainSvg, goodRoles } from '../src/ui/chain';
 import { planetInfo } from '../src/ui/mapinfo';
-import { companyName, ensureStories, fittingOffers, newOffers, startedStories } from '../src/ui/play';
+import { companyName, ensureStories, fittingOffers, newGame, newOffers, startedStories } from '../src/ui/play';
 import { storyCard } from '../src/ui/views';
 import { storyPlanets } from '../src/ui/mapfx';
 import { initStories, run, startStory } from '../src/sim/index';
@@ -116,6 +116,14 @@ describe('Story-Ereignisse in der Oberfläche', () => {
 
   it('Planeten-Aufträge heißen „Bevölkerung von …“', () => {
     expect(companyName(soloWorld(), 'world:liora')).toBe('Bevölkerung von Liora');
+  });
+
+  it('der Schalter „Ereignisse“ aus bleibt aus – auch nach dem Laden', () => {
+    const w = newGame('Testfirma', 'med', 7, 3, false);
+    ensureStories(w);
+    expect(w.stories?.on).toBe(false);
+    run(w, 200);
+    expect(w.stories!.events).toEqual([]);
   });
 
   it('alte Spielstände bekommen Ereignisse', () => {
