@@ -73,6 +73,7 @@ export function createStarMap(): StarMap {
         <button type="button" data-zoom="1.4" aria-label="Hineinzoomen">+</button>
         <button type="button" data-zoom="0.7" aria-label="Herauszoomen">−</button>
         <button type="button" data-zoom="0" aria-label="Ganze Karte" data-tip="Zeigt wieder die ganze Karte.">⌖</button>
+        <button type="button" data-act="overview" aria-label="Gesamtübersicht" data-tip="Gesamtübersicht: deine Modulwelten im Kreis um den Beschleuniger.">◎</button>
       </div>
     </div>
     <div class="map-legend small">

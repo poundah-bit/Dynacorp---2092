@@ -405,3 +405,20 @@ td .bar { height: 8px; min-width: 64px; margin-left: auto; }
 .qcell.lead { border-width: 2px; box-shadow: 0 0 0 1px currentColor inset; }
 .chip.project { color: var(--accent); }
 .project.done { opacity: 0.85; }
+
+/* Gesamtübersicht */
+.overview { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.ov-svg { width: min(100%, 420px); height: auto; }
+.ov-orbit { fill: none; stroke: var(--line, #334); stroke-dasharray: 4 6; }
+.ov-ring { fill: none; stroke: var(--accent); stroke-width: 6; opacity: 0.35; }
+.ov-beam { fill: none; stroke: var(--accent); stroke-width: 3; stroke-dasharray: 18 270; animation: ov-spin 4s linear infinite; transform-origin: center; transform-box: fill-box; }
+@keyframes ov-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .ov-beam { animation: none; } }
+.ov-place { cursor: pointer; }
+.ov-place .ov-dot { fill: color-mix(in srgb, currentColor 12%, transparent); stroke: currentColor; stroke-width: 2; stroke-dasharray: 5 5; }
+.ov-place.made .ov-dot { fill: color-mix(in srgb, currentColor 45%, transparent); stroke-dasharray: none; }
+.ov-name { fill: var(--text); font-weight: 700; font-size: 13px; }
+.ov-sub { fill: var(--muted, #9aa); font-size: 10px; }
+.ov-detail { border-left: 3px solid currentColor; padding: 4px 10px; }
+.ov-detail b, .ov-detail p { color: var(--text); }
+.finale h3 { margin-top: 0; }

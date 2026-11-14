@@ -4,6 +4,7 @@
 
 import {
   assignShip,
+  type Flavour,
   automationName,
   buyAutomation,
   removeRoute,
@@ -47,6 +48,7 @@ import { emptyOrder, parseOrder, reorderVisible, type ListOrder } from './order'
 import { SLOT_COUNT, deleteSlot, listSlots, loadSlot, saveSlot, type SlotMeta } from './slots';
 import { createStarMap } from './starmap';
 import * as S from './sheets';
+import { finaleHtml, moduleDetail, overviewHtml } from './overview';
 import { mapEvents } from './mapfx';
 import { musicSettings, nowPlaying, setMusicSettings, skipTrack, startMusic, trackCredit } from './music';
 import { CUE_INFO, play, playDay, preview, setSoundSettings, soundSettings, unlockSound } from './sound';
@@ -565,9 +567,13 @@ const ACTS: Record<string, (a: string) => void> = {
     openSheet(
       S.closeWorldSheet(w!, me, (next) => {
         if (next !== w) begin(next, guideHidden);
+        else setTimeout(() => openSheet({ title: 'Finale', body: finaleHtml(w!) }), 0);
       }),
     );
   },
+  overview: () => openSheet({ title: 'Gesamtübersicht', body: overviewHtml(w!) }),
+  'overview-place': (f) => openSheet({ title: 'Gesamtübersicht', body: overviewHtml(w!) + moduleDetail(w!, f as Flavour) }),
+  finale: () => openSheet({ title: 'Finale', body: finaleHtml(w!) }),
   'project-abort'() {
     if (!confirm('Großprojekt abbrechen? Bezahltes Geld und gelieferte Waren sind verloren.')) return;
     result(abortProject(w!, me), 'Großprojekt abgebrochen.');
