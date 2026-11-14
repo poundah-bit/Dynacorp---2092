@@ -3,6 +3,7 @@
 // order what their plants need, haul freight with idle ships, then expand along their preferences.
 
 import {
+  facilityLimit,
   cancelDemand,
   acceptDemand,
   acceptTransport,
@@ -256,7 +257,7 @@ function expand(w: World, c: Company) {
   const pendingAsset = w.assets.some((a) => a.owner === c.id && !a.delivered);
   if (pendingAsset) return;
   const count = facilityCount(w, c.id);
-  if (count >= CONFIG.maxFacilitiesPerCompany) return;
+  if (count >= facilityLimit(w, c.id)) return;
   if (count > 0 && random(w) > 0.1) return; // don't expand every day
   const facs = facilitiesOf(w, c.id);
   // only grow while solvent

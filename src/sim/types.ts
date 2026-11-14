@@ -241,6 +241,8 @@ export interface StoryState {
   lastRecessionDay: number | null;
   /** last gravo storm, for stories that follow one */
   lastStorm?: { planet: string; day: number };
+  /** the next event, drawn early and announced (only with the Forschungskuppel) */
+  upcoming?: StoryEvent;
 }
 
 /** An automatic delivery from an own plant to another own plant with a fixed Linienschiff. */

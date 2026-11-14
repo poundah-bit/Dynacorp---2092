@@ -142,3 +142,97 @@ import { deliverDemandPart } from '../src/sim/engine';
 function deliverNow(w: World, d: Demand) {
   deliverDemandPart(w, d, d.amount);
 }
+
+// ---------- the six advantages ----------
+
+import { createWorld, facilityLimit, repairShipOnSite, routeLimit, run, buyShip, buyAutomation, type ProjectState } from '../src/sim/index';
+
+/** Marks a project as finished for the player. */
+function finished(w: World, id: string) {
+  (w.projects ??= []).push({ id, status: 'done', startDay: 0, delivered: {}, doneDay: w.day } as ProjectState);
+}
+
+describe('Vorteile der Großprojekte', () => {
+  it('Orbitaldock: Schiffe werden auf Terra von selbst repariert', () => {
+    const { w, me } = rich();
+    const s = buyShip(w, me, 'tank-a');
+    if (!s.ok) throw new Error(s.error);
+    s.value.condition = 60;
+    run(w, 1);
+    expect(s.value.phase).toBe('idle');
+    expect(s.value.condition).toBe(60);
+    finished(w, 'dock');
+    run(w, 1);
+    expect(s.value.phase).toBe('repair');
+  });
+
+  it('Forschungskuppel: das nächste Ereignis wird 7 Tage vorher angekündigt', () => {
+    const w = createWorld({ seed: 2, stories: true, playerName: 'T', aiCompanies: 5 });
+    finished(w, 'dome');
+    w.stories!.nextDay = 100;
+    run(w, 93);
+    expect(w.stories!.upcoming?.startDay).toBe(100);
+    expect(w.log.some((l) => l.text.startsWith('In 7 Tagen:'))).toBe(true);
+    const title = w.stories!.upcoming!.title;
+    run(w, 7);
+    expect(w.stories!.events.some((e) => e.title === title && e.startDay === 100)).toBe(true);
+    expect(w.stories!.upcoming).toBeUndefined();
+  });
+
+  it('ohne Kuppel laufen die Ereignisse genau wie bisher', () => {
+    const w = createWorld({ seed: 2, stories: true, playerName: 'T', aiCompanies: 5 });
+    run(w, 400);
+    expect(w.stories!.events.map((e) => [e.cause, e.place, e.startDay])).toEqual([
+      ['raffineriestreik', 'terra', 200], ['agrarreform', 'ceres-minor', 256], ['erzausfall', 'terra', 300], ['duerre', 'ceres-minor', 333], ['flottenausbau', 'terra', 374],
+    ]);
+  });
+
+  it('Großwerft: Reparatur vor Ort an einem Planeten mit eigener Anlage', () => {
+    const { w, me } = rich();
+    plant(w, me, 'oilwell', 'vesta-nova');
+    const s = buyShip(w, me, 'tank-a');
+    if (!s.ok) throw new Error(s.error);
+    Object.assign(s.value, { at: 'vesta-nova', condition: 50 });
+    expect(repairShipOnSite(w, me, s.value.id).ok).toBe(false);
+    finished(w, 'yard');
+    const cash = company(w, me).cash;
+    expect(repairShipOnSite(w, me, s.value.id).ok).toBe(true);
+    expect(s.value.phase).toBe('repair');
+    expect(company(w, me).cash).toBeLessThan(cash);
+    Object.assign(s.value, { phase: 'idle', at: 'pyros' });
+    expect(repairShipOnSite(w, me, s.value.id)).toEqual({ ok: false, error: expect.stringContaining('eigener Anlage') });
+  });
+
+  it('Siedlerstadt: ein Standort mehr', () => {
+    const { w, me } = rich();
+    expect(facilityLimit(w, me)).toBe(CONFIG.maxFacilitiesPerCompany);
+    finished(w, 'city');
+    expect(facilityLimit(w, me)).toBe(CONFIG.maxFacilitiesPerCompany + 1);
+  });
+
+  it('Rechenzentrum: zwei Lieferrouten mehr, sobald die Logistikzentrale steht', () => {
+    const { w, me } = rich();
+    finished(w, 'datacenter');
+    expect(routeLimit(w, me)).toBe(0);
+    for (let i = 0; i < 5; i++) plant(w, me, 'oilwell', `p${i}`);
+    expect(buyAutomation(w, me).ok).toBe(true);
+    expect(routeLimit(w, me)).toBe(CONFIG.automation.levels[0]!.routes + 2);
+  });
+
+  it('Klinikring: Gravo-Sturm-Schäden halbiert', () => {
+    const make = (clinic: boolean) => {
+      const w = createWorld({ seed: 11, playerName: 'T', aiCompanies: 0 });
+      const me = player(w);
+      for (const p of ['automa', 'asklepios', 'ostara', 'seidra', 'arkadia', 'kolossos']) plant(w, me, 'pharma', p);
+      w.facilities.forEach((f, i) => (f.id = `f${i}`));
+      company(w, me).cash = 1e9;
+      if (clinic) finished(w, 'clinic');
+      run(w, 300);
+      return w.facilities.reduce((s, f) => s + (100 - f.condition), 0);
+    };
+    const without = make(false);
+    const withClinic = make(true);
+    expect(without).toBeGreaterThan(0);
+    expect(withClinic).toBeLessThan(without);
+  });
+});

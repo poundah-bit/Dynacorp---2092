@@ -2,6 +2,7 @@
 // deliveries from an own plant to another own plant with a fixed Linienschiff. A route only calls the
 // same actions a player would (postDemand with an own supplier, own transport, assignShip).
 
+import { hasProject } from './projects';
 import { CONFIG, TERRA, facilityDef, good, planet, shipDef, unitOf } from './data';
 import { assignShip, debt, incoming, postDemand, postTransportForDemand, repairShip, repairShipCost, sendShipToTerra, setRepairAtTerra, startRoute, type Result } from './actions';
 import type { Route, Ship, World } from './types';
@@ -16,7 +17,8 @@ export const automationName = (level: number) => `Logistikzentrale ${LEVEL_NAMES
 export const automationLevel = (w: World, c: string) => company(w, c).automation ?? 0;
 export const routeLimit = (w: World, c: string) => {
   const l = automationLevel(w, c);
-  return l ? CONFIG.automation.levels[l - 1]!.routes : 0;
+  // the Rechenzentrum adds routes once a Logistikzentrale exists
+  return l ? CONFIG.automation.levels[l - 1]!.routes + (hasProject(w, c, 'datacenter') ? CONFIG.projects.extraRoutes : 0) : 0;
 };
 
 /** The next level to buy, or null when fully built. */

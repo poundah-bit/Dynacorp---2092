@@ -24,6 +24,7 @@ import {
   shipsOf,
   transport,
 } from './world';
+import { hasProject } from './projects';
 
 export type Result<T = undefined> = { ok: true; value: T } | { ok: false; error: string };
 const ok = <T>(value: T): Result<T> => ({ ok: true, value });
@@ -163,8 +164,8 @@ export function buyFacility(w: World, companyId: string, type: string, planetId:
   const pending = w.assets.some(
     (x) => x.owner === companyId && x.kind === 'facility' && x.defId === type && x.planet === planetId && !x.delivered,
   );
-  if (!existing && !pending && facilityCount(w, companyId) >= CONFIG.maxFacilitiesPerCompany) {
-    return fail(`Höchstens ${CONFIG.maxFacilitiesPerCompany} Niederlassungen pro Firma.`);
+  if (!existing && !pending && facilityCount(w, companyId) >= facilityLimit(w, companyId)) {
+    return fail(`Höchstens ${facilityLimit(w, companyId)} Niederlassungen pro Firma.`);
   }
   const paid = payFromCash(w, companyId, def.price, def.name);
   if (!paid.ok) return paid;
@@ -217,6 +218,27 @@ function ownIdleShipAtTerra(w: World, companyId: string, shipId: string): Result
   if (s.phase !== 'idle') return fail('Das Schiff ist beschäftigt.');
   if (s.at !== TERRA) return fail('Das Schiff muss dafür auf Terra sein.');
   return ok(s);
+}
+
+/** Sites a company may have: the base limit, one more with the Siedlerstadt. */
+export const facilityLimit = (w: World, companyId: string) =>
+  CONFIG.maxFacilitiesPerCompany + (hasProject(w, companyId, 'city') ? CONFIG.projects.extraSites : 0);
+
+/** Großwerft: repair an idle ship at a planet with an own plant, at the shipyard price. */
+export function repairShipOnSite(w: World, companyId: string, shipId: string): Result<undefined> {
+  if (!hasProject(w, companyId, 'yard')) return fail('Reparatur vor Ort gibt es erst mit der Großwerft.');
+  const s = ship(w, shipId);
+  if (!s || s.owner !== companyId) return fail('Schiff nicht gefunden.');
+  if (s.phase !== 'idle') return fail('Das Schiff ist beschäftigt.');
+  if (!s.at || s.at === TERRA) return fail('Auf Terra repariert die Werft wie gewohnt.');
+  if (!w.facilities.some((f) => f.owner === companyId && f.planet === s.at)) return fail('Vor Ort reparieren geht nur an einem Planeten mit eigener Anlage.');
+  if (s.condition >= 100) return fail('Das Schiff ist in bestem Zustand.');
+  const paid = payFromCash(w, companyId, repairShipCost(s), 'die Reparatur');
+  if (!paid.ok) return paid;
+  s.phase = 'repair';
+  s.waitDays = Math.max(1, Math.ceil((100 - s.condition) / 20));
+  s.repairAtTerra = false;
+  return ok(undefined);
 }
 
 export function sellShip(w: World, companyId: string, shipId: string): Result<number> {
