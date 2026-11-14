@@ -349,7 +349,7 @@ function openSheet(s: S.Sheet) {
   el.innerHTML = `<form class="sheet-card" novalidate>
     <h2>${s.title}</h2><div class="sheet-body">${s.body}</div>
     <p class="sheet-error bad" hidden></p>
-    <div class="acts end"><button type="button" class="ghost" data-act="sheet-close">${s.run ? 'Abbrechen' : 'Schließen'}</button>${s.run ? `<button type="submit" class="primary">${s.confirm ?? 'OK'}</button>` : ''}</div>
+    <div class="acts end"><button type="button" class="ghost" data-act="sheet-close">${s.run ? 'Abbrechen' : 'Schließen'}</button>${s.run ? `<button type="submit" class="primary">${s.confirm ?? 'OK'}</button>` : ''}${s.alt ? `<button type="submit" data-alt${s.alt.tip ? ` data-tip="${s.alt.tip}"` : ''}>${s.alt.label}</button>` : ''}</div>
   </form>`;
   el.hidden = false;
   const form = el.querySelector('form')!;
@@ -360,7 +360,8 @@ function openSheet(s: S.Sheet) {
   form.addEventListener('submit', (e) => {
     e.preventDefault();
     if (!s.run) return;
-    const r = s.run(form);
+    const alt = (e as SubmitEvent).submitter?.hasAttribute('data-alt') && s.alt;
+    const r = alt ? alt.run(form) : s.run(form);
     if (r.error) {
       const err = form.querySelector<HTMLElement>('.sheet-error')!;
       err.textContent = r.error;
