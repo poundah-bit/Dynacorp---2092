@@ -401,6 +401,7 @@ td .bar { height: 8px; min-width: 64px; margin-left: auto; }
 .qcell { display: flex; flex-direction: column; gap: 3px; padding: 8px; border-radius: 10px; border: 1px solid color-mix(in srgb, currentColor 35%, transparent); }
 .qcell b { color: inherit; }
 .qcell .small { color: var(--text); }
+.qcell.made { opacity: 0.45; filter: grayscale(0.7); }
 .qcell.lead { border-width: 2px; box-shadow: 0 0 0 1px currentColor inset; }
 .chip.project { color: var(--accent); }
 .project.done { opacity: 0.85; }

@@ -561,6 +561,13 @@ const ACTS: Record<string, (a: string) => void> = {
       },
     });
   },
+  'close-world'() {
+    openSheet(
+      S.closeWorldSheet(w!, me, (next) => {
+        if (next !== w) begin(next, guideHidden);
+      }),
+    );
+  },
   'project-abort'() {
     if (!confirm('Großprojekt abbrechen? Bezahltes Geld und gelieferte Waren sind verloren.')) return;
     result(abortProject(w!, me), 'Großprojekt abgebrochen.');

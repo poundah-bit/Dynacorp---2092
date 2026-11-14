@@ -112,7 +112,11 @@ export function createStarMap(): StarMap {
       if (!reducedMotion() || e.storm) fx.add(reducedMotion() ? { pulses: [], arrivals: [], storm: e.storm } : e, performance.now());
     },
     busy: () => fx.busy(performance.now()),
-    reset: () => fx.clear(),
+    reset: () => {
+      fx.clear();
+      // another world may have other planets: fit the view again on the next paint
+      scale = 0;
+    },
     select(id) {
       map.selected = id;
       if (last) map.draw(last.w, last.me, last.frac, true, last.running);

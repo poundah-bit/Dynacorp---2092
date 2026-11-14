@@ -210,3 +210,49 @@ describe('Großprojekte und Quark-Trend in der Oberfläche', () => {
     expect(html).toContain('frei ✓');
   });
 });
+
+// ---------- Welt abschließen in der Oberfläche ----------
+
+import { closeWorldSheet } from '../src/ui/sheets';
+import { closeWorld, createWorld as mkWorld, type World as W } from '../src/sim/index';
+
+describe('Welt abschließen in der Oberfläche', () => {
+  const done = (ids: string[]) => {
+    const w = mkWorld({ seed: 3, playerName: 'T', aiCompanies: 2 });
+    const me = w.playerId!;
+    company(w, me).cash = 1e9;
+    for (const id of ids) {
+      expect(startProject(w, me, id).ok).toBe(true);
+      w.projects!.at(-1)!.buildDaysLeft = 1;
+      projectsTick(w);
+    }
+    return { w, me };
+  };
+
+  it('die Quark-Karte bietet „Welt abschließen“ nur mit freiem Quark', () => {
+    expect(quarkCard(done([]).w)).not.toContain('Welt abschließen');
+    expect(quarkCard(done(['dock']).w)).toContain('Welt abschließen');
+  });
+
+  it('der Dialog nennt Projekt, Vorteil, Neustart und ein laufendes Projekt', () => {
+    const { w, me } = done(['dock', 'yard']);
+    let s = closeWorldSheet(w, me, () => {});
+    expect(s.body).toContain('Orbitaldock Terra');
+    expect(s.body).toContain('Großwerft');
+    expect(s.body).toContain('Reparatur vor Ort');
+    expect(s.body).toContain('neuen Firma und normalem Startkapital');
+    expect(s.body).not.toContain('geht verloren');
+    expect(startProject(w, me, 'dome').ok).toBe(true);
+    s = closeWorldSheet(w, me, () => {});
+    expect(s.body).toContain('geht verloren');
+  });
+
+  it('Projektkarte in Welt 2: „aktiv aus Modul 1“ ohne Startknopf', () => {
+    const { w } = done(['dock']);
+    const w2 = (closeWorld(w, 'up') as { ok: true; value: W }).value;
+    const html = projectsCard(w2, w2.playerId!);
+    expect(html).toContain('aktiv aus Modul 1');
+    expect(html).not.toContain('data-a="dock"');
+    expect(quarkCard(w2)).toContain('erzeugt');
+  });
+});

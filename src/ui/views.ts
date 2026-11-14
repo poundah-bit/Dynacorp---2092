@@ -48,7 +48,7 @@ import {
   unshippedDemands,
   waitingTransports,
 } from './play';
-import { PROJECTS, QUARK_NAME, canQueue, daysUntilFree, latePenaltyRate, transport, automationLevel, automationName, buildingProject, hasProject, lineRoute, nextAutomation, projectState, quarkStatus, routeLimit, routeName, serviceLimit, storyStrength, unitOf, unshippedAmount, type Flavour, type StoryEvent } from '../sim/index';
+import { PROJECTS, QUARK_NAME, campaignOf, campaignValue, closableQuarks, canQueue, daysUntilFree, latePenaltyRate, transport, automationLevel, automationName, buildingProject, hasProject, lineRoute, nextAutomation, projectState, quarkStatus, routeLimit, routeName, serviceLimit, storyStrength, unitOf, unshippedAmount, type Flavour, type StoryEvent } from '../sim/index';
 import { chainDetail, chainSvg } from './chain';
 import {
   cr,
@@ -310,6 +310,7 @@ export function projectsCard(w: World, me: string): string {
     const st = projectState(w, def.id);
     const goods = Object.entries(def.materials);
     const head = `<b>${def.name}</b> ${quarkTag(def.quark)} <span class="price">${cr(def.price)}</span> <span class="muted small">+${num(def.prestige)} Prestige</span>`;
+    if (st?.status === 'done' && st.fromModule) return `<div class="row project done"><div class="grow">${head} <span class="good">aktiv aus Modul ${st.fromModule} ✓</span><div class="small">${def.effect}</div></div></div>`;
     if (st?.status === 'done') return `<div class="row project done"><div class="grow">${head} <span class="good">fertig ✓</span><div class="small">${def.effect}</div></div></div>`;
     if (st?.buildDaysLeft !== undefined) {
       const total = CONFIG.projects.buildDays;
@@ -344,10 +345,14 @@ export function projectsCard(w: World, me: string): string {
 /** Statistik card: the six quark cells (industry | supply × light, middle, heavy). */
 export function quarkCard(w: World): string {
   const s = quarkStatus(w);
+  const made = campaignOf(w).modules;
+  const camp = campaignOf(w);
+  const close = closableQuarks(w).length ? `<div class="acts">${btn('Welt abschließen…', 'close-world', '', 'class="primary" data-tip="Friert diese Welt als Modul ein: Du wählst ein freigeschaltetes Quark, das Großprojekt dazu wirkt in allen weiteren Welten."')}</div>` : '';
   const cell = (f: Flavour) => {
     const free = s.unlocked.includes(f);
-    const state = free ? '<span class="small good">frei ✓</span>' : `<span class="small">${Math.round(s.cells[f] * 100)} %</span>`;
-    return `<div class="qcell q-${f}${s.flavour === f || free ? ' lead' : ''}"><b>${QUARK_NAME[f]}</b><span class="small muted">${QUARK_SIDE[f]}</span>${bar({ value: s.cells[f] * 100, max: 100, tone: 'neutral', label: `${QUARK_NAME[f]}-Quark` })}${state}</div>`;
+    const mod = made.find((m) => m.quark === f);
+    const state = mod ? `<span class="small muted">erzeugt (Modul ${mod.n})</span>` : free ? '<span class="small good">frei ✓</span>' : `<span class="small">${Math.round(s.cells[f] * 100)} %</span>`;
+    return `<div class="qcell q-${f}${mod ? ' made' : s.flavour === f || free ? ' lead' : ''}"><b>${QUARK_NAME[f]}</b><span class="small muted">${QUARK_SIDE[f]}</span>${bar({ value: s.cells[f] * 100, max: 100, tone: 'neutral', label: `${QUARK_NAME[f]}-Quark` })}${state}</div>`;
   };
   return `<section class="card quark"><h2>${icon('quark')} Diese Welt entwickelt sich zu folgendem …</h2>
     <p class="hint">Jedes fertige Großprojekt schaltet das Quark seines Feldes frei, der Balken zeigt das laufende Projekt. Später schließt du die Welt mit einem freigeschalteten Quark als Modul ab – das Großprojekt dazu wirkt dann in allen weiteren Welten.</p>
@@ -355,6 +360,7 @@ export function quarkCard(w: World): string {
       <span class="small muted">leicht</span>${cell('up')}${cell('down')}
       <span class="small muted">mittel</span>${cell('charm')}${cell('strange')}
       <span class="small muted">schwer</span>${cell('top')}${cell('bottom')}</div>
+    <p class="small">Kampagne: <b>Welt ${camp.world}</b> · ${camp.modules.length} von 6 Quarks erzeugt · Kampagnenwert ${num(campaignValue(w))}</p>${close}
     <p class="small muted">Es gibt sechs Quark-Sorten in drei Generationen. Up, Charm und Top tragen +⅔ der Elementarladung, Down, Strange und Bottom −⅓; von Generation zu Generation werden sie schwerer – das Top-Quark ist das schwerste bekannte Elementarteilchen. Schwere Quarks verlangen hier teurere Großprojekte.</p>
   </section>`;
 }

@@ -1,7 +1,8 @@
 // Dialogs ("sheets") for moves that need a choice: loans, delivering, shipping, ordering goods.
 // A sheet is static HTML plus a run() that reads the form and performs the move via play.ts / actions.
 
-import type { PlanetSource } from '../sim/index';
+import type { Flavour, PlanetSource } from '../sim/index';
+import { PROJECTS, QUARK_NAME, buildingProject, campaignOf, closableQuarks, closeWorld, projectDef } from '../sim/index';
 import {
   addRoute,
   routeGoods,
@@ -590,6 +591,51 @@ export function routeSheet(w: World, me: string): Sheet {
       if (!val(form, 'ship')) return { error: 'Wähle ein Linienschiff.' };
       const r = addRoute(w, me, { from: p.from.id, to: p.to.id, good: p.g, ship: val(form, 'ship'), amount: numVal(form, 'amount'), refillBelow: numVal(form, 'refill'), serviceBelow: numVal(form, 'service') });
       return done(r, 'Lieferroute angelegt – sie startet, sobald die Bedingungen erfüllt sind.');
+    },
+  };
+}
+
+// ---------- Welt abschließen ----------
+
+/**
+ * Pick one of the free quarks, then confirm. `apply` gets the next world (or the same world after the
+ * sixth quark) – game.ts switches to it.
+ */
+export function closeWorldSheet(w: World, me: string, apply: (next: World) => void): Sheet {
+  const free = closableQuarks(w);
+  const n = campaignOf(w).world;
+  const running = buildingProject(w);
+  const last = campaignOf(w).modules.length + 1 >= 6;
+  const opts = free
+    .map((f, i) => {
+      const def = PROJECTS.find((p) => p.quark === f)!;
+      return `<label class="opt"><input type="radio" name="quark" value="${f}"${i === 0 ? ' checked' : ''}><span><b>${QUARK_NAME[f]}-Quark</b> – ${def.name} wirkt danach in allen weiteren Welten:<br><small>${def.effect}</small></span></label>`;
+    })
+    .join('');
+  const after = last
+    ? '<p>Es ist dein sechstes Quark: Damit ist das Standardmodell vervollständigt. Du kannst danach in dieser Welt weiterspielen.</p>'
+    : `<p>Die Welt wird eingefroren und als Modul ${n} gespeichert. Du beginnst Welt ${n + 1} mit einer neuen Firma und normalem Startkapital, in einer neuen Gegend mit neuen Planeten und neuen Konkurrenten.</p>`;
+  const warn = running ? `<p class="bad">Das laufende Großprojekt ${projectDef(running.id).name} geht verloren – mit Geld und gelieferten Waren.</p>` : '';
+  return {
+    title: `Welt ${n} abschließen`,
+    body: `<p>Mit welchem Quark schließt du diese Welt ab?</p><div class="opts">${opts}</div>${after}${warn}`,
+    confirm: 'Weiter…',
+    run: (form) => {
+      const f = String(new FormData(form).get('quark') ?? '') as Flavour;
+      if (!free.includes(f)) return { error: 'Wähle ein Quark.' };
+      return {
+        next: {
+          title: 'Wirklich abschließen?',
+          body: `<p>Welt ${n} wird als <b>${QUARK_NAME[f]}-Quark</b> abgeschlossen. Das lässt sich nicht rückgängig machen.</p>${warn}`,
+          confirm: 'Welt abschließen',
+          run: () => {
+            const r = closeWorld(w, f);
+            if (!r.ok) return { error: r.error };
+            apply(r.value);
+            return { message: last ? 'Das Standardmodell ist vervollständigt!' : `Welt ${n} abgeschlossen – willkommen in Welt ${n + 1}.` };
+          },
+        },
+      };
     },
   };
 }
