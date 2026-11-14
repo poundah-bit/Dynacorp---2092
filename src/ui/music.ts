@@ -1,5 +1,6 @@
 /// <reference types="vite/client" />
-// Soundtrack by Thamanoidis: three tracks in random order, never the same one twice in a row.
+// Soundtrack by Thamanoidis: tracks in random order, never the same one twice in a row. Group 1 belongs to
+// world 1, group 2 to the later module worlds; the settings choose the world's music, world 1 only or all.
 // Played with an <audio> element so the files stream (they start before they are fully loaded).
 // Separate from the event cues in sound.ts; settings (on/off, volume) live in localStorage.
 
@@ -7,14 +8,19 @@ export interface Track {
   title: string;
   /** path below the site root (Vite copies public/ as is) */
   file: string;
+  /** 1 = world 1, 2 = module worlds from world 2 on */
+  group: 1 | 2;
 }
 
 export const ARTIST = 'Thamanoidis';
 
 export const TRACKS: readonly Track[] = [
-  { title: 'The Nu Jazz Klassik Experiment B', file: 'music/experiment-b.opus' },
-  { title: 'The Nu Jazz Klassik Experiment C Klassik', file: 'music/experiment-c-klassik.opus' },
-  { title: 'The Nu Jazz Klassik Experiment C XMAS', file: 'music/experiment-c-xmas.opus' },
+  { title: 'The Nu Jazz Klassik Experiment B', file: 'music/experiment-b.opus', group: 1 },
+  { title: 'The Nu Jazz Klassik Experiment C Klassik', file: 'music/experiment-c-klassik.opus', group: 1 },
+  { title: 'The Nu Jazz Klassik Experiment C XMAS', file: 'music/experiment-c-xmas.opus', group: 1 },
+  { title: 'Iron Bullet Clash (Dubstep)', file: 'music/iron-bullet-clash.opus', group: 2 },
+  { title: 'Iron Bullet Clash (Dubstep, Jazzy RnB Cover)', file: 'music/iron-bullet-clash-rnb.opus', group: 2 },
+  { title: 'Is It Worth', file: 'music/is-it-worth.opus', group: 2 },
 ];
 
 export const trackCredit = (t: Track) => `Musik: ${ARTIST} – ${t.title}`;
@@ -26,9 +32,20 @@ export interface MusicSettings {
   on: boolean;
   /** 0..1 */
   volume: number;
+  /** the music of the running world, only world 1's, or all tracks mixed */
+  choice: MusicChoice;
 }
 
-export const MUSIC_DEFAULTS: MusicSettings = { on: true, volume: 0.4 };
+export type MusicChoice = 'world' | 'world1' | 'all';
+const CHOICES: MusicChoice[] = ['world', 'world1', 'all'];
+
+export const MUSIC_DEFAULTS: MusicSettings = { on: true, volume: 0.4, choice: 'world' };
+
+/** Indices into TRACKS that may play for this choice in world `world`. */
+export function playlist(choice: MusicChoice, world: number): number[] {
+  const group = choice === 'all' ? null : choice === 'world1' || world <= 1 ? 1 : 2;
+  return TRACKS.map((t, i) => (group === null || t.group === group ? i : -1)).filter((i) => i >= 0);
+}
 const KEY = 'dynacorp2092.music.v1';
 
 /** Settings from storage; anything missing or broken falls back to the defaults. */
@@ -36,7 +53,8 @@ export function parseMusicSettings(raw: string | null): MusicSettings {
   try {
     const d = raw ? (JSON.parse(raw) as Partial<MusicSettings>) : {};
     const volume = typeof d.volume === 'number' && Number.isFinite(d.volume) ? Math.min(1, Math.max(0, d.volume)) : MUSIC_DEFAULTS.volume;
-    return { on: typeof d.on === 'boolean' ? d.on : MUSIC_DEFAULTS.on, volume };
+    const choice = CHOICES.includes(d.choice as MusicChoice) ? (d.choice as MusicChoice) : MUSIC_DEFAULTS.choice;
+    return { on: typeof d.on === 'boolean' ? d.on : MUSIC_DEFAULTS.on, volume, choice };
   } catch {
     return { ...MUSIC_DEFAULTS };
   }
@@ -64,6 +82,7 @@ let current: number | null = null;
 let unlocked = false;
 let failures = 0;
 let gapTimer: ReturnType<typeof setTimeout> | undefined;
+let world = 1;
 
 export const musicSettings = (): MusicSettings => settings;
 export const nowPlaying = (): Track | null => (current === null ? null : TRACKS[current]!);
@@ -87,7 +106,9 @@ function element(): HTMLAudioElement {
 function playNext() {
   if (!settings.on || !unlocked) return;
   const a = element();
-  current = nextTrack(current, TRACKS.length, Math.random);
+  const list = playlist(settings.choice, world);
+  const at = current === null ? null : list.indexOf(current);
+  current = list[nextTrack(at === null || at < 0 ? null : at, list.length, Math.random)]!;
   a.src = `${import.meta.env.BASE_URL}${TRACKS[current]!.file}`;
   a.volume = settings.volume;
   void a.play().catch(() => {
@@ -109,6 +130,7 @@ export function startMusic() {
 }
 
 export function setMusicSettings(next: MusicSettings) {
+  const before = playlist(settings.choice, world).join();
   settings = parseMusicSettings(JSON.stringify(next));
   try {
     localStorage.setItem(KEY, JSON.stringify(settings));
@@ -116,11 +138,19 @@ export function setMusicSettings(next: MusicSettings) {
     // no storage: keep the settings for this session
   }
   if (audio) audio.volume = settings.volume;
-  if (settings.on) resume();
+  if (settings.on && playlist(settings.choice, world).join() !== before && unlocked) skipTrack();
+  else if (settings.on) resume();
   else {
     clearTimeout(gapTimer);
     audio?.pause();
   }
+}
+
+/** The running world changed (campaign): a different playlist starts right away. */
+export function setMusicWorld(n: number) {
+  const before = playlist(settings.choice, world).join();
+  world = n;
+  if (playlist(settings.choice, world).join() !== before && unlocked && settings.on) skipTrack();
 }
 
 /** Jump to another track right away. */

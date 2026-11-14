@@ -5,6 +5,7 @@
 import {
   assignShip,
   type Flavour,
+  campaignOf,
   automationName,
   buyAutomation,
   removeRoute,
@@ -50,7 +51,7 @@ import { createStarMap } from './starmap';
 import * as S from './sheets';
 import { finaleHtml, moduleDetail, overviewHtml } from './overview';
 import { mapEvents } from './mapfx';
-import { musicSettings, nowPlaying, setMusicSettings, skipTrack, startMusic, trackCredit } from './music';
+import { musicSettings, nowPlaying, setMusicSettings, setMusicWorld, skipTrack, startMusic, trackCredit, type MusicChoice } from './music';
 import { CUE_INFO, play, playDay, preview, setSoundSettings, soundSettings, unlockSound } from './sound';
 import * as V from './views';
 
@@ -180,6 +181,7 @@ function showStart() {
 function begin(world: World, hideGuide: boolean, order?: unknown) {
   ensureStories(world);
   ensureQuark(world);
+  setMusicWorld(campaignOf(world).world);
   w = world;
   listOrder = parseOrder(order);
   me = world.playerId!;
@@ -713,6 +715,15 @@ function soundSheet(): S.Sheet {
     body: `<h3>Musik</h3>
       <label class="check"><input type="checkbox" name="music-on" ${m.on ? 'checked' : ''}> Musik an</label>
       <label class="field">Lautstärke Musik <input type="range" name="music-volume" min="0" max="100" step="5" value="${Math.round(m.volume * 100)}"></label>
+      <div class="opts">${(
+        [
+          ['world', 'Musik der Welt', 'Jede Modulwelt hat ihre eigenen Stücke.'],
+          ['world1', 'Nur Welt 1', 'Immer die Stücke der ersten Welt.'],
+          ['all', 'Alle Stücke gemischt', 'Alles, was es gibt, in zufälliger Reihenfolge.'],
+        ] as const
+      )
+        .map(([v, label, hint]) => `<label class="opt"><input type="radio" name="music-choice" value="${v}" ${m.choice === v ? 'checked' : ''}><span><b>${label}</b><br><small>${hint}</small></span></label>`)
+        .join('')}</div>
       <div class="sound-row"><span class="muted">${esc(track ? trackCredit(track) : 'Musik: Thamanoidis')}</span>
       <button type="button" class="ghost" data-act="music-next">Nächstes Stück</button></div>
       <h3>Töne</h3>
@@ -725,7 +736,7 @@ function soundSheet(): S.Sheet {
       const next = { on: data.has('on'), volume: Number(data.get('volume') ?? 60) / 100, cues: { ...s.cues } };
       for (const c of Object.keys(CUE_INFO) as Cue[]) next.cues[c] = data.has(`cue-${c}`);
       setSoundSettings(next);
-      setMusicSettings({ on: data.has('music-on'), volume: Number(data.get('music-volume') ?? 40) / 100 });
+      setMusicSettings({ on: data.has('music-on'), volume: Number(data.get('music-volume') ?? 40) / 100, choice: String(data.get('music-choice') ?? 'world') as MusicChoice });
     },
   };
 }
