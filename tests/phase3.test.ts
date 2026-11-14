@@ -4,10 +4,10 @@ import { describe, expect, it } from 'vitest';
 import { FACILITIES, GOODS, PLANETS, assignShip, buyFacility, buyShip, facilitiesOf, startFacility, takeLoan, type Demand, type World } from '../src/sim/index';
 import { CHAIN_EDGES, chainDetail, chainLayout, chainSvg, goodRoles } from '../src/ui/chain';
 import { planetInfo } from '../src/ui/mapinfo';
-import { companyName, ensureStories, fittingOffers, newGame, newOffers, startedStories } from '../src/ui/play';
-import { storyCard } from '../src/ui/views';
+import { companyName, deliverableDemands, ensureStories, fittingOffers, newGame, newOffers, startedStories } from '../src/ui/play';
+import { projectsCard, quarkCard, storyCard } from '../src/ui/views';
 import { storyPlanets } from '../src/ui/mapfx';
-import { initStories, run, startStory } from '../src/sim/index';
+import { company, initStories, newQuark, projectsTick, run, startProject, startStory } from '../src/sim/index';
 import { oilWellWithTanker, player, runUntil, soloWorld, terraOilDemand } from './helpers';
 
 describe('Benachrichtigung bei passenden Aufträgen', () => {
@@ -146,5 +146,50 @@ describe('Story-Ereignisse in der Oberfläche', () => {
     run(w, 1);
     expect(startedStories(w, w.day)).toEqual([]);
     expect(storyPlanets(w).has('liora')).toBe(true);
+  });
+});
+
+describe('Großprojekte und Quark-Trend in der Oberfläche', () => {
+  const richWorld = () => {
+    const w = soloWorld();
+    const me = player(w);
+    company(w, me).cash = 2e8;
+    return { w, me };
+  };
+
+  it('eigene Projekt-Aufträge erscheinen an der Börse zum Liefern', () => {
+    const { w, me } = richWorld();
+    w.facilities.push({ id: 'f-pp', owner: me, type: 'plasticplant', planet: 'sulcis', units: 1, status: 'running', buildDaysLeft: 0, condition: 100, stock: { plastic: 40_000 }, reserved: {}, storages: [], idleDays: 0 });
+    expect(startProject(w, me, 'dock').ok).toBe(true);
+    projectsTick(w);
+    const mine = deliverableDemands(w, me).filter((o) => o.d.project === 'dock');
+    expect(mine.length).toBeGreaterThan(0);
+    expect(mine.every((o) => o.d.good === 'plastic')).toBe(true);
+  });
+
+  it('die Projektkarte zeigt Angebote und den Fortschritt', () => {
+    const { w, me } = richWorld();
+    expect(projectsCard(w, me)).toContain('Orbitaldock Terra');
+    expect(projectsCard(w, me)).toContain('Starten');
+    expect(startProject(w, me, 'yard').ok).toBe(true);
+    w.projects![0]!.delivered.steel = 16_000;
+    const html = projectsCard(w, me);
+    expect(html).toContain('Stahl');
+    expect(html).toContain('Abbrechen');
+    expect(html).toContain('role="meter"');
+  });
+
+  it('die Quark-Karte zeigt sechs Felder', () => {
+    const { w } = richWorld();
+    w.quark = newQuark('trend');
+    w.quark.energy.charm = 3_500_000;
+    const html = quarkCard(w);
+    for (const n of ['Up', 'Down', 'Charm', 'Strange', 'Top', 'Bottom']) expect(html).toContain(n);
+    expect(html).toContain('50 %');
+  });
+
+  it('der Quark-Modus wird beim neuen Spiel gesetzt', () => {
+    expect(newGame('T', 'med', 1, 1, true, 'project').quark?.mode).toBe('project');
+    expect(newGame('T', 'med', 1, 1).quark?.mode).toBe('trend');
   });
 });

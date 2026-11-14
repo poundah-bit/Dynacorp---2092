@@ -47,7 +47,7 @@ import {
   unshippedDemands,
   waitingTransports,
 } from './play';
-import { automationLevel, automationName, lineRoute, nextAutomation, routeLimit, routeName, serviceLimit, storyStrength, unitOf, unshippedAmount, type StoryEvent } from '../sim/index';
+import { PROJECTS, QUARK_NAME, automationLevel, automationName, buildingProject, hasProject, lineRoute, nextAutomation, projectState, quarkStatus, routeLimit, routeName, serviceLimit, storyStrength, unitOf, unshippedAmount, type Flavour, type StoryEvent } from '../sim/index';
 import { chainDetail, chainSvg } from './chain';
 import {
   cr,
@@ -209,12 +209,18 @@ function storyChip(w: World, id: string | undefined): string {
   return e ? ` <span class="chip story" data-tip="${esc(`${e.title}: ${e.texts.start}`)}">${icon('story')}Ereignis</span>` : '';
 }
 
+/** Market badge for an order of the player's own Großprojekt. */
+const projectChip = (id: string | undefined) =>
+  id ? ` <span class="chip project" data-tip="Bestellung deiner eigenen Baustelle: aus eigenen Anlagen lieferst du kostenlos.">${icon('quark')}Großprojekt</span>` : '';
+
 const PHASE: Record<StoryEvent['phase'], string> = { rise: 'Anlauf', peak: 'Höhepunkt', fade: 'klingt ab', done: 'vorbei' };
 
 /** „Lage in der Galaxie“: the running story events (empty without any). */
 export function storyCard(w: World): string {
   const running = (w.stories?.events ?? []).filter((e) => e.phase !== 'done' && w.day < e.endDay);
-  if (!running.length) return '';
+  const next = w.stories?.upcoming;
+  const soon = next ? `<div class="row story-row"><div class="grow"><b>In ${days(next.startDay - w.day)}: ${esc(next.title)}</b> <span class="muted small">${pName(next.place)} · Frühwarnung der Forschungskuppel</span></div></div>` : '';
+  if (!running.length && !soon) return '';
   const rows = running
     .map((e) => {
       const goods = e.effects.map((x) => `${gName(x.good)} ${x.factor > 1 ? '<span class="good">↑</span>' : '<span class="bad">↓</span>'}`).join(' · ');
@@ -225,7 +231,7 @@ export function storyCard(w: World): string {
         <div class="small muted">${esc(e.texts.start)}</div></div></div>`;
     })
     .join('');
-  return `<section class="card story-card"><h2>${icon('story')} Lage in der Galaxie</h2>${rows}</section>`;
+  return `<section class="card story-card"><h2>${icon('story')} Lage in der Galaxie</h2>${soon}${rows}</section>`;
 }
 
 export function terraView({ w, me }: ViewCtx): string {
@@ -282,11 +288,71 @@ export function terraView({ w, me }: ViewCtx): string {
     ${facilityRows}
   </section>
   ${automationCard(w, me)}
+  ${projectsCard(w, me)}
   <section class="card">
     <h2>Werft – Frachter</h2>
     <p class="hint">Jedes Schiff transportiert nur eine Frachtart. Kosten/Tag: Wartung immer, Betrieb nur unterwegs.</p>
     ${shipRows}
   </section>`;
+}
+
+// ---------- Großprojekte and Quark-Trend ----------
+
+const QUARK_SIDE: Record<Flavour, string> = { up: 'Industrie, leicht', down: 'Versorgung, leicht', charm: 'Industrie, mittel', strange: 'Versorgung, mittel', top: 'Industrie, schwer', bottom: 'Versorgung, schwer' };
+const quarkTag = (f: Flavour) => `<span class="qtag q-${f}">${QUARK_NAME[f]}</span>`;
+
+/** Terra card „Großprojekte“: six expensive goals; one site at a time with a bar per good. */
+export function projectsCard(w: World, me: string): string {
+  const running = buildingProject(w);
+  const c = company(w, me);
+  const rows = PROJECTS.map((def) => {
+    const st = projectState(w, def.id);
+    const goods = Object.entries(def.materials);
+    const head = `<b>${def.name}</b> ${quarkTag(def.quark)} <span class="price">${cr(def.price)}</span> <span class="muted small">+${num(def.prestige)} Prestige</span>`;
+    if (st?.status === 'done') return `<div class="row project done"><div class="grow">${head} <span class="good">fertig ✓</span><div class="small">${def.effect}</div></div></div>`;
+    if (st) {
+      const bars = goods
+        .map(([g, need]) => {
+          const got = Math.min(need, st.delivered[g] ?? 0);
+          return meterRow(`${gName(g)} ${amt(got, g)} / ${amt(need, g)}`, bar({ value: got, max: need, tone: 'neutral', label: `${gName(g)}: ${amt(got, g)} von ${amt(need, g)}` }));
+        })
+        .join('');
+      return `<div class="row project building"><div class="grow">${head} <span class="warn">im Bau</span>${st.waiting ? ` · <span class="bad">${st.waiting}</span>` : ''}
+        <div class="meters">${bars}</div><div class="small">${def.effect}</div></div>
+        <div class="acts">${btn('Abbrechen', 'project-abort', def.id, 'class="ghost" data-tip="Bricht das Großprojekt ab. Bezahltes Geld und gelieferte Waren sind verloren."')}</div></div>`;
+    }
+    const can = !running && debt(w, me) === 0 && c.cash >= def.price;
+    return `<div class="row project"><div class="grow">${head}
+      <div class="small">Waren: ${goods.map(([g, n]) => `${amt(n, g)} ${gName(g)}`).join(' · ')}</div>
+      <div class="small">${def.effect}</div></div>
+      <div class="acts">${btn('Starten…', 'project-start', def.id, `${can ? 'class="primary"' : 'disabled'} data-tip="Schuldenfrei und aus Barkapital. Danach bestellt die Baustelle im Orbit von Terra ihre Waren an der Börse – aus eigenen Anlagen lieferst du kostenlos, liefert eine andere Firma, zahlst du den Marktpreis."`)}</div></div>`;
+  }).join('');
+  return `<section class="card projects"><h2>${icon('quark')} Großprojekte</h2>
+    <p class="hint">Teure Ziele für große Firmen: erst Geld, dann viele Waren aus einem Quark-Feld. Jedes fertige Projekt bringt Prestige im Firmenindex und einen Vorteil.${running ? '' : ' Es gibt eine Baustelle zur Zeit.'}</p>
+    ${rows}</section>`;
+}
+
+/** Statistik card: the six quark cells (industry | supply × light, middle, heavy). */
+export function quarkCard(w: World): string {
+  const s = quarkStatus(w);
+  const cell = (f: Flavour) =>
+    `<div class="qcell q-${f}${s.flavour === f ? ' lead' : ''}"><b>${QUARK_NAME[f]}</b><span class="small muted">${QUARK_SIDE[f]}</span>${bar({ value: s.cells[f] * 100, max: 100, tone: 'neutral', label: `${QUARK_NAME[f]}-Quark` })}<span class="small">${Math.round(s.cells[f] * 100)} %</span></div>`;
+  const mode = s.mode === 'project' ? 'Test-Modus „Projekt“: der Balken zeigt das laufende Großprojekt.' : 'Test-Modus „Trend“: was du lieferst, füllt das Feld seiner Waren; ohne Nachschub klingt es langsam ab.';
+  return `<section class="card quark"><h2>${icon('quark')} Quark-Trend</h2>
+    <p class="hint">${mode}</p>
+    <div class="qgrid"><span></span><span class="small muted">Industrie (Ladung +⅔)</span><span class="small muted">Versorgung (Ladung −⅓)</span>
+      <span class="small muted">leicht</span>${cell('up')}${cell('down')}
+      <span class="small muted">mittel</span>${cell('charm')}${cell('strange')}
+      <span class="small muted">schwer</span>${cell('top')}${cell('bottom')}</div>
+    <p class="small muted">Es gibt sechs Quark-Sorten in drei Generationen. Up, Charm und Top tragen +⅔ der Elementarladung, Down, Strange und Bottom −⅓; von Generation zu Generation werden sie schwerer – das Top-Quark ist das schwerste bekannte Elementarteilchen. Schwere Quarks brauchen hier mehr „Energie“.</p>
+  </section>`;
+}
+
+/** Header chip: where the world is heading. */
+export function quarkChip(w: World): string {
+  const s = quarkStatus(w);
+  if (!s.flavour) return `<span class="muted small" data-tip="Quark-Trend: Sobald deine Welt liefert${s.mode === 'project' ? ' bzw. ein Großprojekt läuft' : ''}, zeigt sich hier, zu welcher Quark-Sorte sie sich entwickelt.">${icon('quark')} –</span>`;
+  return `<span class="qchip q-${s.flavour}" data-tip="Quark-Trend: deine Welt entwickelt sich zu einem ${QUARK_NAME[s.flavour]}-Quark (${QUARK_SIDE[s.flavour]}). Mehr dazu im Tab Statistik.">${icon('quark')} ${QUARK_NAME[s.flavour]} ${bar({ value: s.fill * 100, max: 100, tone: 'neutral', label: 'Quark-Trend' })} ${Math.round(s.fill * 100)} %</span>`;
 }
 
 // ---------- Logistikzentrale (Dynacore) ----------
@@ -442,6 +508,10 @@ export function fleetView({ w, me, order }: ViewCtx): string {
             : btn(`Beim nächsten Terra-Stopp reparieren (~${cr(repairShipCost(s))})`, 'repair-mark', `${s.id}|1`, 'data-tip="Das Schiff fliegt weiter wie geplant und wird beim nächsten Halt auf Terra automatisch repariert."')
           : '',
         atTerra ? btn(`Verkaufen (${cr(Math.round(shipValue(s) * 0.6))})`, 'sell-ship', s.id, 'class="ghost"') : '',
+        // Großwerft: repair on the spot at a planet with an own plant
+        s.phase === 'idle' && !atTerra && worn && hasProject(w, me, 'yard') && w.facilities.some((f) => f.owner === me && f.planet === s.at)
+          ? btn(`Vor Ort reparieren (${cr(repairShipCost(s))})`, 'repair-onsite', s.id, 'data-tip="Großwerft: Reparatur hier an deiner Anlage zum Werftpreis, ohne Flug nach Terra."')
+          : '',
       ].join('');
       const stateIc: IconName = critical ? 'critical' : s.phase === 'idle' ? 'idle' : s.phase === 'loading' || s.phase === 'unloading' ? 'loading' : 'travelling';
       const stateText = s.phase === 'idle' ? 'frei' : stateIc === 'loading' ? (s.phase === 'loading' ? 'lädt' : 'entlädt') : 'unterwegs';
@@ -521,7 +591,7 @@ export function marketView(ctx: ViewCtx): string {
         : o.ready
           ? `<span class="good">Lager reicht (${amt(available(f, d.good), d.good)} frei)</span>`
           : `<span class="warn">Lager: ${amt(Math.max(0, available(f, d.good)), d.good)} frei${o.daysToReady < Infinity ? ` – genug ${inDays(o.daysToReady)}` : ' – die Anlage produziert gerade nicht'}. Annehmen geht, ist aber riskant.</span>`;
-      return `<div class="row"><div class="grow">${cargoIcon(good(d.good).cargo)} <b>${amt(d.amount, d.good)} ${gName(d.good)}</b> für ${who(w, d.requester)} <span class="price">${cr(value)}</span>${d.big ? ` <span class="chip warn">${icon('bigOrder')}Großauftrag</span>` : ''}${storyChip(w, d.story)}
+      return `<div class="row"><div class="grow">${cargoIcon(good(d.good).cargo)} <b>${amt(d.amount, d.good)} ${gName(d.good)}</b> für ${who(w, d.requester)} <span class="price">${cr(value)}</span>${d.big ? ` <span class="chip warn">${icon('bigOrder')}Großauftrag</span>` : ''}${storyChip(w, d.story)}${projectChip(d.project)}
         <div class="small">${perUnit(d.pricePerFe, d.good)} · ${route(f.planet, d.toPlanet)} · ${cargoName(good(d.good).cargo)} · seit ${days(w.day - d.createdDay)} offen</div>
         <div class="small">${state}</div></div>
         <div class="acts">${btn('Liefern…', 'deliver', d.id, `class="${o.ready ? 'primary' : ''}" ${guide} data-tip="Nimmt die Nachfrage an und wählt die Schiffe dafür. Wer zuerst annimmt, bekommt den Auftrag." ${o.tooBig ? 'disabled' : ''}`)}</div></div>`;
@@ -548,7 +618,7 @@ export function marketView(ctx: ViewCtx): string {
         (d) => d,
       )
         .map(
-          (d) => `<tr><td>${cargoIcon(good(d.good).cargo)} ${gName(d.good)}${d.big ? ` ${icon('bigOrder', 'warn')}` : ''}${storyChip(w, d.story)}</td><td>${who(w, d.requester)}</td><td>${pName(d.toPlanet)}</td><td class="n">${amt(d.amount, d.good)}</td><td class="n">${perUnit(d.pricePerFe, d.good)}</td><td class="n">${cr(d.amount * d.pricePerFe)}</td></tr>`,
+          (d) => `<tr><td>${cargoIcon(good(d.good).cargo)} ${gName(d.good)}${d.big ? ` ${icon('bigOrder', 'warn')}` : ''}${storyChip(w, d.story)}${projectChip(d.project)}</td><td>${who(w, d.requester)}</td><td>${pName(d.toPlanet)}</td><td class="n">${amt(d.amount, d.good)}</td><td class="n">${perUnit(d.pricePerFe, d.good)}</td><td class="n">${cr(d.amount * d.pricePerFe)}</td></tr>`,
         )
         .join('')
     : '';
@@ -653,6 +723,7 @@ export function statsView({ w, me, priceTrend, chainGood }: ViewCtx): string {
       <p>Automatisch erledigt: <b>${num(myRoutes.reduce((t, r) => t + r.trips, 0))} Fahrten</b> – ${myRoutes.map((r) => `${gName(r.good)} ${amt(r.delivered, r.good)}`).join(' · ')}</p></section>`
     : '';
   return `${routeStats}
+  ${quarkCard(w)}
   <section class="card"><h2>Warenketten</h2>
     <p class="hint">Von den Rohstoffen links bis zu den Endprodukten rechts, die Terra kauft. Türkis umrandet: das stellst du her. Gelb: das brauchst du. Rot: das fehlt einer deiner Anlagen gerade.</p>
     <div class="chain-scroll">${chainSvg(w, me, chainGood, priceTrend)}</div>
