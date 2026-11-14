@@ -1,6 +1,6 @@
 // The daily tick. One call to step() advances the world by one game day.
 
-import { CONFIG, FACILITIES, GOODS, PLANETS, SHIPS, TERRA, distance, facilityDef, good, planet, shipDef, storageDef, unitOf } from './data';
+import { CONFIG, FACILITIES, GOODS, PLANETS, SHIPS, TERRA, distance, facilityDef, good, loadingDays, planet, shipDef, storageDef, unitOf } from './data';
 import { companyValue, debt, diff, repairShip, shipLoads, startRoute, transportDeadline } from './actions';
 import { runAi } from './ai';
 import { routesTick } from './automation';
@@ -168,9 +168,15 @@ function shipsTick(w: World) {
         }
       }
     }
+    // Orbitaldock: every worn ship standing idle on Terra is repaired for free
+    if (s.condition < 100 && s.phase === 'idle' && s.at === TERRA && hasProject(w, s.owner, 'dock')) {
+      s.phase = 'repair';
+      s.waitDays = Math.max(1, Math.ceil((100 - s.condition) / 20));
+      s.repairAtTerra = false;
+      log(w, s.owner, `${def.name} wird im Orbitaldock kostenlos repariert.`);
+    }
     // repair marked in advance: done automatically as soon as the ship stands idle on Terra
-    // marked ships – and with the Orbitaldock every worn ship – are repaired as soon as they stand idle on Terra
-    if ((s.repairAtTerra || (s.condition < 100 && hasProject(w, s.owner, 'dock'))) && s.phase === 'idle' && s.at === TERRA) {
+    if (s.repairAtTerra && s.phase === 'idle' && s.at === TERRA) {
       const r = repairShip(w, s.owner, s.id);
       if (r.ok) log(w, s.owner, `${def.name} wird wie vorgemerkt auf Terra repariert.`);
       else {
@@ -187,10 +193,10 @@ function arrive(w: World, s: Ship) {
   s.route = null;
   if (s.phase === 'toPickup') {
     s.phase = 'loading';
-    s.waitDays = CONFIG.loadDays;
+    s.waitDays = loadingDays(s.model);
   } else if (s.phase === 'toDelivery') {
     s.phase = 'unloading';
-    s.waitDays = CONFIG.loadDays;
+    s.waitDays = CONFIG.unloadDays;
   } else {
     s.phase = 'idle';
   }

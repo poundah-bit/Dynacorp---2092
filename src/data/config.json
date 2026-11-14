@@ -3,7 +3,10 @@
   "maxFacilitiesPerCompany": 10,
   "baseStorage": 30000,
   "constructionDays": 5,
-  "loadDays": 1,
+  "unloadDays": 1,
+  "loadingDays": 2,
+  "loadingDaysLargeHold": 3,
+  "largeHold": 40000,
   "credit": {
     "startLimit": 1000000,
     "limitShareOfCompanyValue": 0.5,

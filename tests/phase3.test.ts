@@ -109,7 +109,7 @@ describe('Story-Ereignisse in der Oberfläche', () => {
     startStory(w, 'seuche', 'liora');
     run(w, 5);
     const html = storyCard(w);
-    expect(html).toContain('Lage in der Galaxie');
+    expect(html).toContain('Lage in dieser Region');
     expect(html).toContain('Liora');
     expect(html).toContain('Medikamente');
     expect(html).toContain('Sonderpreis');

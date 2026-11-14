@@ -1,6 +1,6 @@
 [
   { "id": "dock", "name": "Orbitaldock Terra", "quark": "up", "price": 10000000, "prestige": 5000, "materials": { "plastic": 27000, "fuel": 22500 },
-    "effect": "Jedes eigene Schiff wird bei jedem Halt auf Terra automatisch repariert." },
+    "effect": "Jedes eigene Schiff wird bei jedem Halt auf Terra automatisch und kostenlos repariert." },
   { "id": "dome", "name": "Forschungskuppel", "quark": "down", "price": 10000000, "prestige": 5000, "materials": { "water": 60000, "agro": 30000, "fiber": 22500 },
     "effect": "Frühwarnung: Ereignisse werden 7 Tage vor Beginn angekündigt." },
   { "id": "yard", "name": "Großwerft", "quark": "charm", "price": 25000000, "prestige": 10000, "materials": { "steel": 32000, "plasticware": 24000 },

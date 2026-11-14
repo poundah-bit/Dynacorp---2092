@@ -10,6 +10,7 @@ import {
   facilitiesOf,
   postDemand,
   repairShip,
+  run,
   sendShipToTerra,
   shipDef,
   shipSpeed,
@@ -22,7 +23,7 @@ import {
 import { amt, perUnit, qty } from '../src/ui/format';
 import { defaultPlan, deliver, joinableShips } from '../src/ui/play';
 import { deliverSheet } from '../src/ui/sheets';
-import { player, runUntil, soloWorld } from './helpers';
+import { oilWellWithTanker, player, runUntil, soloWorld, terraOilDemand } from './helpers';
 
 function oilWell(w: World) {
   const me = player(w);
@@ -198,5 +199,30 @@ describe('Einheiten und Eigenbestellung', () => {
     const d = postDemand(w, me, refinery.id, 'oil', 5000, well.id);
     expect(d.ok).toBe(true);
     if (d.ok) expect(d.value.status).toBe('accepted');
+  });
+});
+
+describe('Ladezeit', () => {
+  it('kleine Frachter laden 2 Tage, große 3 Tage – dann starten sie', () => {
+    for (const [model, days] of [['tank-a', 2], ['tank-d', 3]] as const) {
+      const w = soloWorld();
+      const me = player(w);
+      const well = oilWellWithTanker(w);
+      company(w, me).cash += 2_000_000;
+      well.stock.oil = 60_000;
+      const s = buyShip(w, me, model);
+      if (!s.ok) throw new Error(s.error);
+      s.value.at = 'vesta-nova';
+      w.demands = w.demands.filter((d) => d.good !== 'oil');
+      const d = terraOilDemand(w, 10_000);
+      expect(deliver(w, me, d.id, well.id, { ships: [s.value.id], rest: 'public' }).ok).toBe(true);
+      expect(s.value.phase).toBe('loading');
+      for (let i = 1; i < days; i++) {
+        run(w, 1);
+        expect(s.value.phase, `${model} Tag ${i}`).toBe('loading');
+      }
+      run(w, 1);
+      expect(s.value.phase).toBe('toDelivery');
+    }
   });
 });

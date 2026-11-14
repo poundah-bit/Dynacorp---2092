@@ -2,7 +2,7 @@
 // these functions, so both play by the same rules. Actions never throw for game-rule violations;
 // they return { ok: false, error } with a German message the UI can show directly.
 
-import { CONFIG, SHIPS, TERRA, distance, facilityDef, good, planet, shipDef, storageDef, unitOf } from './data';
+import { CONFIG, SHIPS, TERRA, distance, facilityDef, good, handlingDays, loadingDays, planet, shipDef, storageDef, unitOf } from './data';
 import type { Cargo, Demand, Difficulty, Facility, Ship, Transport, World } from './types';
 import {
   isOutsideBuyer,
@@ -39,7 +39,7 @@ export function referenceTripDays(cargo: Cargo, amount: number, from: string, to
   const fitting = SHIPS.filter((s) => s.cargo === cargo && s.capacity >= amount);
   const pool = fitting.length ? fitting : SHIPS.filter((s) => s.cargo === cargo);
   const slowest = Math.min(...pool.map((s) => s.speed));
-  return Math.ceil((distance(TERRA, from) + distance(from, to)) / slowest) + 2 * CONFIG.loadDays;
+  return Math.ceil((distance(TERRA, from) + distance(from, to)) / slowest) + handlingDays();
 }
 
 export function transportDeadline(w: World, cargo: Cargo, amount: number, from: string, to: string): number {
@@ -585,7 +585,7 @@ export function assignShip(w: World, companyId: string, shipId: string, transpor
   s.transport = t.id;
   if (s.at === t.fromPlanet) {
     s.phase = 'loading';
-    s.waitDays = CONFIG.loadDays;
+    s.waitDays = loadingDays(s.model);
   } else {
     startRoute(s, t.fromPlanet, 'toPickup');
   }

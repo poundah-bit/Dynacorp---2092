@@ -215,7 +215,7 @@ const projectChip = (id: string | undefined) =>
 
 const PHASE: Record<StoryEvent['phase'], string> = { rise: 'Anlauf', peak: 'Höhepunkt', fade: 'klingt ab', done: 'vorbei' };
 
-/** „Lage in der Galaxie“: the running story events (empty without any). */
+/** „Lage in dieser Region“: the running story events (empty without any). */
 export function storyCard(w: World): string {
   const running = (w.stories?.events ?? []).filter((e) => e.phase !== 'done' && w.day < e.endDay);
   const next = w.stories?.upcoming;
@@ -231,7 +231,7 @@ export function storyCard(w: World): string {
         <div class="small muted">${esc(e.texts.start)}</div></div></div>`;
     })
     .join('');
-  return `<section class="card story-card"><h2>${icon('story')} Lage in der Galaxie</h2>${soon}${rows}</section>`;
+  return `<section class="card story-card"><h2>${icon('story')} Lage in dieser Region</h2>${soon}${rows}</section>`;
 }
 
 export function terraView({ w, me }: ViewCtx): string {
@@ -287,13 +287,13 @@ export function terraView({ w, me }: ViewCtx): string {
     <p class="hint">Jeder Planet erlaubt genau eine Anlagenart. Eine gekaufte Anlage steht als Stückgut auf Terra und muss mit einem Stückgutfrachter hingeflogen werden; danach wird sie ${days(CONFIG.constructionDays)} gebaut. Eine zweite gleiche Anlage am selben Ort vergrößert die erste.</p>
     ${facilityRows}
   </section>
-  ${automationCard(w, me)}
-  ${projectsCard(w, me)}
   <section class="card">
     <h2>Werft – Frachter</h2>
     <p class="hint">Jedes Schiff transportiert nur eine Frachtart. Kosten/Tag: Wartung immer, Betrieb nur unterwegs.</p>
     ${shipRows}
-  </section>`;
+  </section>
+  ${automationCard(w, me)}
+  ${projectsCard(w, me)}`;
 }
 
 // ---------- Großprojekte and Quark-Trend ----------
@@ -338,7 +338,7 @@ export function quarkCard(w: World): string {
   const cell = (f: Flavour) =>
     `<div class="qcell q-${f}${s.flavour === f ? ' lead' : ''}"><b>${QUARK_NAME[f]}</b><span class="small muted">${QUARK_SIDE[f]}</span>${bar({ value: s.cells[f] * 100, max: 100, tone: 'neutral', label: `${QUARK_NAME[f]}-Quark` })}<span class="small">${Math.round(s.cells[f] * 100)} %</span></div>`;
   const mode = s.mode === 'project' ? 'Test-Modus „Projekt“: der Balken zeigt das laufende Großprojekt.' : 'Test-Modus „Trend“: was du lieferst, füllt das Feld seiner Waren; ohne Nachschub klingt es langsam ab.';
-  return `<section class="card quark"><h2>${icon('quark')} Quark-Trend</h2>
+  return `<section class="card quark"><h2>${icon('quark')} Diese Welt entwickelt sich zu folgendem …</h2>
     <p class="hint">${mode}</p>
     <div class="qgrid"><span></span><span class="small muted">Industrie (Ladung +⅔)</span><span class="small muted">Versorgung (Ladung −⅓)</span>
       <span class="small muted">leicht</span>${cell('up')}${cell('down')}
