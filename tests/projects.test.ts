@@ -236,3 +236,90 @@ describe('Vorteile der Großprojekte', () => {
     expect(withClinic).toBeLessThan(without);
   });
 });
+
+// ---------- Quark-Trend ----------
+
+import { FLAVOURS, cellOf, ensureQuark, quarkStatus, quarkTarget, quarkTick } from '../src/sim/index';
+
+describe('Quark-Trend', () => {
+  it('jede Ware liegt in genau einem Quark-Feld', () => {
+    expect(cellOf('oil')).toBe('up');
+    expect(cellOf('water')).toBe('down');
+    expect(cellOf('steel')).toBe('charm');
+    expect(cellOf('food')).toBe('strange');
+    expect(cellOf('robots')).toBe('top');
+    expect(cellOf('medicine')).toBe('bottom');
+    for (const g of GOODS) expect(FLAVOURS).toContain(cellOf(g.id));
+  });
+
+  it('Lieferungen an Terra zählen, Lieferungen an eigene Anlagen nicht, KI-Lieferungen ins eigene Projekt schon', () => {
+    const { w, me } = rich();
+    ensureQuark(w);
+    const well = plant(w, me, 'oilwell', 'vesta-nova', { oil: 50_000 });
+    const terra: Demand = { id: 'dt', requester: 'terra', good: 'oil', amount: 1000, toPlanet: 'terra', toFacility: null, pricePerFe: 20, own: false, status: 'open', supplier: null, supplierFacility: null, transport: null, createdDay: 0, deadlineDay: 99, late: false };
+    w.demands.push(terra);
+    arrive(w, terra, me, well.id);
+    deliverNow(w, terra);
+    expect(w.quark!.energy.up).toBe(20_000);
+    const ownOrder: Demand = { ...terra, id: 'do', requester: me, toPlanet: 'pyros', toFacility: plant(w, me, 'refinery', 'pyros').id, status: 'open', supplier: null, supplierFacility: null };
+    w.demands.push(ownOrder);
+    arrive(w, ownOrder, me, well.id);
+    deliverNow(w, ownOrder);
+    expect(w.quark!.energy.up).toBe(20_000);
+    const ai = 'c-ai';
+    w.companies.push({ ...company(w, me), id: ai, name: 'KI', isPlayer: false, cash: 0 });
+    const aiPlant = plant(w, ai, 'pharma', 'asklepios', { medicine: 10_000 });
+    expect(startProject(w, me, 'clinic').ok).toBe(true);
+    projectsTick(w);
+    const med = orders(w, 'clinic')[0]!;
+    arrive(w, med, ai, aiPlant.id);
+    deliverNow(w, med);
+    expect(w.quark!.energy.bottom).toBe(Math.round(med.amount * med.pricePerFe));
+  });
+
+  it('die Energie klingt ab: Halbwertszeit 120 Tage', () => {
+    const { w } = rich();
+    ensureQuark(w);
+    w.quark!.energy.charm = 1000;
+    for (let i = 0; i < CONFIG.quark.halfLifeDays; i++) quarkTick(w);
+    expect(w.quark!.energy.charm).toBeCloseTo(500, 0);
+  });
+
+  it('Trend: führendes Feld und Füllstand; Meldungen bei 90 und 100 % je einmal', () => {
+    const { w } = rich();
+    ensureQuark(w);
+    w.quark!.energy.charm = quarkTarget('charm') * 0.95;
+    w.quark!.energy.up = quarkTarget('up') * 0.5;
+    expect(quarkStatus(w).flavour).toBe('charm');
+    quarkTick(w);
+    quarkTick(w);
+    expect(w.log.filter((l) => l.text.includes('verdichtet sich zu einem Charm-Quark')).length).toBe(1);
+    w.quark!.energy.charm = quarkTarget('charm') * 2;
+    quarkTick(w);
+    quarkTick(w);
+    expect(w.log.filter((l) => l.text.includes('hat sich zu einem Charm-Quark verdichtet')).length).toBe(1);
+    expect(quarkStatus(w).fill).toBe(1);
+  });
+
+  it('Projekt-Modus: der Balken folgt dem laufenden Projekt und bleibt danach voll', () => {
+    const w = createWorld({ seed: 3, playerName: 'T', aiCompanies: 0, quarkMode: 'project' });
+    const me = player(w);
+    company(w, me).cash = 2e8;
+    expect(quarkStatus(w).flavour).toBeNull();
+    expect(startProject(w, me, 'yard').ok).toBe(true);
+    w.projects![0]!.delivered = { steel: 16_000, plasticware: 12_000 };
+    expect(quarkStatus(w)).toMatchObject({ flavour: 'charm', fill: 0.5 });
+    w.projects![0]!.delivered = { steel: 32_000, plasticware: 24_000 };
+    projectsTick(w);
+    expect(quarkStatus(w)).toMatchObject({ flavour: 'charm', fill: 1 });
+  });
+
+  it('alte Spielstände bekommen den Trend-Modus', () => {
+    const w = createWorld({ seed: 4, playerName: 'T', aiCompanies: 3 });
+    expect(w.quark).toBeUndefined();
+    ensureQuark(w);
+    expect(w.quark!.mode).toBe('trend');
+    run(w, 50);
+    expect(w.day).toBe(50);
+  });
+});
