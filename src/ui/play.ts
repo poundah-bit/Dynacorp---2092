@@ -122,11 +122,25 @@ export function joinableShips(w: World, me: string, cargo: Cargo, from: string, 
 }
 
 /** Can the player carry this transport: with an idle ship now, a busy one later, or not at all? */
-export function carryState(w: World, me: string, t: Transport): 'idle' | 'busy' | 'none' {
+/**
+ * Can the player carry this transport? 'idle' = a free ship now, 'soon' = a ship free within
+ * `ships.queueDays` takes it as Folgeauftrag, 'busy' = fitting ships are all busy longer, 'none' = no fitting ship.
+ */
+export function carryState(w: World, me: string, t: Transport): 'idle' | 'soon' | 'busy' | 'none' {
   const fit = plannableShips(w, me).filter((s) => shipDef(s.model).cargo === t.cargo && shipDef(s.model).capacity >= t.amount);
   if (fit.some((s) => s.phase === 'idle' && s.condition >= CONFIG.ships.criticalBelow)) return 'idle';
   if (joinableShips(w, me, t.cargo, t.fromPlanet, t.toPlanet, t.amount).length) return 'idle';
+  if (soonFreeShips(w, me, t.cargo, t.amount).length) return 'soon';
   return fit.length ? 'busy' : 'none';
+}
+
+/** Days until the first fitting own ship is free (null: none known, e.g. all still flying to a pickup). */
+export function firstFreeIn(w: World, me: string, t: Transport): number | null {
+  const ds = plannableShips(w, me)
+    .filter((s) => shipDef(s.model).cargo === t.cargo && shipDef(s.model).capacity >= t.amount)
+    .map((s) => daysUntilFree(w, s))
+    .filter((d): d is number => d !== null);
+  return ds.length ? Math.min(...ds) : null;
 }
 
 // ---------- orders ----------

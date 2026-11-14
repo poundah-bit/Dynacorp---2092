@@ -116,7 +116,12 @@ const soonLabel = (w: World, s: Ship, l: Load) =>
 
 /** One ship for one load (a facility from Terra, another company's transport). */
 function choiceBlock(w: World, me: string, l: Load): string {
-  const pick = defaultChoice(w, me, l.cargo, l.amount, l.from, l.allowBuy, l.to);
+  let pick = defaultChoice(w, me, l.cargo, l.amount, l.from, l.allowBuy, l.to);
+  // nothing free and no public posting here: the first ship that is free soon is the sensible pick
+  if (pick === 'public' && !l.allowPublic) {
+    const soonest = soonFreeShips(w, me, l.cargo, l.amount)[0];
+    if (soonest) pick = `ship:${soonest.id}`;
+  }
   const radio = (value: string, label: string, disabled = false) =>
     `<label class="opt${disabled ? ' dim' : ''}"><input type="radio" name="how" value="${value}" ${value === pick ? 'checked' : ''} ${disabled ? 'disabled' : ''}><span>${label}</span></label>`;
   const along = joinableShips(w, me, l.cargo, l.from, l.to, l.amount)
