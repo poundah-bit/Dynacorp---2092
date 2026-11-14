@@ -60,6 +60,19 @@ describe('Sammelladung', () => {
     expect(unshippedDemands(w, me).map((d) => d.id)).toEqual([other.id]);
   });
 
+  it('nutzt auch ein zweites gewähltes Schiff, das beim ersten Auftrag frei blieb', () => {
+    const { w, me, well, ship } = setup('tank-a'); // 16.000
+    const second = buyShip(w, me, 'tank-a');
+    if (!second.ok) throw new Error(second.error);
+    well.stock.oil = 26000;
+    const first = accepted(w, well.id, 12000, 30);
+    accepted(w, well.id, 10000, 10);
+    accepted(w, well.id, 4000, 20);
+    const r = shipAll(w, me, first.id, [ship.id, second.value.id]);
+    expect(r.ok && r.value).toEqual({ count: 3, amount: 26000 });
+    expect(unshippedDemands(w, me)).toEqual([]);
+  });
+
   it('ohne Schiff passiert nichts', () => {
     const { w, me, well } = setup('tank-c');
     const first = accepted(w, well.id, 4000, 30);
@@ -86,6 +99,11 @@ describe('Mitwachsende Terra-Aufträge', () => {
     w.facilities.push({ ...base, id: 'f-rob2', type: 'robotworks', planet: 'kolossos', units: 1, status: 'construction', buildDaysLeft: 999 });
     expect(terraOrderScale(w, 'robots')).toBe(4);
     expect(terraOrderScale(w, 'medicine')).toBe(1);
+    // one plant has to deliver an order: units on several planets do not add up
+    w.facilities.push({ ...base, id: 'f-ph1', type: 'pharma', planet: 'asklepios', units: 2, status: 'running' });
+    w.facilities.push({ ...base, id: 'f-ph2', type: 'pharma', planet: 'liora', units: 2, status: 'running' });
+    expect(terraOrderScale(w, 'medicine')).toBe(2);
+    w.facilities = w.facilities.filter((f) => f.type !== 'pharma');
     company(w, me).cash = 1e9; // the fake plants cost money every day
     w.demands = [];
     // old demands are pruned from the world, so collect every Terra order as it appears

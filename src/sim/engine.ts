@@ -385,17 +385,17 @@ export function terraDemandAmount(goodId: string, days: number, factor = 1): num
 export const largestShipCapacity = (cargo: Cargo) => Math.max(...SHIPS.filter((s) => s.cargo === cargo).map((s) => s.capacity));
 
 /**
- * How many plants of a good the biggest producer runs (units of built facilities, at least 1). Terra's
- * orders for final goods grow with it, so one company can still deliver an order within the deadline.
+ * How many units of a good the biggest single plant runs (built, owner not bankrupt; at least 1). Terra's
+ * orders for final goods grow with it: one plant delivers an order, so it must fit its output and storage.
  */
 export function terraOrderScale(w: World, goodId: string): number {
-  const units = new Map<string, number>();
+  let max = 1;
   for (const f of w.facilities) {
     if (f.status === 'construction' || !(goodId in facilityDef(f.type).outputs)) continue;
     if (company(w, f.owner).bankrupt) continue;
-    units.set(f.owner, (units.get(f.owner) ?? 0) + f.units);
+    max = Math.max(max, f.units);
   }
-  return Math.max(1, ...units.values());
+  return max;
 }
 
 function terraDemands(w: World) {

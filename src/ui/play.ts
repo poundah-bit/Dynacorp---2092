@@ -305,7 +305,10 @@ export function shipAll(w: World, me: string, demandId: string, shipIds: string[
   const from = pickupOf(w, d)!;
   for (const x of others) {
     const load = { cargo: good(x.good).cargo, amount: unshippedAmount(x), fromPlanet: from, toPlanet: x.toPlanet };
-    const s = ships.find((s) => canJoin(w, s, load));
+    // a ship already on this route takes the load along; a chosen ship that stayed idle starts the trip
+    const s =
+      ships.find((s) => canJoin(w, s, load)) ??
+      ships.find((s) => s.phase === 'idle' && shipDef(s.model).cargo === load.cargo && shipDef(s.model).capacity >= load.amount && s.condition >= CONFIG.ships.criticalBelow);
     if (!s) continue;
     const t = postTransportForDemand(w, me, x.id, 'own', undefined, load.amount);
     if (!t.ok) return t;
