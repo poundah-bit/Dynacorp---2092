@@ -20,6 +20,7 @@ import {
   newId,
   pay,
   ship,
+  shipSpeed,
   shipValue,
   shipsOf,
   transport,
@@ -275,6 +276,70 @@ export function sendShipToTerra(w: World, companyId: string, shipId: string): Re
   if (s.at === TERRA) return ok(undefined);
   startRoute(s, TERRA, 'toTerra');
   return ok(undefined);
+}
+
+// ---------- Folgeauftrag ----------
+
+/** Days until the ship is free again – only while delivering or in the yard; null in any other phase. */
+export function daysUntilFree(w: World, s: Ship): number | null {
+  if (s.phase === 'toDelivery' && s.route) return Math.ceil((s.route.distance - s.route.traveled) / shipSpeed(s)) + CONFIG.unloadDays;
+  if (s.phase === 'unloading' || s.phase === 'repair') return Math.max(0, s.waitDays);
+  return null;
+}
+
+/** Can this ship take its next job now? Free within `ships.queueDays`, not critical, no next job yet, fits. */
+export function canQueue(w: World, s: Ship, t?: Pick<Transport, 'cargo' | 'amount'>): boolean {
+  if (s.next || isCritical(s) || lineRoute(w, s.id)) return false;
+  const free = daysUntilFree(w, s);
+  if (free === null || free > CONFIG.ships.queueDays) return false;
+  const def = shipDef(s.model);
+  return !t || (def.cargo === t.cargo && def.capacity >= t.amount);
+}
+
+/** Folgeauftrag: books an accepted transport for a ship that is still busy; it starts once the ship is free. */
+export function queueTransport(w: World, companyId: string, shipId: string, transportId: string): Result<undefined> {
+  const s = ship(w, shipId);
+  if (!s || s.owner !== companyId) return fail('Schiff nicht gefunden.');
+  const t = transport(w, transportId);
+  if (!t || t.carrier !== companyId || t.status !== 'accepted' || t.ship) return fail('Kein passender übernommener Auftrag.');
+  if (!canQueue(w, s, t)) return fail(`Einen Folgeauftrag gibt es erst, wenn das Schiff in höchstens ${CONFIG.ships.queueDays} Tagen frei ist – und nur einen.`);
+  s.next = t.id;
+  t.ship = s.id;
+  t.status = 'assigned';
+  t.assignedDay = w.day;
+  return ok(undefined);
+}
+
+/** Releases a ship's Folgeauftrag: the transport waits for a ship again. */
+export function unqueueTransport(w: World, companyId: string, shipId: string): Result<undefined> {
+  const s = ship(w, shipId);
+  if (!s || s.owner !== companyId || !s.next) return fail('Kein Folgeauftrag vorgemerkt.');
+  const t = transport(w, s.next);
+  s.next = undefined;
+  if (t && t.status === 'assigned') {
+    t.ship = null;
+    t.status = 'accepted';
+  }
+  return ok(undefined);
+}
+
+/** A free ship starts its Folgeauftrag (engine, every day). */
+export function startQueued(w: World, s: Ship): void {
+  const t = s.next ? transport(w, s.next) : undefined;
+  s.next = undefined;
+  if (!t || t.status !== 'assigned' || t.ship !== s.id) return;
+  if (isCritical(s)) {
+    t.ship = null;
+    t.status = 'accepted';
+    log(w, s.owner, `${shipDef(s.model).name} ist in kritischem Zustand – der Folgeauftrag wartet auf ein anderes Schiff.`, 2);
+    return;
+  }
+  s.transport = t.id;
+  s.joined = [];
+  if (s.at === t.fromPlanet) {
+    s.phase = 'loading';
+    s.waitDays = loadingDays(s.model);
+  } else startRoute(s, t.fromPlanet, 'toPickup');
 }
 
 export function startRoute(s: Ship, to: string, phase: Ship['phase']) {

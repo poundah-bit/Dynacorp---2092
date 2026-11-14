@@ -12,6 +12,7 @@ import {
   buyShip,
   cancelDemand,
   abortProject,
+  unqueueTransport,
   cancelTransport,
   company,
   ensureQuark,
@@ -39,7 +40,7 @@ import {
 import { cueTracker, type Cue, type CueTracker } from './cues';
 import { cr, esc, isCriticalShip, logText, num } from './format';
 import { icon, type IconName } from './icons';
-import { AI_DEFAULT, AI_MAX, AI_MIN, areaStats, clampAi, ensureStories, fittingOffers, guide, newGame, newOffers, startedStories, type GuideTab } from './play';
+import { AI_DEFAULT, AI_MAX, AI_MIN, areaStats, clampAi, ensureStories, fittingOffers, guide, newGame, newOffers, sendShip, startedStories, type GuideTab } from './play';
 import { clearSave, loadGame, saveGame, type SaveData } from './save';
 import { enableDrag } from './drag';
 import { emptyOrder, parseOrder, reorderVisible, type ListOrder } from './order';
@@ -569,6 +570,7 @@ const ACTS: Record<string, (a: string) => void> = {
     if (!confirm('Großprojekt abbrechen? Bezahltes Geld und gelieferte Waren sind verloren.')) return;
     result(abortProject(w!, me), 'Großprojekt abgebrochen.');
   },
+  unqueue: (id) => result(unqueueTransport(w!, me, id), 'Folgeauftrag gelöst – er wartet wieder auf ein Schiff.'),
   'repair-onsite': (id) => result(repairShipOnSite(w!, me, id), 'Das Schiff wird vor Ort repariert.', 'repair'),
   'buy-automation'() {
     const r = buyAutomation(w!, me);
@@ -613,7 +615,7 @@ const ACTS: Record<string, (a: string) => void> = {
   // fleet
   assign(a) {
     const [s, t] = a.split('|') as [string, string];
-    result(assignShip(w!, me, s, t), 'Das Schiff ist unterwegs.');
+    result(sendShip(w!, me, s, t), 'Das Schiff ist unterwegs.');
   },
   'to-terra': (id) => result(sendShipToTerra(w!, me, id), 'Das Schiff fliegt nach Terra.'),
   'repair-ship': (id) => result(repairShip(w!, me, id), 'Das Schiff ist in der Werft.', 'repair'),

@@ -1,7 +1,7 @@
 // The daily tick. One call to step() advances the world by one game day.
 
 import { CONFIG, FACILITIES, GOODS, PLANETS, SHIPS, TERRA, distance, facilityDef, good, loadingDays, planet, shipDef, storageDef, unitOf } from './data';
-import { companyValue, debt, diff, repairShip, shipLoads, startRoute, transportDeadline } from './actions';
+import { companyValue, debt, diff, repairShip, shipLoads, startQueued, startRoute, transportDeadline } from './actions';
 import { runAi } from './ai';
 import { routesTick } from './automation';
 import { hasProject, projectDelivered, projectsTick } from './projects';
@@ -168,6 +168,8 @@ function shipsTick(w: World) {
         }
       }
     }
+    // a ship that has become free starts its Folgeauftrag right away
+    if (s.phase === 'idle' && s.next) startQueued(w, s);
     // Orbitaldock: every worn ship standing idle on Terra is repaired for free
     if (s.condition < 100 && s.phase === 'idle' && s.at === TERRA && hasProject(w, s.owner, 'dock')) {
       s.phase = 'repair';
