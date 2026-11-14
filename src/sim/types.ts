@@ -232,6 +232,8 @@ export interface World {
   projects?: ProjectState[];
   /** own planets of a generated module world (missing = `planets.json`, world 1) */
   planets?: PlanetDef[];
+  /** module worlds closed so far (missing = world 1 of a campaign without modules) */
+  campaign?: CampaignState;
   /** Quark messages already sent (missing in old saves: `ensureQuark`) */
   quark?: QuarkState;
 }
@@ -360,6 +362,29 @@ export interface ProjectState {
   fromModule?: number;
   /** why no new order goes out right now (German), e.g. „wartet auf Geld“ */
   waiting?: string;
+}
+
+/** A closed module world, frozen to a few figures. */
+export interface ModuleRecord {
+  n: number;
+  quark: Flavour;
+  /** the Großprojekt that closed it; it works in every later world */
+  project: string;
+  worldName: string;
+  firm: string;
+  days: number;
+  index: number;
+  facilities: number;
+  ships: number;
+  closedDay: number;
+}
+
+export interface CampaignState {
+  /** number of the running world (1 = the first) */
+  world: number;
+  modules: ModuleRecord[];
+  /** planet names used by generated worlds so far */
+  usedNames: string[];
 }
 
 export interface QuarkState {

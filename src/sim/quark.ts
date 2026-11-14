@@ -50,7 +50,7 @@ export function quarkStatus(w: World): QuarkStatus {
   const cells = empty();
   const unlocked: Flavour[] = [];
   for (const p of w.projects ?? []) {
-    if (p.status !== 'done') continue;
+    if (p.status !== 'done' || p.fromModule) continue;
     const f = projectDef(p.id).quark;
     cells[f] = 1;
     if (!unlocked.includes(f)) unlocked.push(f);

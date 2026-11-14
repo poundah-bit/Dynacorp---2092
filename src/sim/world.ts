@@ -1,7 +1,8 @@
 import { COMPANIES, CONFIG, GOODS, facilityDef, good, planet, shipDef, storageDef } from './data';
 import { newQuark } from './quark';
+import { generatePlanets } from './galaxy';
 import { initStories } from './stories';
-import type { Cargo, Company, Difficulty, Facility, LogEntry, Ship, World } from './types';
+import type { Cargo, Company, Difficulty, Facility, LogEntry, Ship, World, CampaignState } from './types';
 
 // ---------- deterministic RNG (mulberry32, state kept in the world) ----------
 
@@ -29,6 +30,8 @@ export interface NewWorldOptions {
   /** Name of the human player's company; omit for an all-AI world (headless balancing runs). */
   playerName?: string;
   aiCompanies?: number;
+  /** the campaign a new module world continues (default: none = world 1) */
+  campaign?: CampaignState;
   /** story events on (default off: headless runs and the early gates stay as they were) */
   stories?: boolean;
 }
@@ -63,6 +66,12 @@ export function createWorld(opts: NewWorldOptions = {}): World {
     revenue: 0,
     expenses: 0,
   });
+  if (opts.campaign) {
+    // a module world: own planets, the closing projects of all earlier worlds already stand
+    w.planets = generatePlanets(w, opts.campaign.usedNames);
+    w.campaign = { ...opts.campaign, usedNames: [...opts.campaign.usedNames, ...w.planets.filter((p) => p.facility).map((p) => p.name)] };
+    w.projects = opts.campaign.modules.map((m) => ({ id: m.project, status: 'done' as const, startDay: 0, delivered: {}, doneDay: 0, fromModule: m.n }));
+  }
   if (opts.playerName) {
     const p = mk(opts.playerName, true, []);
     w.companies.push(p);
