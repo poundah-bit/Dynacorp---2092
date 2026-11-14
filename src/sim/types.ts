@@ -350,6 +350,10 @@ export interface ProjectState {
   startDay: number;
   delivered: Record<string, number>;
   doneDay?: number;
+  /** build days left once all material has arrived (missing = still collecting material) */
+  buildDaysLeft?: number;
+  /** finished in an earlier module world and closed it: works here without being built (campaign) */
+  fromModule?: number;
   /** why no new order goes out right now (German), e.g. „wartet auf Geld“ */
   waiting?: string;
 }
