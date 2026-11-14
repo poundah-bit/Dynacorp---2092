@@ -4,6 +4,7 @@ import { CONFIG, FACILITIES, GOODS, PLANETS, SHIPS, TERRA, distance, facilityDef
 import { companyValue, debt, diff, repairShip, shipLoads, startRoute, transportDeadline } from './actions';
 import { runAi } from './ai';
 import { routesTick } from './automation';
+import { storiesTick, storyFactor } from './stories';
 import type { Cargo, Demand, Facility, Ship, Transport, World } from './types';
 import {
   asset,
@@ -12,6 +13,8 @@ import {
   facility,
   freeCapacity,
   isCritical,
+  buyerName,
+  isOutsideBuyer,
   log,
   newId,
   pay,
@@ -28,6 +31,7 @@ export function step(w: World): void {
   facilitiesTick(w);
   shipsTick(w);
   ordersTick(w);
+  storiesTick(w);
   terraDemands(w);
   updatePrices(w);
   gravoStorms(w);
@@ -262,7 +266,7 @@ function deliverGoods(w: World, t: Transport) {
   // a demand may be split over several ships: each part is stored and paid on its own
   const part = t.amount;
   const value = Math.round(part * d.pricePerFe);
-  if (d.requester === 'terra') {
+  if (isOutsideBuyer(d.requester)) {
     pay(w, null, d.supplier, value);
   } else {
     const target = d.toFacility ? facility(w, d.toFacility) : undefined;
@@ -275,11 +279,13 @@ function deliverGoods(w: World, t: Transport) {
     if (d.supplier !== d.requester) pay(w, d.requester, d.supplier, value);
   }
   d.delivered = (d.delivered ?? 0) + part;
+  const story = d.story ? w.stories?.events.find((e) => e.id === d.story) : undefined;
+  if (story) story.delivered += part;
   const complete = d.delivered >= d.amount;
   if (complete) d.status = 'done';
   if (d.supplier && d.supplier !== d.requester) {
     if (complete) reputation(w, d.supplier, d.late ? -2 : 1);
-    const buyer = d.requester === 'terra' ? 'Terra' : company(w, d.requester).name;
+    const buyer = buyerName(w, d.requester);
     const of = part < d.amount ? ` (Teillieferung, ${d.delivered} von ${d.amount} ${unitOf(d.good)})` : '';
     log(w, d.supplier, `${company(w, d.supplier).name} liefert ${part} ${unitOf(d.good)} ${good(d.good).name} an ${buyer} und erhält ${value} Cr${of}.`);
   }
@@ -350,7 +356,7 @@ function ordersTick(w: World) {
   for (const d of w.demands) {
     if (['accepted', 'shipping'].includes(d.status) && d.supplier && !d.own && !d.late && w.day > d.deadlineDay) {
       d.late = true;
-      const to = d.requester === 'terra' ? null : d.requester;
+      const to = isOutsideBuyer(d.requester) ? null : d.requester;
       pay(w, d.supplier, to, Math.round(goodsValue(w, d.good, d.amount) * rate));
       reputation(w, d.supplier, -3);
     }
@@ -407,10 +413,12 @@ function terraDemands(w: World) {
     const base = final ? tc.demandChancePerGoodPerDay : tc.baseDemandChancePerGoodPerDay;
     // final goods: bigger orders for big producers, just as many FE in total (fewer orders)
     const scale = final ? terraOrderScale(w, g.id) : 1;
-    const chance = Math.min(0.9, base * cheapness) / scale;
+    // story events (boom, emergency, recession) move Terra's demand for a while
+    const sf = storyFactor(w, g.id, TERRA);
+    const chance = Math.min(0.9, base * cheapness * sf.factor) / scale;
     if (random(w) >= chance) continue;
     const open = w.demands.filter((d) => d.requester === 'terra' && d.good === g.id && d.status === 'open').length;
-    if (open >= tc.maxOpenPerGood * Math.ceil(cheapness)) continue;
+    if (open >= tc.maxOpenPerGood * Math.ceil(cheapness) * Math.ceil(sf.factor)) continue;
     // now and then Terra places a big order (several plants' output) that fills a large ship
     const big = random(w) < tc.bigOrderChance ? randInt(w, tc.bigOrderFactor[0]!, tc.bigOrderFactor[1]!) : 1;
     const amount = terraDemandAmount(g.id, randInt(w, tc.demandDaysOfOutput[0]!, tc.demandDaysOfOutput[1]!), big * scale);
@@ -422,7 +430,7 @@ function terraDemands(w: World) {
       amount,
       toPlanet: TERRA,
       toFacility: null,
-      pricePerFe: Math.round((w.prices[g.id] ?? g.basePrice) * factor * 100) / 100,
+      pricePerFe: Math.round((w.prices[g.id] ?? g.basePrice) * factor * (1 + sf.bonus) * 100) / 100,
       own: false,
       status: 'open',
       supplier: null,
@@ -433,6 +441,7 @@ function terraDemands(w: World) {
       late: false,
     };
     if (big > 1) d.big = true;
+    if (sf.event && sf.factor > 1) d.story = sf.event.id;
     w.demands.push(d);
   }
 }
@@ -487,6 +496,7 @@ function gravoStorms(w: World) {
     if (near) s.condition = Math.max(0, s.condition - randInt(w, lo, hi));
   }
   log(w, null, `Gravo-Sturm bei ${p.name}! Schiffe und Anlagen beschädigt.`, 3);
+  if (w.stories) w.stories.lastStorm = { planet: p.id, day: w.day };
 }
 
 // ---------- bankruptcy and economic collapse ----------

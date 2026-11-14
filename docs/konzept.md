@@ -495,6 +495,20 @@ Kurzentwurf: `docs/superpowers/specs/2026-11-14-sammelladung-auftragsgroesse-des
 | Gleiche Strecke | Zuladen bleibt auf gleichen Abholort und gleiches Ziel beschränkt | Entscheidung Rocco |
 | Mitwachsende Terra-Aufträge | Endprodukt-Aufträge umfassen 20–30 Tage Ausstoß so vieler Werke, wie die größte einzelne Anlage dieser Ware hat (Einheiten auf einem Planeten, Werke im Bau zählen nicht); sie kommen entsprechend seltener, Terra kauft insgesamt gleich viel; mit einem Werk alles wie bisher | im Endgame blieben große Frachter mit vielen Kleinaufträgen halb leer (Spieltest Rocco); eine Firma schafft den Auftrag weiter in der Frist |
 
+## Entscheidungen zu den Story-Ereignissen
+
+Entwurf: `docs/superpowers/specs/2026-11-14-story-ereignisse-design.md`.
+
+| Thema | Entscheidung | Grund |
+|---|---|---|
+| Idee | Ereignisse (Boom, Notlage, Engpass, Flaute) verändern zeitweise die Nachfrage nach bestimmten Waren, auf Terra oder auf einem Planeten; Verlauf Anlauf → Höhepunkt → Abklingen, je eine Meldung | mehr „Wuselfaktor“ und Tiefe (Rocco) |
+| Story-Baukasten | Geschichten entstehen pro Spiel aus dem Startwert: Welt-Lexikon (Stadt, Person, Institut je Planet), 20 Ursachen mit Regeln für Ort und Waren, je 3 Textvarianten, erfundene Namen für Erreger, Technik, Mode; Daten in `src/data/stories.json` | jedes Spiel eine neue Erfahrung, stimmig durch Regeln, offline und kostenlos (Rocco, Weg A) |
+| Keine KI-Texte | keine Textgenerierung über das Internet | API-Schlüssel ließe sich in PWA/APK nicht verstecken, offline stumm |
+| Planeten bestellen | während einer Notlage oder eines Booms bestellt der Planet selbst („Bevölkerung von …“) und bezahlt wie Terra, manchmal mit Sonderpreis | Roccos Pandemie-Beispiel |
+| Grenzen | höchstens 2 Ereignisse gleichzeitig, 30–60 Tage Pause, erstes ab Tag 40, Rezessionen erst ab Tag 250 und höchstens eine je 300 Tage; nur Waren, die jemand herstellt | Balance: mit 20–50 Tagen Pause verfehlte ein Lauf des Endlostests die Pleitengrenze |
+| Schalter | „Ereignisse mit Geschichten“ beim neuen Spiel (Vorgabe an); alte Spielstände bekommen Ereignisse | Vergleich möglich |
+| Ausgang je nach Lieferung | später (Weg B), nach dem Test von A; gelieferte Mengen werden schon mitgezählt | Rocco |
+
 ## Entscheidungen zu den Tönen
 
 | Thema | Entscheidung | Warum |

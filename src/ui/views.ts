@@ -47,7 +47,7 @@ import {
   unshippedDemands,
   waitingTransports,
 } from './play';
-import { automationLevel, automationName, lineRoute, nextAutomation, routeLimit, routeName, serviceLimit, unitOf, unshippedAmount } from '../sim/index';
+import { automationLevel, automationName, lineRoute, nextAutomation, routeLimit, routeName, serviceLimit, storyStrength, unitOf, unshippedAmount, type StoryEvent } from '../sim/index';
 import { chainDetail, chainSvg } from './chain';
 import {
   cr,
@@ -199,6 +199,35 @@ export const areaHead = (area: Area, s: AreaStats) =>
 
 // ---------- Terra: bank, Dynacore, shipyard ----------
 
+// ---------- story events ----------
+
+const storyEvent = (w: World, id: string | undefined) => (id ? w.stories?.events.find((e) => e.id === id) : undefined);
+
+/** Market badge for an order caused by a story event; long press tells the story. */
+function storyChip(w: World, id: string | undefined): string {
+  const e = storyEvent(w, id);
+  return e ? ` <span class="chip story" data-tip="${esc(`${e.title}: ${e.texts.start}`)}">${icon('story')}Ereignis</span>` : '';
+}
+
+const PHASE: Record<StoryEvent['phase'], string> = { rise: 'Anlauf', peak: 'Höhepunkt', fade: 'klingt ab', done: 'vorbei' };
+
+/** „Lage in der Galaxie“: the running story events (empty without any). */
+export function storyCard(w: World): string {
+  const running = (w.stories?.events ?? []).filter((e) => e.phase !== 'done' && w.day < e.endDay);
+  if (!running.length) return '';
+  const rows = running
+    .map((e) => {
+      const goods = e.effects.map((x) => `${gName(x.good)} ${x.factor > 1 ? '<span class="good">↑</span>' : '<span class="bad">↓</span>'}`).join(' · ');
+      const strength = storyStrength(e, w.day);
+      return `<div class="row story-row"><div class="grow"><b>${esc(e.title)}</b> <span class="muted small">${pName(e.place)} · noch ${days(e.endDay - w.day)}</span>
+        <div class="small">${goods}${e.priceBonus > 0 ? ` · <span class="warn">Sonderpreis +${Math.round(e.priceBonus * 100)} %</span>` : ''}</div>
+        <div class="meters">${meterRow(PHASE[e.phase], bar({ value: strength, max: 1, tone: 'neutral', label: `Stärke: ${PHASE[e.phase]}` }))}</div>
+        <div class="small muted">${esc(e.texts.start)}</div></div></div>`;
+    })
+    .join('');
+  return `<section class="card story-card"><h2>${icon('story')} Lage in der Galaxie</h2>${rows}</section>`;
+}
+
 export function terraView({ w, me }: ViewCtx): string {
   const c = company(w, me);
   const limit = creditLimit(w, me);
@@ -239,7 +268,7 @@ export function terraView({ w, me }: ViewCtx): string {
     })
     .join('');
 
-  return `
+  return `${storyCard(w)}
   <section class="card">
     <h2>Bank</h2>
     <p>Kreditrahmen frei: <b>${cr(limit)}</b> · Schulden: <b>${cr(debt(w, me))}</b> · Firmenwert: ${cr(companyValue(w, me))}</p>
@@ -492,7 +521,7 @@ export function marketView(ctx: ViewCtx): string {
         : o.ready
           ? `<span class="good">Lager reicht (${amt(available(f, d.good), d.good)} frei)</span>`
           : `<span class="warn">Lager: ${amt(Math.max(0, available(f, d.good)), d.good)} frei${o.daysToReady < Infinity ? ` – genug ${inDays(o.daysToReady)}` : ' – die Anlage produziert gerade nicht'}. Annehmen geht, ist aber riskant.</span>`;
-      return `<div class="row"><div class="grow">${cargoIcon(good(d.good).cargo)} <b>${amt(d.amount, d.good)} ${gName(d.good)}</b> für ${who(w, d.requester)} <span class="price">${cr(value)}</span>${d.big ? ` <span class="chip warn">${icon('bigOrder')}Großauftrag</span>` : ''}
+      return `<div class="row"><div class="grow">${cargoIcon(good(d.good).cargo)} <b>${amt(d.amount, d.good)} ${gName(d.good)}</b> für ${who(w, d.requester)} <span class="price">${cr(value)}</span>${d.big ? ` <span class="chip warn">${icon('bigOrder')}Großauftrag</span>` : ''}${storyChip(w, d.story)}
         <div class="small">${perUnit(d.pricePerFe, d.good)} · ${route(f.planet, d.toPlanet)} · ${cargoName(good(d.good).cargo)} · seit ${days(w.day - d.createdDay)} offen</div>
         <div class="small">${state}</div></div>
         <div class="acts">${btn('Liefern…', 'deliver', d.id, `class="${o.ready ? 'primary' : ''}" ${guide} data-tip="Nimmt die Nachfrage an und wählt die Schiffe dafür. Wer zuerst annimmt, bekommt den Auftrag." ${o.tooBig ? 'disabled' : ''}`)}</div></div>`;
@@ -519,7 +548,7 @@ export function marketView(ctx: ViewCtx): string {
         (d) => d,
       )
         .map(
-          (d) => `<tr><td>${cargoIcon(good(d.good).cargo)} ${gName(d.good)}${d.big ? ` ${icon('bigOrder', 'warn')}` : ''}</td><td>${who(w, d.requester)}</td><td>${pName(d.toPlanet)}</td><td class="n">${amt(d.amount, d.good)}</td><td class="n">${perUnit(d.pricePerFe, d.good)}</td><td class="n">${cr(d.amount * d.pricePerFe)}</td></tr>`,
+          (d) => `<tr><td>${cargoIcon(good(d.good).cargo)} ${gName(d.good)}${d.big ? ` ${icon('bigOrder', 'warn')}` : ''}${storyChip(w, d.story)}</td><td>${who(w, d.requester)}</td><td>${pName(d.toPlanet)}</td><td class="n">${amt(d.amount, d.good)}</td><td class="n">${perUnit(d.pricePerFe, d.good)}</td><td class="n">${cr(d.amount * d.pricePerFe)}</td></tr>`,
         )
         .join('')
     : '';

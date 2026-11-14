@@ -28,7 +28,7 @@ import {
 } from './actions';
 import { CONFIG, FACILITIES, SHIPS, TERRA, distance, facilityDef, good, planetsFor, shipDef } from './data';
 import type { Cargo, Company, Facility, World } from './types';
-import { available, facilitiesOf, facilityCount, freeCapacity, random, shipsOf } from './world';
+import { available, facilitiesOf, facilityCount, freeCapacity, isOutsideBuyer, random, shipsOf } from './world';
 
 const RESERVE = 120000;
 /** days an own order may stay open without a supplier before the AI orders a smaller amount instead */
@@ -121,7 +121,7 @@ function sellOutputs(w: World, c: Company) {
         .filter((d) => d.status === 'open' && d.good === g && !d.own && d.requester !== c.id && d.amount <= available(f, g))
         // Terra's demand for intermediate goods is only a price buffer: other companies' plants come first, or
         // whole chains (e.g. chemicals → fertilizer → agro → food) starve while refineries sell to Terra
-        .map((d) => ({ d, score: (d.pricePerFe * d.amount - minTransportFee(w, g, d.amount, f.planet, d.toPlanet)) * (d.requester === 'terra' && good(g).tier !== 'final' ? 0.5 : 1) }))
+        .map((d) => ({ d, score: (d.pricePerFe * d.amount - minTransportFee(w, g, d.amount, f.planet, d.toPlanet)) * (isOutsideBuyer(d.requester) && good(g).tier !== 'final' ? 0.5 : 1) }))
         .sort((a, b) => b.score - a.score);
       const best = options[0];
       if (!best || best.score <= 0) continue;

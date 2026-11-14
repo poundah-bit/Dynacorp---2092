@@ -3,7 +3,7 @@
 // (tablet in landscape) and the "Karte" tab (phone, portrait).
 
 import { CONFIG, PLANETS, lineRoute, facilityDef, good, shipSpeed, type PlanetDef, type World } from '../sim/index';
-import { FX_DURATION, createFx, stormFade, trailLength, type DayEvents } from './mapfx';
+import { FX_DURATION, createFx, stormFade, storyPlanets, trailLength, type DayEvents } from './mapfx';
 import { planetInfo } from './mapinfo';
 import { lookOf, planetRadius, planetSprite } from './planets';
 import { buildSkyLayers, drawSky, skyKey } from './sky';
@@ -245,6 +245,7 @@ export function createStarMap(): StarMap {
       own.set(f.planet, { units: f.units, bad: f.status === 'stopped' || f.condition < CONFIG.facilities.repairBelow });
     }
     const showSub = scale > 0.55;
+    const stories = storyPlanets(w);
     ctx.textAlign = 'center';
     const zoom = scale / fitScale;
     for (const p of PLANETS) {
@@ -272,6 +273,17 @@ export function createStarMap(): StarMap {
       if (look.ring) ringHalf(Math.PI);
       ctx.drawImage(planetSprite(p, rad), x - rad - 1, y - rad - 1, rad * 2 + 2, rad * 2 + 2);
       if (look.ring) ringHalf(0);
+      if (stories.has(p.id)) {
+        // a story event is running here: a slow amber halo (steady with reduced motion)
+        const k = reducedMotion() ? 0.5 : 0.5 + 0.5 * Math.sin((performance.now() / 2600) * Math.PI * 2);
+        ctx.strokeStyle = withAlpha(col.warn, 0.35 + 0.35 * k);
+        ctx.lineWidth = 2;
+        ctx.setLineDash([4, 5]);
+        ctx.beginPath();
+        ctx.arc(x, y, rad + 11 + 2 * k, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
       if (map.selected === p.id) {
         ctx.strokeStyle = col.warn;
         ctx.lineWidth = 3;

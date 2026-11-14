@@ -7,7 +7,7 @@ const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as 
 const fmt = new Intl.NumberFormat('de-DE', { maximumFractionDigits: 0 });
 const fmt2 = new Intl.NumberFormat('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-let w: World = createWorld({ seed: Date.now() % 100000 });
+let w: World = createWorld({ seed: Date.now() % 100000, stories: true });
 let timer: number | null = null;
 
 function render() {
@@ -73,7 +73,7 @@ $('auto').addEventListener('click', () => {
 });
 
 $('reset').addEventListener('click', () => {
-  w = createWorld({ seed: Date.now() % 100000 });
+  w = createWorld({ seed: Date.now() % 100000, stories: true });
   render();
 });
 

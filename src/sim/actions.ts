@@ -5,6 +5,7 @@
 import { CONFIG, SHIPS, TERRA, distance, facilityDef, good, planet, shipDef, storageDef, unitOf } from './data';
 import type { Cargo, Demand, Difficulty, Facility, Ship, Transport, World } from './types';
 import {
+  isOutsideBuyer,
   storageCapacity,
   company,
   demand,
@@ -397,7 +398,7 @@ export function acceptDemand(w: World, companyId: string, demandId: string, supp
   // the deadline starts when someone commits to deliver
   d.deadlineDay =
     transportDeadline(w, good(d.good).cargo, d.amount, f.planet, d.toPlanet) + CONFIG.orders.demandExtraDays;
-  if (d.requester !== 'terra' && d.requester !== companyId) {
+  if (!isOutsideBuyer(d.requester) && d.requester !== companyId) {
     log(w, d.requester, `${company(w, companyId).name} liefert ${d.amount} ${unitOf(d.good)} ${good(d.good).name} nach ${planet(d.toPlanet).name}.`);
   }
   return ok(d);
