@@ -39,7 +39,9 @@
     "demandExtraDays": 5,
     "minAmount": 2000,
     "maxAmount": 15000,
-    "reofferFeeIncrease": 0.2
+    "reofferFeeIncrease": 0.2,
+    "latePenaltyPerDay": 0.02,
+    "latePenaltyMax": 0.5
   },
   "terra": {
     "demandChancePerGoodPerDay": 0.18,
@@ -91,6 +93,11 @@
     "bonusMax": 0.4,
     "daysLimits": [20, 120],
     "keepDoneDays": 200
+  },
+  "aiFreight": {
+    "stuckDays": 10,
+    "stuckMin": 3,
+    "maxShipsPerCargo": 2
   },
   "projects": {
     "openOrdersPerGood": 2,

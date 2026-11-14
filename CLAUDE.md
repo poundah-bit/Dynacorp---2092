@@ -62,6 +62,8 @@ Non-commercial Android fan game inspired by Dynatech (1992). Owner: Rocco (GitHu
 - Ships are bought in the shipyard only; the delivery dialogs offer own idle ships, own ships already flying the same route ("zuladen") or public posting (exception: flying a newly bought facility/storage). A ship can be marked `repairAtTerra` and is repaired automatically when it stands idle on Terra.
 - An order from an own plant (Eigen-Nachfrage) may be placed before the goods exist, like accepting a demand early; the amount must fit the supplier's storage.
 - AI: prefers other companies' demands over Terra's base demand for intermediate goods (score × 0.5 for Terra), and withdraws an own order nobody took within 12 days, then orders the minimum amount – both keep long chains (chemicals → fertilizer → agro → food) from starving.
+- Late deliveries: no payment when the deadline passes (reputation −3, message), but on arrival the buyer deducts `latePenaltyRate` = difficulty `penaltyRate` + `orders.latePenaltyPerDay` (2 %) per further day, at most `orders.latePenaltyMax` (50 %); own orders and own projects are exempt. Late public transports keep the old one-off penalty.
+- AI freight business (`buyShipsForFreight`, `config.json` `aiFreight`): when ≥ 3 public transports of one cargo have waited ≥ 10 days, a company with spare cash buys a ship of that cargo (max 2 per cargo) – keeps livestock and food from starving when ranch owners cannot afford a freighter.
 - Difficulty tightens credit and interest for the player only; AI reaction speed, deadlines and penalties apply to everyone.
 
 ## Commands

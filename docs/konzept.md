@@ -495,6 +495,8 @@ Kurzentwurf: `docs/superpowers/specs/2026-11-14-sammelladung-auftragsgroesse-des
 | Sammelladung | „Transport organisieren…“ hat neben „Los“ den Knopf „Alle Lieferungen (n · Menge)“: alle zugesagten Lieferungen aus derselben Anlage zum selben Ziel kommen auf die gewählten Schiffe, knappste Frist zuerst, nur ganze Aufträge; „Los“ bleibt für die einzelne Lieferung | jeden Auftrag einzeln zuzuladen war mühsam (Spieltest Rocco) |
 | Gleiche Strecke | Zuladen bleibt auf gleichen Abholort und gleiches Ziel beschränkt | Entscheidung Rocco |
 | Ladezeit | Beladen dauert 2 Tage, bei Frachtern ab 40.000 Laderaum 3 Tage; Entladen 1 Tag; Fristen rechnen das ein | Zeit, um ohne Pause weitere Aufträge auf ein Schiff zu legen (Rocco) |
+| Strafe bei Verspätung | wird bei Ankunft von der Bezahlung abgezogen: Strafsatz der Schwierigkeit am ersten Tag, je weiteren Tag 2 % mehr, höchstens 50 %; Meldung beim Reißen der Frist | die einmalige Strafe von 5–20 % war zu gering, Verspätung lohnte sich fast immer (Rocco) |
+| KI-Frachtgeschäft | liegen mehrere öffentliche Transporte einer Frachtart lange herum, kauft eine KI-Firma mit genug Geld einen passenden Frachter | im Endlostest blieb Vieh liegen und Nahrung fehlte, weil arme Zuchtfarmen keinen Viehfrachter hatten |
 | Mitwachsende Terra-Aufträge | Endprodukt-Aufträge umfassen 20–30 Tage Ausstoß so vieler Werke, wie die größte einzelne Anlage dieser Ware hat (Einheiten auf einem Planeten, Werke im Bau zählen nicht); sie kommen entsprechend seltener, Terra kauft insgesamt gleich viel; mit einem Werk alles wie bisher | im Endgame blieben große Frachter mit vielen Kleinaufträgen halb leer (Spieltest Rocco); eine Firma schafft den Auftrag weiter in der Frist |
 
 ## Entscheidungen zu den Story-Ereignissen
