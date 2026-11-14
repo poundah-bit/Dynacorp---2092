@@ -55,6 +55,13 @@ export const storageDef = (id: string) => must(storageMap, id, 'Lager');
 
 export const TERRA = 'terra';
 
+/** Days a ship of this model needs to load: big holds take a day longer (time to add further loads). */
+export const loadingDays = (model: string) =>
+  shipDef(model).capacity >= CONFIG.largeHold ? CONFIG.loadingDaysLargeHold : CONFIG.loadingDays;
+
+/** Loading plus unloading of one trip at most – the margin every deadline includes. */
+export const handlingDays = () => CONFIG.loadingDaysLargeHold + CONFIG.unloadDays;
+
 /** Straight-line distance in Parsec between two planets. */
 export function distance(a: string, b: string): number {
   const p = planet(a);

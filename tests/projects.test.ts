@@ -204,11 +204,12 @@ describe('Vorteile der Großprojekte', () => {
     expect(w.stories!.upcoming).toBeUndefined();
   });
 
+  // recorded from the code without the dome path; re-record when the economy changes on purpose (e.g. loading days)
   it('ohne Kuppel laufen die Ereignisse genau wie bisher', () => {
     const w = createWorld({ seed: 2, stories: true, playerName: 'T', aiCompanies: 5 });
     run(w, 400);
     expect(w.stories!.events.map((e) => [e.cause, e.place, e.startDay])).toEqual([
-      ['raffineriestreik', 'terra', 200], ['agrarreform', 'ceres-minor', 256], ['erzausfall', 'terra', 300], ['duerre', 'ceres-minor', 333], ['flottenausbau', 'terra', 374],
+      ['habitatschaden', 'mirabel', 183], ['erzausfall', 'terra', 226], ['bauboom', 'polymer-ix', 280], ['modewelle', 'terra', 327], ['bauboom', 'vesta-nova', 381],
     ]);
   });
 

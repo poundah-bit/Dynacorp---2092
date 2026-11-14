@@ -48,6 +48,7 @@ import {
   type Transport,
   type World,
   buyerName,
+  handlingDays,
   initStories,
   isOutsideBuyer,
   type StoryEvent,
@@ -91,7 +92,7 @@ export function shipLegDays(s: Ship): number {
  * `readyIn`: days until the goods are produced – the ship waits at the plant until then.
  */
 export function tripDays(speed: number, at: string, from: string, to: string, readyIn = 0): number {
-  return Math.max(Math.ceil(distance(at, from) / speed), readyIn) + Math.ceil(distance(from, to) / speed) + 2 * CONFIG.loadDays;
+  return Math.max(Math.ceil(distance(at, from) / speed), readyIn) + Math.ceil(distance(from, to) / speed) + handlingDays();
 }
 
 /** Own ships the player may plan with: everything except Linienschiffe of active Lieferrouten. */

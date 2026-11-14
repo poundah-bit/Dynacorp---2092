@@ -1,6 +1,6 @@
 // The daily tick. One call to step() advances the world by one game day.
 
-import { CONFIG, FACILITIES, GOODS, PLANETS, SHIPS, TERRA, distance, facilityDef, good, planet, shipDef, storageDef, unitOf } from './data';
+import { CONFIG, FACILITIES, GOODS, PLANETS, SHIPS, TERRA, distance, facilityDef, good, loadingDays, planet, shipDef, storageDef, unitOf } from './data';
 import { companyValue, debt, diff, repairShip, shipLoads, startRoute, transportDeadline } from './actions';
 import { runAi } from './ai';
 import { routesTick } from './automation';
@@ -187,10 +187,10 @@ function arrive(w: World, s: Ship) {
   s.route = null;
   if (s.phase === 'toPickup') {
     s.phase = 'loading';
-    s.waitDays = CONFIG.loadDays;
+    s.waitDays = loadingDays(s.model);
   } else if (s.phase === 'toDelivery') {
     s.phase = 'unloading';
-    s.waitDays = CONFIG.loadDays;
+    s.waitDays = CONFIG.unloadDays;
   } else {
     s.phase = 'idle';
   }
