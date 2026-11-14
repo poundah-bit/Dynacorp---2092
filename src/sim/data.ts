@@ -34,7 +34,6 @@ const byId = <T extends { id: string }>(list: T[]) => new Map(list.map((x) => [x
 const goodMap = byId(GOODS);
 const facilityMap = byId(FACILITIES);
 const shipMap = byId(SHIPS);
-const planetMap = byId(PLANETS);
 const storageMap = byId(STORAGES);
 
 function must<T>(map: Map<string, T>, id: string, what: string): T {
@@ -50,7 +49,21 @@ export const CARGO_UNIT: Record<Cargo, string> = { tank: 'l', bulk: 't', piece: 
 export const unitOf = (goodId: string) => CARGO_UNIT[good(goodId).cargo];
 export const facilityDef = (id: string) => must(facilityMap, id, 'Anlage');
 export const shipDef = (id: string) => must(shipMap, id, 'Schiff');
-export const planet = (id: string) => must(planetMap, id, 'Planet');
+/** Anything that may carry its own planets (a world); without them the planets of world 1 apply. */
+export type PlanetSource = { planets?: PlanetDef[] };
+
+/** The planets of a world: its own list (generated module worlds) or `planets.json` (world 1). */
+export const worldPlanets = (w: PlanetSource): PlanetDef[] => w.planets ?? PLANETS;
+
+const planetMaps = new WeakMap<PlanetDef[], Map<string, PlanetDef>>();
+function planetsById(w: PlanetSource): Map<string, PlanetDef> {
+  const list = worldPlanets(w);
+  let m = planetMaps.get(list);
+  if (!m) planetMaps.set(list, (m = byId(list)));
+  return m;
+}
+
+export const planet = (w: PlanetSource, id: string) => must(planetsById(w), id, 'Planet');
 export const storageDef = (id: string) => must(storageMap, id, 'Lager');
 
 export const TERRA = 'terra';
@@ -63,14 +76,14 @@ export const loadingDays = (model: string) =>
 export const handlingDays = () => CONFIG.loadingDaysLargeHold + CONFIG.unloadDays;
 
 /** Straight-line distance in Parsec between two planets. */
-export function distance(a: string, b: string): number {
-  const p = planet(a);
-  const q = planet(b);
+export function distance(w: PlanetSource, a: string, b: string): number {
+  const p = planet(w, a);
+  const q = planet(w, b);
   return Math.hypot(p.x - q.x, p.y - q.y);
 }
 
 /** Planets that allow the given facility type. */
-export const planetsFor = (facilityType: string) => PLANETS.filter((p) => p.facility === facilityType);
+export const planetsFor = (w: PlanetSource, facilityType: string) => worldPlanets(w).filter((p) => p.facility === facilityType);
 
 /** Consistency checks for the data files; returns a list of problems (empty = ok). */
 export function validateData(): string[] {
@@ -79,7 +92,7 @@ export function validateData(): string[] {
     for (const g of [...Object.keys(f.inputs), ...Object.keys(f.outputs)]) {
       if (!goodMap.has(g)) problems.push(`${f.id}: unbekannte Ware ${g}`);
     }
-    if (planetsFor(f.id).length === 0) problems.push(`${f.id}: kein Planet erlaubt diese Anlage`);
+    if (planetsFor({}, f.id).length === 0) problems.push(`${f.id}: kein Planet erlaubt diese Anlage`);
   }
   for (const p of PLANETS) {
     if (p.facility && !facilityMap.has(p.facility)) problems.push(`${p.id}: unbekannte Anlage ${p.facility}`);

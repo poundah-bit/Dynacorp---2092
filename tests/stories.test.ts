@@ -24,7 +24,7 @@ function placeFits(rule: PlaceRule, place: string): boolean {
   const p = PLANETS.find((x) => x.id === place)!;
   if (rule.industry && !rule.industry.includes(p.facility!)) return false;
   if (rule.notIndustry && rule.notIndustry.includes(p.facility!)) return false;
-  if (rule.inner && distance(TERRA, place) > CONFIG.stories.innerParsec) return false;
+  if (rule.inner && distance({}, TERRA, place) > CONFIG.stories.innerParsec) return false;
   return true;
 }
 

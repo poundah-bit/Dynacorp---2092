@@ -1,6 +1,7 @@
 // HTML for the tabs (the Karte tab is the star map from starmap.ts). Buttons carry data-act (what to do) and data-guide (what the guide may highlight);
 // the click handling lives in game.ts.
 
+import type { PlanetSource } from '../sim/index';
 import {
   CONFIG,
   FACILITIES,
@@ -106,7 +107,7 @@ export interface ViewCtx {
 const btn = (label: string, act: string, a = '', extra = '') =>
   `<button data-act="${act}" data-a="${esc(a)}" ${extra}>${label}</button>`;
 const empty = (text: string) => `<p class="empty">${text}</p>`;
-const route = (from: string, to: string) => `${pName(from)} → ${pName(to)} <span class="muted">(${pc(distance(from, to))})</span>`;
+const route = (w: PlanetSource, from: string, to: string) => `${pName(w, from)} → ${pName(w, to)} <span class="muted">(${pc(distance(w, from, to))})</span>`;
 
 /** Text colour class that matches a bar's tone (green stays plain text). */
 const toneClass = (t: Tone) => (t === 'warn' || t === 'bad' ? t : '');
@@ -219,13 +220,13 @@ const PHASE: Record<StoryEvent['phase'], string> = { rise: 'Anlauf', peak: 'Höh
 export function storyCard(w: World): string {
   const running = (w.stories?.events ?? []).filter((e) => e.phase !== 'done' && w.day < e.endDay);
   const next = w.stories?.upcoming;
-  const soon = next ? `<div class="row story-row"><div class="grow"><b>In ${days(next.startDay - w.day)}: ${esc(next.title)}</b> <span class="muted small">${pName(next.place)} · Frühwarnung der Forschungskuppel</span></div></div>` : '';
+  const soon = next ? `<div class="row story-row"><div class="grow"><b>In ${days(next.startDay - w.day)}: ${esc(next.title)}</b> <span class="muted small">${pName(w, next.place)} · Frühwarnung der Forschungskuppel</span></div></div>` : '';
   if (!running.length && !soon) return '';
   const rows = running
     .map((e) => {
       const goods = e.effects.map((x) => `${gName(x.good)} ${x.factor > 1 ? '<span class="good">↑</span>' : '<span class="bad">↓</span>'}`).join(' · ');
       const strength = storyStrength(e, w.day);
-      return `<div class="row story-row"><div class="grow"><b>${esc(e.title)}</b> <span class="muted small">${pName(e.place)} · noch ${days(e.endDay - w.day)}</span>
+      return `<div class="row story-row"><div class="grow"><b>${esc(e.title)}</b> <span class="muted small">${pName(w, e.place)} · noch ${days(e.endDay - w.day)}</span>
         <div class="small">${goods}${e.priceBonus > 0 ? ` · <span class="warn">Sonderpreis +${Math.round(e.priceBonus * 100)} %</span>` : ''}</div>
         <div class="meters">${meterRow(PHASE[e.phase], bar({ value: strength, max: 1, tone: 'neutral', label: `Stärke: ${PHASE[e.phase]}` }))}</div>
         <div class="small muted">${esc(e.texts.start)}</div></div></div>`;
@@ -247,10 +248,10 @@ export function terraView({ w, me }: ViewCtx): string {
     : empty('Keine laufenden Kredite.');
 
   const facilityRows = FACILITIES.map((def) => {
-    const sites = planetsFor(def.id)
-      .sort((a, b) => distance(TERRA, a.id) - distance(TERRA, b.id))
+    const sites = planetsFor(w, def.id)
+      .sort((a, b) => distance(w, TERRA, a.id) - distance(w, TERRA, b.id))
       .map((p) =>
-        btn(`${p.name} <small>${pc(distance(TERRA, p.id))}</small>`, 'buy-facility', `${def.id}|${p.id}`, `data-guide="buy-${def.id}-${p.id}" data-tip="Kauft die Anlage für ${p.name}. Sie steht dann als Stückgut auf Terra und muss hingeflogen werden."`),
+        btn(`${p.name} <small>${pc(distance(w, TERRA, p.id))}</small>`, 'buy-facility', `${def.id}|${p.id}`, `data-guide="buy-${def.id}-${p.id}" data-tip="Kauft die Anlage für ${p.name}. Sie steht dann als Stückgut auf Terra und muss hingeflogen werden."`),
       )
       .join('');
     const cls = c.cash < def.price ? ' dim' : '';
@@ -434,7 +435,7 @@ export function facilitiesView({ w, me, order }: ViewCtx): string {
     .map(({ asset: a, transport: t }) => {
       const name = a.kind === 'facility' ? facilityDef(a.defId).name : storageDef(a.defId).name;
       const s = assetTransportText(w, t);
-      return `<div class="row"><div class="grow"><b>${name}</b> für ${pName(a.planet)} <span class="muted">(${fe(a.size)} Stückgut)</span><div class="small">${s.text}</div></div><div class="acts">${s.action}</div></div>`;
+      return `<div class="row"><div class="grow"><b>${name}</b> für ${pName(w, a.planet)} <span class="muted">(${fe(a.size)} Stückgut)</span><div class="small">${s.text}</div></div><div class="acts">${s.action}</div></div>`;
     })
     .join('');
 
@@ -466,7 +467,7 @@ export function facilitiesView({ w, me, order }: ViewCtx): string {
         btn('Verschrotten', 'scrap', f.id, 'class="ghost"'),
       ].join('');
       return `<section class="card drag-item" data-drag-item="${f.id}">
-        <h2>${icon(facilityIcon(f.type))}${facilityLabel(f)}${f.units > 1 ? ` <span class="muted">× ${f.units}</span>` : ''} <span class="badge ${st.cls}">${icon(st.icon)} ${st.text}</span>${dragHandle('facility', f.id, `${facilityLabel(f)} verschieben`)}</h2>
+        <h2>${icon(facilityIcon(f.type))}${facilityLabel(w, f)}${f.units > 1 ? ` <span class="muted">× ${f.units}</span>` : ''} <span class="badge ${st.cls}">${icon(st.icon)} ${st.text}</span>${dragHandle('facility', f.id, `${facilityLabel(w, f)} verschieben`)}</h2>
         <div class="meters">${meterRow('Zustand', bar({ value: f.condition, max: 100, tone: facilityConditionTone(f.condition), label: 'Zustand' }))}</div>
         <p class="small">Zustand <b class="${toneClass(facilityConditionTone(f.condition))}">${dec(f.condition)} %</b> · Auslastung ${eff} % · Kosten heute ${cr(cost)} · liefert bis zu ${flows(def.outputs, f.units)} pro Tag${Object.keys(def.inputs).length ? ` aus ${flows(def.inputs, f.units)}` : ''}</p>
         ${f.status === 'running' && eff === 0 ? `<p class="bad small">Steht still: ${Object.keys(def.inputs).some((g) => (f.stock[g] ?? 0) <= 0) ? 'Rohstoffe fehlen – „Ware bestellen“.' : 'Lager voll – liefere Ware aus.'}</p>` : ''}
@@ -497,25 +498,25 @@ export function fleetView({ w, me, order }: ViewCtx): string {
         : s.phase === 'idle' && !critical
           ? waiting
               .filter((t) => t.cargo === def.cargo && t.amount <= def.capacity)
-              .map((t) => btn(`Zuweisen: ${loadName(w, t)} ${pName(t.fromPlanet)} → ${pName(t.toPlanet)}`, 'assign', `${s.id}|${t.id}`, 'class="primary"'))
+              .map((t) => btn(`Zuweisen: ${loadName(w, t)} ${pName(w, t.fromPlanet)} → ${pName(w, t.toPlanet)}`, 'assign', `${s.id}|${t.id}`, 'class="primary"'))
               .join('')
           : // a ship on its way to a pickup can take further loads for the same route
             waiting
               .filter((t) => canJoin(w, s, t))
               .map((t) =>
-                btn(`Zuladen: ${loadName(w, t)} ${pName(t.fromPlanet)} → ${pName(t.toPlanet)}`, 'assign', `${s.id}|${t.id}`, 'class="primary" data-tip="Die Ladung fliegt im selben Flug mit – gleicher Abholort, gleiches Ziel, genug Platz im Laderaum."'),
+                btn(`Zuladen: ${loadName(w, t)} ${pName(w, t.fromPlanet)} → ${pName(w, t.toPlanet)}`, 'assign', `${s.id}|${t.id}`, 'class="primary" data-tip="Die Ladung fliegt im selben Flug mit – gleicher Abholort, gleiches Ziel, genug Platz im Laderaum."'),
               )
               .join('') +
             // soon free: book the next job now (Folgeauftrag)
             waiting
               .filter((t) => canQueue(w, s, t))
               .map((t) =>
-                btn(`Danach: ${loadName(w, t)} ${pName(t.fromPlanet)} → ${pName(t.toPlanet)}`, 'assign', `${s.id}|${t.id}`, `data-tip="Folgeauftrag: das Schiff ist in ${days(daysUntilFree(w, s) ?? 0)} frei und fliegt dann direkt zum Abholort."`),
+                btn(`Danach: ${loadName(w, t)} ${pName(w, t.fromPlanet)} → ${pName(w, t.toPlanet)}`, 'assign', `${s.id}|${t.id}`, `data-tip="Folgeauftrag: das Schiff ist in ${days(daysUntilFree(w, s) ?? 0)} frei und fliegt dann direkt zum Abholort."`),
               )
               .join('');
       const queued = s.next ? transport(w, s.next) : undefined;
       const nextLine = queued
-        ? `<div class="small">${icon('travelling')} Danach: <b>${loadName(w, queued)}</b> ${pName(queued.fromPlanet)} → ${pName(queued.toPlanet)} ${btn('Lösen', 'unqueue', s.id, 'class="ghost" data-tip="Gibt den Folgeauftrag wieder frei – er wartet dann unter „Aufträge“ auf ein Schiff."')}</div>`
+        ? `<div class="small">${icon('travelling')} Danach: <b>${loadName(w, queued)}</b> ${pName(w, queued.fromPlanet)} → ${pName(w, queued.toPlanet)} ${btn('Lösen', 'unqueue', s.id, 'class="ghost" data-tip="Gibt den Folgeauftrag wieder frei – er wartet dann unter „Aufträge“ auf ein Schiff."')}</div>`
         : '';
       const atTerra = s.phase === 'idle' && s.at === TERRA;
       const worn = s.condition < 100;
@@ -617,7 +618,7 @@ export function marketView(ctx: ViewCtx): string {
           ? `<span class="good">Lager reicht (${amt(available(f, d.good), d.good)} frei)</span>`
           : `<span class="warn">Lager: ${amt(Math.max(0, available(f, d.good)), d.good)} frei${o.daysToReady < Infinity ? ` – genug ${inDays(o.daysToReady)}` : ' – die Anlage produziert gerade nicht'}. Annehmen geht, ist aber riskant.</span>`;
       return `<div class="row"><div class="grow">${cargoIcon(good(d.good).cargo)} <b>${amt(d.amount, d.good)} ${gName(d.good)}</b> ${d.project && d.requester === me ? 'für deine eigene Baustelle <span class="muted">kein Erlös</span>' : `für ${who(w, d.requester)} <span class="price">${cr(value)}</span>`}${d.big ? ` <span class="chip warn">${icon('bigOrder')}Großauftrag</span>` : ''}${storyChip(w, d.story)}${projectChip(d.project)}
-        <div class="small">${perUnit(d.pricePerFe, d.good)} · ${route(f.planet, d.toPlanet)} · ${cargoName(good(d.good).cargo)} · seit ${days(w.day - d.createdDay)} offen</div>
+        <div class="small">${perUnit(d.pricePerFe, d.good)} · ${route(w, f.planet, d.toPlanet)} · ${cargoName(good(d.good).cargo)} · seit ${days(w.day - d.createdDay)} offen</div>
         <div class="small">${state}</div></div>
         <div class="acts">${btn('Liefern…', 'deliver', d.id, `class="${o.ready ? 'primary' : ''}" ${guide} data-tip="Nimmt die Nachfrage an und wählt die Schiffe dafür. Wer zuerst annimmt, bekommt den Auftrag." ${o.tooBig ? 'disabled' : ''}`)}</div></div>`;
     })
@@ -632,7 +633,7 @@ export function marketView(ctx: ViewCtx): string {
       const what = loadName(w, t);
       const tag = can === 'idle' ? '<span class="good">passt zu freiem Schiff</span>' : can === 'busy' ? '<span class="muted">passendes Schiff gerade unterwegs</span>' : `<span class="muted">kein passendes Schiff</span>`;
       return `<div class="row"><div class="grow">${cargoIcon(t.cargo)} <b>${what}</b> für ${who(w, t.issuer)} <span class="price">${cr(t.fee)}</span>
-        <div class="small">${route(t.fromPlanet, t.toPlanet)} · ${cargoName(t.cargo)} ${qty(t.amount, t.cargo)} · ${deadlineIn(w, t.deadlineDay)}</div><div class="small">${tag}</div></div>
+        <div class="small">${route(w, t.fromPlanet, t.toPlanet)} · ${cargoName(t.cargo)} ${qty(t.amount, t.cargo)} · ${deadlineIn(w, t.deadlineDay)}</div><div class="small">${tag}</div></div>
         <div class="acts">${btn('Übernehmen…', 'carry', t.id, `class="primary" data-tip="Fährt die Ladung einer anderen Firma mit einem freien eigenen Schiff – gegen das genannte Honorar." ${can === 'idle' ? '' : 'disabled'}`)}</div></div>`;
     })
     .join('');
@@ -643,7 +644,7 @@ export function marketView(ctx: ViewCtx): string {
         (d) => d,
       )
         .map(
-          (d) => `<tr><td>${cargoIcon(good(d.good).cargo)} ${gName(d.good)}${d.big ? ` ${icon('bigOrder', 'warn')}` : ''}${storyChip(w, d.story)}${projectChip(d.project)}</td><td>${who(w, d.requester)}</td><td>${pName(d.toPlanet)}</td><td class="n">${amt(d.amount, d.good)}</td><td class="n">${perUnit(d.pricePerFe, d.good)}</td><td class="n">${cr(d.amount * d.pricePerFe)}</td></tr>`,
+          (d) => `<tr><td>${cargoIcon(good(d.good).cargo)} ${gName(d.good)}${d.big ? ` ${icon('bigOrder', 'warn')}` : ''}${storyChip(w, d.story)}${projectChip(d.project)}</td><td>${who(w, d.requester)}</td><td>${pName(w, d.toPlanet)}</td><td class="n">${amt(d.amount, d.good)}</td><td class="n">${perUnit(d.pricePerFe, d.good)}</td><td class="n">${cr(d.amount * d.pricePerFe)}</td></tr>`,
         )
         .join('')
     : '';
@@ -679,7 +680,7 @@ export function ordersView({ w, me }: ViewCtx): string {
     .map((t) => {
       const what = loadName(w, t);
       const ships = idleFittingShips(w, me, t.cargo, t.amount);
-      return `<div class="row"><div class="grow">${cargoIcon(t.cargo)} <b>${what}</b> ${route(t.fromPlanet, t.toPlanet)}${deadlineBar(w, t.deadlineDay)}
+      return `<div class="row"><div class="grow">${cargoIcon(t.cargo)} <b>${what}</b> ${route(w, t.fromPlanet, t.toPlanet)}${deadlineBar(w, t.deadlineDay)}
         <div class="small">${t.own ? 'Eigener Transport' : `Für ${who(w, t.issuer)}, Honorar ${cr(t.fee)}`} · ${deadlineIn(w, t.deadlineDay)} · ${ships.length ? `${ships.length} passende freie Schiffe` : '<span class="bad">kein passendes freies Schiff</span>'}</div></div>
         <div class="acts">${btn('Schiff wählen…', 'move', t.id, 'class="primary" data-guide="waiting"')}</div></div>`;
     })
@@ -696,7 +697,7 @@ export function ordersView({ w, me }: ViewCtx): string {
           : s
             ? `${t.carrier === me ? '' : `${who(w, t.carrier)}: `}${shipStatus(w, s).text}`
             : `Übernommen von ${who(w, t.carrier)}`;
-      return `<div class="row"><div class="grow">${cargoIcon(t.cargo)} <b>${amt(t.amount, t.good!)} ${gName(t.good!)}</b> ${route(t.fromPlanet, t.toPlanet)}${deadlineBar(w, t.deadlineDay)}<div class="small">${state}${t.late ? ' · <span class="bad">Frist überzogen</span>' : ` · ${deadlineIn(w, t.deadlineDay)}`}</div></div>${t.status === 'open' && t.issuer === me ? `<div class="acts">${btn('Zurückziehen', 'unrelease', t.id)}</div>` : ''}</div>`;
+      return `<div class="row"><div class="grow">${cargoIcon(t.cargo)} <b>${amt(t.amount, t.good!)} ${gName(t.good!)}</b> ${route(w, t.fromPlanet, t.toPlanet)}${deadlineBar(w, t.deadlineDay)}<div class="small">${state}${t.late ? ' · <span class="bad">Frist überzogen</span>' : ` · ${deadlineIn(w, t.deadlineDay)}`}</div></div>${t.status === 'open' && t.issuer === me ? `<div class="acts">${btn('Zurückziehen', 'unrelease', t.id)}</div>` : ''}</div>`;
     })
     .join('');
 
@@ -704,7 +705,7 @@ export function ordersView({ w, me }: ViewCtx): string {
     .filter((d) => d.requester === me && ['open', 'accepted', 'shipping'].includes(d.status))
     .map((d) => {
       const state = d.status === 'open' ? 'Offen – wartet auf einen Lieferanten' : d.own ? 'Aus eigener Anlage' : `Liefert ${who(w, d.supplier)}`;
-      return `<div class="row"><div class="grow">${cargoIcon(good(d.good).cargo)} <b>${amt(d.amount, d.good)} ${gName(d.good)}</b> nach ${pName(d.toPlanet)} <span class="price">${perUnit(d.pricePerFe, d.good)}</span>${d.status === 'open' ? '' : deadlineBar(w, d.deadlineDay)}<div class="small">${state}</div></div>
+      return `<div class="row"><div class="grow">${cargoIcon(good(d.good).cargo)} <b>${amt(d.amount, d.good)} ${gName(d.good)}</b> nach ${pName(w, d.toPlanet)} <span class="price">${perUnit(d.pricePerFe, d.good)}</span>${d.status === 'open' ? '' : deadlineBar(w, d.deadlineDay)}<div class="small">${state}</div></div>
       <div class="acts">${d.status === 'open' ? btn('Stornieren', 'cancel-demand', d.id, 'class="ghost"') : ''}</div></div>`;
     })
     .join('');

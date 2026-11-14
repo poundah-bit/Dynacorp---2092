@@ -139,7 +139,7 @@ function ship(w: World, c: Company, demandId: string, from: Facility) {
   const cargo = good(d.good).cargo;
   const s = idleShips(w, c, cargo)
     .filter((x) => shipDef(x.model).capacity >= d.amount)
-    .sort((a, b) => distance(a.at ?? TERRA, from.planet) - distance(b.at ?? TERRA, from.planet))[0];
+    .sort((a, b) => distance(w, a.at ?? TERRA, from.planet) - distance(w, b.at ?? TERRA, from.planet))[0];
   if (s) {
     const t = postTransportForDemand(w, c.id, demandId, 'own');
     if (t.ok) assignShip(w, c.id, s.id, t.value.id);
@@ -186,7 +186,7 @@ function takeBackOwnFreight(w: World, c: Company) {
     if (t.issuer !== c.id || t.status !== 'open' || t.kind !== 'goods') continue;
     const s = idleShips(w, c, t.cargo)
       .filter((x) => shipDef(x.model).capacity >= t.amount)
-      .sort((a, b) => distance(a.at ?? TERRA, t.fromPlanet) - distance(b.at ?? TERRA, t.fromPlanet))[0];
+      .sort((a, b) => distance(w, a.at ?? TERRA, t.fromPlanet) - distance(w, b.at ?? TERRA, t.fromPlanet))[0];
     if (s && cancelTransport(w, c.id, t.id).ok) assignShip(w, c.id, s.id, t.id);
   }
 }
@@ -198,7 +198,7 @@ function haulFreight(w: World, c: Company) {
     const options = w.transports
       .filter((t) => t.status === 'open' && t.issuer !== c.id && t.cargo === def.cargo && t.amount <= def.capacity)
       .map((t) => {
-        const days = (distance(s.at ?? TERRA, t.fromPlanet) + distance(t.fromPlanet, t.toPlanet)) / def.speed + 2;
+        const days = (distance(w, s.at ?? TERRA, t.fromPlanet) + distance(w, t.fromPlanet, t.toPlanet)) / def.speed + 2;
         return { t, perDay: (t.fee - days * (def.operation + def.maintenance)) / days, days };
       })
       .filter((o) => o.perDay > 0 && w.day + o.days < o.t.deadlineDay)
@@ -303,7 +303,7 @@ function expand(w: World, c: Company) {
     const def = facilityDef(type);
     const existing = facs.find((f) => f.type === type);
     if (existing && existing.idleDays > 0) continue;
-    const sites = planetsFor(type).sort((a, b) => distance(TERRA, a.id) - distance(TERRA, b.id));
+    const sites = planetsFor(w, type).sort((a, b) => distance(w, TERRA, a.id) - distance(w, TERRA, b.id));
     const site = existing ? existing.planet : sites[0]?.id;
     if (!site) continue;
     // a plant also needs a piece-goods ship big enough to get there, and ships for what it produces

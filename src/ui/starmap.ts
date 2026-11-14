@@ -2,7 +2,7 @@
 // for details. One map element lives for the whole game; game.ts moves it between the side column
 // (tablet in landscape) and the "Karte" tab (phone, portrait).
 
-import { CONFIG, PLANETS, lineRoute, facilityDef, good, shipSpeed, type PlanetDef, type World } from '../sim/index';
+import { CONFIG, worldPlanets, lineRoute, facilityDef, good, shipSpeed, type PlanetDef, type World } from '../sim/index';
 import { FX_DURATION, createFx, stormFade, storyPlanets, trailLength, type DayEvents } from './mapfx';
 import { planetInfo } from './mapinfo';
 import { lookOf, planetRadius, planetSprite } from './planets';
@@ -121,8 +121,9 @@ export function createStarMap(): StarMap {
 
   function fit() {
     const r = canvas.getBoundingClientRect();
-    const xs = PLANETS.map((p) => p.x);
-    const ys = PLANETS.map((p) => p.y);
+    const list = worldPlanets(last?.w ?? {});
+    const xs = list.map((p) => p.x);
+    const ys = list.map((p) => p.y);
     const [x0, x1, y0, y1] = [Math.min(...xs), Math.max(...xs), Math.min(...ys), Math.max(...ys)];
     cx = (x0 + x1) / 2;
     cy = (y0 + y1) / 2;
@@ -199,7 +200,7 @@ export function createStarMap(): StarMap {
 
     // routes of own ships
     const ships = w.ships;
-    const pos = (id: string) => PLANETS.find((p) => p.id === id)!;
+    const pos = (id: string) => worldPlanets(w).find((p) => p.id === id)!;
     ctx.lineWidth = 1.5;
     for (const s of ships) {
       if (s.owner !== me || !s.route) continue;
@@ -249,7 +250,7 @@ export function createStarMap(): StarMap {
     const station = (w.projects ?? []).filter((x) => x.status === 'done').length;
     ctx.textAlign = 'center';
     const zoom = scale / fitScale;
-    for (const p of PLANETS) {
+    for (const p of worldPlanets(w)) {
       const [x, y] = toScreen(p.x, p.y, r);
       if (x < -60 || y < -60 || x > r.width + 60 || y > r.height + 60) continue;
       const tier = planetTier(p);
@@ -457,7 +458,7 @@ export function createStarMap(): StarMap {
     let best = '';
     let bestD = Infinity;
     const zoom = scale / (fitScale || 1);
-    for (const p of PLANETS) {
+    for (const p of worldPlanets(last?.w ?? {})) {
       const [x, y] = toScreen(p.x, p.y, r);
       const d = Math.hypot(x - sx, y - sy);
       // finger-sized hit area that grows with the drawn planet

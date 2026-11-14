@@ -80,7 +80,7 @@ function amortizationTable(title: string, econ: FacilityEconomics[]) {
     const ok = target ? e.amortizationDays >= target[0] && e.amortizationDays <= target[1] : e.margin > 0;
     const tierName = { raw: 'roh', intermediate: 'zwischen', final: 'end' }[e.tier];
     console.log(
-      `  ${mark(ok)} ${e.name.padEnd(22)} ${planet(e.planet).name.padEnd(14)} ${tierName.padEnd(8)}${n0(e.margin).padStart(9)} ${n0(e.freight).padStart(11)} ${`${n0(e.amortizationDays)} Tage`.padStart(13)}  ${target ? `${target[0]}–${target[1]}` : '> 0 Marge'}`,
+      `  ${mark(ok)} ${e.name.padEnd(22)} ${planet({}, e.planet).name.padEnd(14)} ${tierName.padEnd(8)}${n0(e.margin).padStart(9)} ${n0(e.freight).padStart(11)} ${`${n0(e.amortizationDays)} Tage`.padStart(13)}  ${target ? `${target[0]}–${target[1]}` : '> 0 Marge'}`,
     );
   }
 }
@@ -89,7 +89,7 @@ amortizationTable('Amortisation bei Basiskursen (eine Einheit, volle Auslastung,
 amortizationTable('Amortisation bei den Durchschnittskursen der Läufe (ab Tag 100)', facilityEconomics(avgPrices));
 
 const losers = facilityEconomics(basePrices()).filter((e) => e.margin <= 0);
-console.log(`\n  ${mark(losers.length === 0)} Kein Planet mit Dauerverlust bei Basiskursen: ${losers.length ? losers.map((l) => `${l.name} (${planet(l.planet).name})`).join(', ') : 'keiner'}`);
+console.log(`\n  ${mark(losers.length === 0)} Kein Planet mit Dauerverlust bei Basiskursen: ${losers.length ? losers.map((l) => `${l.name} (${planet({}, l.planet).name})`).join(', ') : 'keiner'}`);
 
 // ---------- 3. what Terra gets ----------
 

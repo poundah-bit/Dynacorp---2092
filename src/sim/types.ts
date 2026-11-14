@@ -230,6 +230,8 @@ export interface World {
   stories?: StoryState;
   /** the player's Großprojekte (missing = none) */
   projects?: ProjectState[];
+  /** own planets of a generated module world (missing = `planets.json`, world 1) */
+  planets?: PlanetDef[];
   /** Quark messages already sent (missing in old saves: `ensureQuark`) */
   quark?: QuarkState;
 }
@@ -326,6 +328,8 @@ export interface StoryContext {
   active: StoryEvent[];
   lastRecessionDay: number | null;
   lore: Lore;
+  /** planets of the world (missing = world 1) */
+  planets?: PlanetDef[];
 }
 
 // ---------- Großprojekte and Quark ----------

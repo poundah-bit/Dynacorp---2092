@@ -22,8 +22,8 @@ describe('Spieldaten', () => {
   });
 
   it('Entfernungen entsprechen der Planetentabelle', () => {
-    expect(Math.round(distance('terra', 'vesta-nova'))).toBe(216);
-    expect(Math.round(distance('terra', 'automa'))).toBe(689);
-    expect(distance('pyros', 'ferrox')).toBeCloseTo(distance('ferrox', 'pyros'));
+    expect(Math.round(distance({}, 'terra', 'vesta-nova'))).toBe(216);
+    expect(Math.round(distance({}, 'terra', 'automa'))).toBe(689);
+    expect(distance({}, 'pyros', 'ferrox')).toBeCloseTo(distance({}, 'ferrox', 'pyros'));
   });
 });

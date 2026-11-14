@@ -1,7 +1,10 @@
 // Phase-2 balancing metrics: checks the data and headless runs against the target values in
 // docs/konzept.md ("Balancing-Zielwerte"). Pure functions; tools/balance.ts prints them.
 
-import { CONFIG, FACILITIES, GOODS, PLANETS, STORAGES, TERRA, distance, good } from './data';
+import { CONFIG, FACILITIES, GOODS, PLANETS, STORAGES, TERRA, distance, good, type PlanetSource } from './data';
+
+/** Balancing figures are measured on world 1 (`planets.json`). */
+const W1: PlanetSource = {};
 import { companyIndex, priceIndex } from './engine';
 import type { Cargo, FacilityDef, World } from './types';
 
@@ -30,13 +33,13 @@ function buyerPlanet(goodId: string, from: string): string {
   const consumers = FACILITIES.filter((f) => goodId in f.inputs).map((f) => f.id);
   const planets = PLANETS.filter((p) => p.facility && consumers.includes(p.facility));
   // Terra also buys everything as base demand
-  return [TERRA, ...planets.map((p) => p.id)].sort((a, b) => distance(from, a) - distance(from, b))[0]!;
+  return [TERRA, ...planets.map((p) => p.id)].sort((a, b) => distance(W1, from, a) - distance(W1, from, b))[0]!;
 }
 
 /** Nearest planet producing a good (for input freight). */
 function supplierPlanet(goodId: string, to: string): string {
   const producers = FACILITIES.filter((f) => goodId in f.outputs).map((f) => f.id);
-  return PLANETS.filter((p) => p.facility && producers.includes(p.facility)).sort((a, b) => distance(to, a.id) - distance(to, b.id))[0]!.id;
+  return PLANETS.filter((p) => p.facility && producers.includes(p.facility)).sort((a, b) => distance(W1, to, a.id) - distance(W1, to, b.id))[0]!.id;
 }
 
 export interface FacilityEconomics {
@@ -60,8 +63,8 @@ export function facilityEconomics(prices: Record<string, number>): FacilityEcono
     for (const p of PLANETS.filter((x) => x.facility === def.id)) {
       const revenue = Object.entries(def.outputs).reduce((s, [g, n]) => s + n * (prices[g] ?? 0), 0);
       const inputCost = Object.entries(def.inputs).reduce((s, [g, n]) => s + n * (prices[g] ?? 0), 0);
-      const freightOut = Object.entries(def.outputs).reduce((s, [g, n]) => s + n * freightPerFe(g, distance(p.id, buyerPlanet(g, p.id)), prices), 0);
-      const freightIn = Object.entries(def.inputs).reduce((s, [g, n]) => s + n * freightPerFe(g, distance(supplierPlanet(g, p.id), p.id), prices), 0);
+      const freightOut = Object.entries(def.outputs).reduce((s, [g, n]) => s + n * freightPerFe(g, distance(W1, p.id, buyerPlanet(g, p.id)), prices), 0);
+      const freightIn = Object.entries(def.inputs).reduce((s, [g, n]) => s + n * freightPerFe(g, distance(W1, supplierPlanet(g, p.id), p.id), prices), 0);
       const runningCost = def.maintenance + def.operation;
       const margin = revenue - inputCost - runningCost - freightOut - freightIn;
       out.push({

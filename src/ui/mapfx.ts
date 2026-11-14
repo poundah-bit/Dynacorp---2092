@@ -1,7 +1,7 @@
 // Motion on the star map: what happened on the new game day (pure, from the world state) and a small
 // list of running effects (production pulse, arrival spark, storm flicker) timed in real milliseconds.
 
-import { PLANETS, facilitiesOf, type World } from '../sim/index';
+import { worldPlanets, facilitiesOf, type World } from '../sim/index';
 
 export interface DayEvents {
   /** planets of own plants that produced today */
@@ -32,7 +32,7 @@ export function mapEvents(w: World, me: string): DayEvents {
     }
     const m = e.company === null ? STORM.exec(e.text) : null;
     if (m) {
-      storm = PLANETS.find((p) => p.name === m[1])?.id ?? null;
+      storm = worldPlanets(w).find((p) => p.name === m[1])?.id ?? null;
       break;
     }
   }

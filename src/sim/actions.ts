@@ -2,7 +2,7 @@
 // these functions, so both play by the same rules. Actions never throw for game-rule violations;
 // they return { ok: false, error } with a German message the UI can show directly.
 
-import { CONFIG, SHIPS, TERRA, distance, facilityDef, good, handlingDays, loadingDays, planet, shipDef, storageDef, unitOf } from './data';
+import { CONFIG, SHIPS, TERRA, distance, facilityDef, good, handlingDays, loadingDays, planet, shipDef, storageDef, unitOf, type PlanetSource } from './data';
 import type { Cargo, Demand, Difficulty, Facility, Ship, Transport, World } from './types';
 import {
   isOutsideBuyer,
@@ -36,21 +36,21 @@ export const diff = (w: World) => CONFIG.difficulties[w.difficulty as Difficulty
 // ---------- helpers shared with the engine ----------
 
 /** Days a ship of the slowest fitting class needs from Terra to pickup and on to delivery, incl. loading. */
-export function referenceTripDays(cargo: Cargo, amount: number, from: string, to: string): number {
+export function referenceTripDays(w: PlanetSource, cargo: Cargo, amount: number, from: string, to: string): number {
   const fitting = SHIPS.filter((s) => s.cargo === cargo && s.capacity >= amount);
   const pool = fitting.length ? fitting : SHIPS.filter((s) => s.cargo === cargo);
   const slowest = Math.min(...pool.map((s) => s.speed));
-  return Math.ceil((distance(TERRA, from) + distance(from, to)) / slowest) + handlingDays();
+  return Math.ceil((distance(w, TERRA, from) + distance(w, from, to)) / slowest) + handlingDays();
 }
 
 export function transportDeadline(w: World, cargo: Cargo, amount: number, from: string, to: string): number {
-  const days = referenceTripDays(cargo, amount, from, to);
+  const days = referenceTripDays(w, cargo, amount, from, to);
   return w.day + Math.ceil(days * 2 * diff(w).deadlineFactor) + CONFIG.orders.deadlineExtraDays;
 }
 
 /** Minimum fee for a public transport: distance-based plus a share of the goods value. */
 export function minTransportFee(w: World, goodId: string | null, amount: number, from: string, to: string): number {
-  const perParsec = amount * distance(from, to) * CONFIG.market.minTransportFeePerFePerParsec;
+  const perParsec = amount * distance(w, from, to) * CONFIG.market.minTransportFeePerFePerParsec;
   const value = goodId ? amount * (w.prices[goodId] ?? 0) * 0.05 : 0;
   return Math.round(perParsec + value);
 }
@@ -76,7 +76,7 @@ export function creditLimit(w: World, companyId: string): number {
 
 /** Message for a Linienschiff that a player tries to use otherwise. */
 function lineBusy(w: World, from: string, to: string): string {
-  const name = (id: string) => planet(facility(w, id)?.planet ?? TERRA).name;
+  const name = (id: string) => planet(w, facility(w, id)?.planet ?? TERRA).name;
   return `Linienschiff der Lieferroute ${name(from)} → ${name(to)} – erst die Route pausieren.`;
 }
 
@@ -160,7 +160,7 @@ export function buyFacility(w: World, companyId: string, type: string, planetId:
   const a = active(w, companyId);
   if (!a.ok) return a;
   const def = facilityDef(type);
-  if (planet(planetId).facility !== type) return fail(`Auf ${planet(planetId).name} ist keine ${def.name} erlaubt.`);
+  if (planet(w, planetId).facility !== type) return fail(`Auf ${planet(w, planetId).name} ist keine ${def.name} erlaubt.`);
   const existing = facilitiesOf(w, companyId).some((f) => f.type === type && f.planet === planetId);
   const pending = w.assets.some(
     (x) => x.owner === companyId && x.kind === 'facility' && x.defId === type && x.planet === planetId && !x.delivered,
@@ -172,7 +172,7 @@ export function buyFacility(w: World, companyId: string, type: string, planetId:
   if (!paid.ok) return paid;
   const id = newId(w, 'a');
   w.assets.push({ id, owner: companyId, kind: 'facility', defId: type, planet: planetId, size: def.size, delivered: false });
-  log(w, companyId, `${company(w, companyId).name} kauft eine ${def.name} für ${planet(planetId).name}.`);
+  log(w, companyId, `${company(w, companyId).name} kauft eine ${def.name} für ${planet(w, planetId).name}.`);
   return ok(createAssetTransport(w, companyId, id, def.size, planetId));
 }
 
@@ -274,7 +274,7 @@ export function sendShipToTerra(w: World, companyId: string, shipId: string): Re
   if (!s || s.owner !== companyId) return fail('Schiff nicht gefunden.');
   if (s.phase !== 'idle') return fail('Das Schiff ist beschäftigt.');
   if (s.at === TERRA) return ok(undefined);
-  startRoute(s, TERRA, 'toTerra');
+  startRoute(w, s, TERRA, 'toTerra');
   return ok(undefined);
 }
 
@@ -339,12 +339,12 @@ export function startQueued(w: World, s: Ship): void {
   if (s.at === t.fromPlanet) {
     s.phase = 'loading';
     s.waitDays = loadingDays(s.model);
-  } else startRoute(s, t.fromPlanet, 'toPickup');
+  } else startRoute(w, s, t.fromPlanet, 'toPickup');
 }
 
-export function startRoute(s: Ship, to: string, phase: Ship['phase']) {
+export function startRoute(w: PlanetSource, s: Ship, to: string, phase: Ship['phase']) {
   const from = s.at ?? s.route?.to ?? TERRA;
-  s.route = { from, to, distance: distance(from, to), traveled: 0 };
+  s.route = { from, to, distance: distance(w, from, to), traveled: 0 };
   s.at = null;
   s.phase = phase;
 }
@@ -486,7 +486,7 @@ export function acceptDemand(w: World, companyId: string, demandId: string, supp
   d.deadlineDay =
     transportDeadline(w, good(d.good).cargo, d.amount, f.planet, d.toPlanet) + CONFIG.orders.demandExtraDays;
   if (!isOutsideBuyer(d.requester) && d.requester !== companyId) {
-    log(w, d.requester, `${company(w, companyId).name} liefert ${d.amount} ${unitOf(d.good)} ${good(d.good).name} nach ${planet(d.toPlanet).name}.`);
+    log(w, d.requester, `${company(w, companyId).name} liefert ${d.amount} ${unitOf(d.good)} ${good(d.good).name} nach ${planet(w, d.toPlanet).name}.`);
   }
   return ok(d);
 }
@@ -593,7 +593,7 @@ export function acceptTransport(w: World, companyId: string, transportId: string
   if (!t || t.status !== 'open') return fail('Dieser Transport ist nicht mehr offen.');
   t.status = 'accepted';
   t.carrier = companyId;
-  log(w, t.issuer, `${company(w, companyId).name} übernimmt den Transport ${t.id} nach ${planet(t.toPlanet).name}.`);
+  log(w, t.issuer, `${company(w, companyId).name} übernimmt den Transport ${t.id} nach ${planet(w, t.toPlanet).name}.`);
   return ok(t);
 }
 
@@ -652,7 +652,7 @@ export function assignShip(w: World, companyId: string, shipId: string, transpor
     s.phase = 'loading';
     s.waitDays = loadingDays(s.model);
   } else {
-    startRoute(s, t.fromPlanet, 'toPickup');
+    startRoute(w, s, t.fromPlanet, 'toPickup');
   }
   return ok(undefined);
 }

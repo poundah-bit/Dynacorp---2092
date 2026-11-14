@@ -1,6 +1,7 @@
 // Dialogs ("sheets") for moves that need a choice: loans, delivering, shipping, ordering goods.
 // A sheet is static HTML plus a run() that reads the form and performs the move via play.ts / actions.
 
+import type { PlanetSource } from '../sim/index';
 import {
   addRoute,
   routeGoods,
@@ -103,7 +104,7 @@ interface Load {
   readyIn?: number;
 }
 
-const route = (l: Load) => `<p class="small muted">${cargoName(l.cargo)}, ${qty(l.amount, l.cargo)} · ${pName(l.from)} → ${pName(l.to)} (${pc(distance(l.from, l.to))})</p>`;
+const route = (w: PlanetSource, l: Load) => `<p class="small muted">${cargoName(l.cargo)}, ${qty(l.amount, l.cargo)} · ${pName(w, l.from)} → ${pName(w, l.to)} (${pc(distance(w, l.from, l.to))})</p>`;
 const feeInput = (min: number) =>
   `Honorar <input type="number" name="fee" min="${min}" step="100" value="${Math.ceil((min * 1.2) / 100) * 100}" inputmode="numeric"> Cr (mindestens <span data-fee-min>${cr(min)}</span>)`;
 const noShipHint = (cargo: Cargo) => `Kein freies eigenes Schiff für ${cargoName(cargo)}. Schiffe gibt es in der Werft auf Terra.`;
@@ -121,7 +122,7 @@ function choiceBlock(w: World, me: string, l: Load): string {
     .map((s) => radio(`ship:${s.id}`, `<b>${shipDef(s.model).name} #${s.id.slice(1)}</b> – fliegt diese Strecke schon, noch ${qty(shipRoom(w, s), l.cargo)} frei<br><small>Die Ladung kommt dazu – ein Flug für mehrere Aufträge</small>`))
     .join('');
   const own = along + idleFittingShips(w, me, l.cargo, l.amount)
-    .map((s) => ({ s, d: tripDays(shipDef(s.model).speed, s.at ?? TERRA, l.from, l.to, l.readyIn) }))
+    .map((s) => ({ s, d: tripDays(w, shipDef(s.model).speed, s.at ?? TERRA, l.from, l.to, l.readyIn) }))
     .sort((a, b) => a.d - b.d)
     .map(({ s, d }) => radio(`ship:${s.id}`, `<b>${shipDef(s.model).name} #${s.id.slice(1)}</b> – ${shipStatus(w, s).text}<br><small>Ankunft am Ziel ${inDays(d)}</small>`))
     .join('');
@@ -133,14 +134,14 @@ function choiceBlock(w: World, me: string, l: Load): string {
   const buy = model
     ? radio(
         `buy:${model.id}`,
-        `<b>Neuen ${model.name} kaufen</b> (${cr(model.price)}) und losschicken<br><small>${cash < model.price ? '<span class="bad">nicht genug Barkapital</span>' : `startet auf Terra, Ankunft am Ziel ${inDays(tripDays(model.speed, TERRA, l.from, l.to, l.readyIn))}`}</small>`,
+        `<b>Neuen ${model.name} kaufen</b> (${cr(model.price)}) und losschicken<br><small>${cash < model.price ? '<span class="bad">nicht genug Barkapital</span>' : `startet auf Terra, Ankunft am Ziel ${inDays(tripDays(w, model.speed, TERRA, l.from, l.to, l.readyIn))}`}</small>`,
         cash < model.price,
       )
     : '';
   const pub = l.allowPublic
     ? radio('public', `<b>Öffentlich ausschreiben</b> – eine andere Firma fliegt für ein Honorar<br><small>${feeInput(minTransportFee(w, l.good, l.amount, l.from, l.to))}</small>`)
     : '';
-  return `${route(l)}<div class="opts">${own}${soon}${buy}${pub}</div>${!own && !soon && !buy ? `<p class="hint">${noShipHint(l.cargo)}</p>` : ''}`;
+  return `${route(w, l)}<div class="opts">${own}${soon}${buy}${pub}</div>${!own && !soon && !buy ? `<p class="hint">${noShipHint(l.cargo)}</p>` : ''}`;
 }
 
 /**
@@ -158,7 +159,7 @@ function planBlock(w: World, me: string, l: Load): string {
   const ships =
     along +
     idleShipsOfCargo(w, me, l.cargo)
-      .map((s) => ({ s, d: tripDays(shipDef(s.model).speed, s.at ?? TERRA, l.from, l.to, l.readyIn) }))
+      .map((s) => ({ s, d: tripDays(w, shipDef(s.model).speed, s.at ?? TERRA, l.from, l.to, l.readyIn) }))
       .sort((a, b) => a.d - b.d)
       .map(
         ({ s, d }) => `<label class="opt"><input type="checkbox" name="ship" value="${s.id}" data-cap="${shipDef(s.model).capacity}" ${pick.has(s.id) ? 'checked' : ''}>
@@ -171,7 +172,7 @@ function planBlock(w: World, me: string, l: Load): string {
         <span>${soonLabel(w, s, l)}</span></label>`,
       )
       .join('');
-  return `${route(l)}
+  return `${route(w, l)}
     ${ships ? `<div class="opts">${ships}</div>` : `<p class="hint">${noShipHint(l.cargo)}</p>`}
     <p class="preview" data-plan-summary></p>
     <div data-rest>
@@ -279,7 +280,7 @@ export function moveSheet(w: World, me: string, transportId: string): Sheet {
   const asset = t.kind === 'asset';
   const bundle = assetBundle(w, me, transportId);
   return {
-    title: `${what} nach ${pName(t.toPlanet)}`,
+    title: `${what} nach ${pName(w, t.toPlanet)}`,
     body: `${asset ? '<p class="hint">Anlagen und Lager reisen als Stückgut. Ohne eigenen Stückgutfrachter kannst du hier gleich einen kaufen oder den Flug an der Börse ausschreiben.</p>' : ''}
       ${choiceBlock(w, me, { cargo: t.cargo, amount: t.amount, from: t.fromPlanet, to: t.toPlanet, good: t.good, allowPublic: t.own && t.issuer === me, allowBuy: asset })}`,
     confirm: 'Los',
@@ -297,12 +298,12 @@ export function moveSheet(w: World, me: string, transportId: string): Sheet {
           },
           alt: {
             label: `Alle Anlagen mitnehmen (${bundle.length + 1})`,
-            tip: `Lädt alle gekauften Anlagen und Lager für ${pName(t.toPlanet)} auf das gewählte Schiff, solange Platz ist.`,
+            tip: `Lädt alle gekauften Anlagen und Lager für ${pName(w, t.toPlanet)} auf das gewählte Schiff, solange Platz ist.`,
             run(form: HTMLFormElement): SheetResult {
               const c = readChoice(form);
               if (!c) return { error: 'Bitte wähle ein Schiff.' };
               const r = moveAll(w, me, transportId, c);
-              return r.ok ? { message: `${r.value.count} Ladungen fliegen zusammen nach ${pName(t.toPlanet)}.` } : { error: r.error };
+              return r.ok ? { message: `${r.value.count} Ladungen fliegen zusammen nach ${pName(w, t.toPlanet)}.` } : { error: r.error };
             },
           },
         }
@@ -326,9 +327,9 @@ export function deliverSheet(w: World, me: string, demandId: string): Sheet {
   const facChoice =
     facs.length > 1
       ? `<div class="opts">${facs
-          .map((f, i) => `<label class="opt"><input type="radio" name="fac" value="${f.id}" ${i === 0 ? 'checked' : ''}><span>aus ${pName(f.planet)}: ${stockText(f)}</span></label>`)
+          .map((f, i) => `<label class="opt"><input type="radio" name="fac" value="${f.id}" ${i === 0 ? 'checked' : ''}><span>aus ${pName(w, f.planet)}: ${stockText(f)}</span></label>`)
           .join('')}</div>`
-      : `<input type="hidden" name="fac" value="${from.id}"><p>Aus ${pName(from.planet)}: ${stockText(from)}.</p>`;
+      : `<input type="hidden" name="fac" value="${from.id}"><p>Aus ${pName(w, from.planet)}: ${stockText(from)}.</p>`;
   const r = readiness(from, d.good, d.amount);
   const deadline = acceptDeadline(w, d, from) - w.day;
   const self = !!d.project && d.requester === me;
@@ -365,7 +366,7 @@ export function arrangeSheet(w: World, me: string, demandId: string): Sheet {
   const load: Load = { cargo: good(d.good).cargo, amount: open, from: from.planet, to: d.toPlanet, good: d.good, allowPublic: true };
   const others = bundleCandidates(w, me, demandId);
   return {
-    title: `${amt(open, d.good)} ${gName(d.good)} nach ${pName(d.toPlanet)}`,
+    title: `${amt(open, d.good)} ${gName(d.good)} nach ${pName(w, d.toPlanet)}`,
     body: `${open < d.amount ? `<p>Von ${amt(d.amount, d.good)} sind ${amt(d.amount - open, d.good)} schon unterwegs.</p>` : ''}<p class="small">${deadlineIn(w, d.deadlineDay)}</p>${planBlock(w, me, load)}`,
     confirm: 'Los',
     live: (form) => planLive(w, load, form),
@@ -426,7 +427,7 @@ export function storageSheet(w: World, me: string, facilityId: string): Sheet {
     })
     .join('');
   return {
-    title: `Lager erweitern: ${pName(f.planet)}`,
+    title: `Lager erweitern: ${pName(w, f.planet)}`,
     body: `<p class="hint">Ein Zusatzlager vergrößert das Lager für alle Waren seiner Frachtart an dieser Anlage. Es wird bei Dynacore gekauft und wie eine Anlage als Stückgut hingeflogen.</p>${groups}`,
     confirm: 'Kaufen',
     run(form) {
@@ -458,7 +459,7 @@ export function orderSheet(w: World, me: string, facilityId: string): Sheet {
   // the biggest own ship of the cargo sets the limit (at least the standard maximum)
   const maxFor = (g: string) => maxOrderAmount(w, me, g);
   return {
-    title: `Ware bestellen für ${pName(f.planet)}`,
+    title: `Ware bestellen für ${pName(w, f.planet)}`,
     body: `<p class="hint">Deine Nachfrage erscheint an der Börse. Wer annimmt, liefert – du zahlst den Kurs bei Ankunft. Hast du selbst eine Anlage, die die Ware herstellt, kannst du sie dort direkt abholen.</p>
       <div class="opts">${goodOpts}</div>
       <label class="field">Menge: <output name="amountOut"></output><input type="range" name="amount" min="${minAmount}" max="${maxFor(first)}" step="500" value="${Math.min(maxFor(first), Math.max(minAmount, Math.floor(room(first) / 500) * 500))}"></label>
@@ -489,7 +490,7 @@ export function orderSheet(w: World, me: string, facilityId: string): Sheet {
               : r.missing
                 ? `<span class="warn">${amt(Math.max(0, r.free), g)} frei, es fehlen ${amt(r.missing, g)}${r.daysToReady < Infinity ? ` – genug ${inDays(r.daysToReady)}` : ' – die Anlage produziert gerade nicht'}. Das Schiff wartet dort, bis genug produziert ist.</span>`
                 : `<span class="good">${amt(r.free, g)} frei – sofort ladbar</span>`;
-            return `<label class="opt${fits ? '' : ' dim'}"><input type="radio" name="src" value="${x.id}" ${fits ? '' : 'disabled'} ${current === x.id && fits ? 'checked' : ''}><span>Aus eigener Anlage auf ${pName(x.planet)}<br><small>${state}</small></span></label>`;
+            return `<label class="opt${fits ? '' : ' dim'}"><input type="radio" name="src" value="${x.id}" ${fits ? '' : 'disabled'} ${current === x.id && fits ? 'checked' : ''}><span>Aus eigener Anlage auf ${pName(w, x.planet)}<br><small>${state}</small></span></label>`;
           })
           .join('');
     },
@@ -536,7 +537,7 @@ export function routeSheet(w: World, me: string): Sheet {
   const opts = pairs
     .map(
       (p, i) =>
-        `<label class="opt"><input type="radio" name="pair" value="${key(p)}" ${i === 0 ? 'checked' : ''}><span><b>${gName(p.g)}: ${pName(p.from.planet)} → ${pName(p.to.planet)}</b><br><small>${facilityDef(p.from.type).name} liefert an ${facilityDef(p.to.type).name}</small></span></label>`,
+        `<label class="opt"><input type="radio" name="pair" value="${key(p)}" ${i === 0 ? 'checked' : ''}><span><b>${gName(p.g)}: ${pName(w, p.from.planet)} → ${pName(w, p.to.planet)}</b><br><small>${facilityDef(p.from.type).name} liefert an ${facilityDef(p.to.type).name}</small></span></label>`,
     )
     .join('');
   const pick = (form: HTMLFormElement) => pairs.find((p) => key(p) === val(form, 'pair')) ?? pairs[0]!;

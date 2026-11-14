@@ -86,7 +86,7 @@ export const isOutsideBuyer = (id: string) => id === 'terra' || id.startsWith('w
 /** Name of a buyer for messages: Terra, „Bevölkerung von <Planet>“ or the company. */
 export function buyerName(w: World, id: string): string {
   if (id === 'terra') return 'Terra';
-  if (id.startsWith('world:')) return `Bevölkerung von ${planet(id.slice(6)).name}`;
+  if (id.startsWith('world:')) return `Bevölkerung von ${planet(w, id.slice(6)).name}`;
   return company(w, id).name;
 }
 
