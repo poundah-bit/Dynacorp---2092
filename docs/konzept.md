@@ -485,6 +485,16 @@ Bei der Umsetzung des Wirtschaftskerns kamen diese Festlegungen hinzu. Sie stehe
 | Kritischer Zustand statt Schrottpresse | Schiffe werden nicht mehr verschrottet. Unter 30 % Zustand fliegen sie mit 30 % Tempo weiter, melden das einmal, nehmen keine neuen Aufträge an und blinken rot auf der Karte und im Tab Flotte, bis sie auf Terra repariert sind (bei „weniger Bewegung“ im System: fester roter Rahmen) | Schiffe sollen nicht mitten im Spiel verschwinden (Spieltest) |
 | KI-Nachschub in langen Ketten | die KI beliefert bei Zwischenprodukten lieber andere Firmen als Terras Grundnachfrage und zieht eigene Bestellungen, die nach 12 Tagen niemand angenommen hat, zurück und bestellt kleiner neu | im Endlostest blieb Nahrung je nach Spielverlauf ganz aus: zu große Chemikalien-Bestellungen blieben liegen, Dünger fehlte, Agrarprodukte und Vieh auch |
 
+## Entscheidungen nach dem Spieltest zu Phase 3, Teil 2
+
+Kurzentwurf: `docs/superpowers/specs/2026-11-14-sammelladung-auftragsgroesse-design.md`.
+
+| Thema | Entscheidung | Grund |
+|---|---|---|
+| Sammelladung | „Transport organisieren…“ hat neben „Los“ den Knopf „Alle Lieferungen (n · Menge)“: alle zugesagten Lieferungen aus derselben Anlage zum selben Ziel kommen auf die gewählten Schiffe, knappste Frist zuerst, nur ganze Aufträge; „Los“ bleibt für die einzelne Lieferung | jeden Auftrag einzeln zuzuladen war mühsam (Spieltest Rocco) |
+| Gleiche Strecke | Zuladen bleibt auf gleichen Abholort und gleiches Ziel beschränkt | Entscheidung Rocco |
+| Mitwachsende Terra-Aufträge | Endprodukt-Aufträge umfassen 20–30 Tage Ausstoß so vieler Werke, wie die größte Herstellerfirma dieser Ware betreibt (Werke im Bau zählen nicht); sie kommen entsprechend seltener, Terra kauft insgesamt gleich viel; mit einem Werk alles wie bisher | im Endgame blieben große Frachter mit vielen Kleinaufträgen halb leer (Spieltest Rocco); eine Firma schafft den Auftrag weiter in der Frist |
+
 ## Entscheidungen zu den Tönen
 
 | Thema | Entscheidung | Warum |

@@ -1,6 +1,6 @@
 // Sammelladung: all accepted deliveries of one route go onto the chosen ships in one tap.
 import { describe, expect, it } from 'vitest';
-import { acceptDemand, buyShip, company, type Ship, type World } from '../src/sim/index';
+import { acceptDemand, buyShip, company, run, terraOrderScale, type Demand, type Ship, type World } from '../src/sim/index';
 import { arrangeSheet } from '../src/ui/sheets';
 import { shipAll, unshippedDemands } from '../src/ui/play';
 import { oilWellWithTanker, player, soloWorld, terraOilDemand } from './helpers';
@@ -74,5 +74,32 @@ describe('Sammelladung', () => {
     expect(arrangeSheet(w, me, first.id).alt).toBeUndefined();
     accepted(w, well.id, 5000, 10);
     expect(arrangeSheet(w, me, first.id).alt?.label).toBe('Alle Lieferungen (2 · 9.000 l)');
+  });
+});
+
+describe('Mitwachsende Terra-Aufträge', () => {
+  it('Terra-Aufträge für Endprodukte wachsen mit der größten Herstellerfirma', () => {
+    const w = soloWorld();
+    const me = player(w);
+    const base = { owner: me, buildDaysLeft: 0, condition: 100, stock: {}, reserved: {}, storages: [], idleDays: 0 };
+    w.facilities.push({ ...base, id: 'f-rob', type: 'robotworks', planet: 'automa', units: 4, status: 'running' });
+    w.facilities.push({ ...base, id: 'f-rob2', type: 'robotworks', planet: 'kolossos', units: 1, status: 'construction', buildDaysLeft: 999 });
+    expect(terraOrderScale(w, 'robots')).toBe(4);
+    expect(terraOrderScale(w, 'medicine')).toBe(1);
+    company(w, me).cash = 1e9; // the fake plants cost money every day
+    w.demands = [];
+    // old demands are pruned from the world, so collect every Terra order as it appears
+    const seen = new Map<string, Demand>();
+    for (let i = 0; i < 400; i++) {
+      run(w, 1);
+      for (const d of w.demands) if (d.requester === 'terra') seen.set(d.id, d);
+    }
+    const robots = [...seen.values()].filter((d) => d.good === 'robots');
+    expect(robots.length).toBeGreaterThan(0);
+    for (const d of robots) expect(d.amount).toBeGreaterThanOrEqual(d.big ? 4800 : 2400);
+    // with one plant everything stays as before: 20–30 days of one plant
+    const meds = [...seen.values()].filter((d) => d.good === 'medicine' && !d.big);
+    expect(meds.length).toBeGreaterThan(0);
+    for (const d of meds) expect(d.amount).toBeLessThanOrEqual(800);
   });
 });

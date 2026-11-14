@@ -384,6 +384,20 @@ export function terraDemandAmount(goodId: string, days: number, factor = 1): num
 /** Capacity of the biggest ship type for a cargo – the upper limit for any single order. */
 export const largestShipCapacity = (cargo: Cargo) => Math.max(...SHIPS.filter((s) => s.cargo === cargo).map((s) => s.capacity));
 
+/**
+ * How many plants of a good the biggest producer runs (units of built facilities, at least 1). Terra's
+ * orders for final goods grow with it, so one company can still deliver an order within the deadline.
+ */
+export function terraOrderScale(w: World, goodId: string): number {
+  const units = new Map<string, number>();
+  for (const f of w.facilities) {
+    if (f.status === 'construction' || !(goodId in facilityDef(f.type).outputs)) continue;
+    if (company(w, f.owner).bankrupt) continue;
+    units.set(f.owner, (units.get(f.owner) ?? 0) + f.units);
+  }
+  return Math.max(1, ...units.values());
+}
+
 function terraDemands(w: World) {
   const tc = CONFIG.terra;
   for (const g of GOODS) {
@@ -391,13 +405,15 @@ function terraDemands(w: World) {
     // Stabiliser: the cheaper a good gets relative to its base price, the more Terra buys of it.
     const cheapness = Math.min(4, Math.pow(g.basePrice / (w.prices[g.id] ?? g.basePrice), 2));
     const base = final ? tc.demandChancePerGoodPerDay : tc.baseDemandChancePerGoodPerDay;
-    const chance = Math.min(0.9, base * cheapness);
+    // final goods: bigger orders for big producers, just as many FE in total (fewer orders)
+    const scale = final ? terraOrderScale(w, g.id) : 1;
+    const chance = Math.min(0.9, base * cheapness) / scale;
     if (random(w) >= chance) continue;
     const open = w.demands.filter((d) => d.requester === 'terra' && d.good === g.id && d.status === 'open').length;
     if (open >= tc.maxOpenPerGood * Math.ceil(cheapness)) continue;
     // now and then Terra places a big order (several plants' output) that fills a large ship
     const big = random(w) < tc.bigOrderChance ? randInt(w, tc.bigOrderFactor[0]!, tc.bigOrderFactor[1]!) : 1;
-    const amount = terraDemandAmount(g.id, randInt(w, tc.demandDaysOfOutput[0]!, tc.demandDaysOfOutput[1]!), big);
+    const amount = terraDemandAmount(g.id, randInt(w, tc.demandDaysOfOutput[0]!, tc.demandDaysOfOutput[1]!), big * scale);
     const factor = final ? tc.priceBonus : tc.baseDemandPriceFactor;
     const d: Demand = {
       id: newId(w, 'd'),
