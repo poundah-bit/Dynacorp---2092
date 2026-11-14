@@ -108,8 +108,6 @@
     "warningDays": 7
   },
   "quark": {
-    "halfLifeDays": 120,
-    "targets": [4000000, 7000000, 10000000],
     "warnAt": 0.9
   },
   "automation": {

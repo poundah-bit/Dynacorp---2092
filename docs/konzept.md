@@ -372,7 +372,7 @@ Kurz: Spielprinzip nachbauen ja, Original-Material nein – und am besten den Re
 
 ## Roadmap
 
-Die Reihenfolge folgt dem Architektur-Grundsatz: Erst muss die Wirtschaft ohne Grafik stabil laufen, dann kommt die Oberfläche, zuletzt die Veröffentlichung.
+Die Reihenfolge folgt dem Architektur-Grundsatz: Erst muss die Wirtschaft ohne Grafik stabil laufen, dann kommt die Oberfläche, zuletzt die Veröffentlichung. **Entschieden (Rocco):** Die Veröffentlichung steht ganz am Ende – erst kommen die Modulwelten und alle Änderungen, die an ihnen hängen.
 
 | Phase | Inhalt | Tor zum Abschluss | Status |
 | --- | --- | --- | --- |
@@ -380,8 +380,8 @@ Die Reihenfolge folgt dem Architektur-Grundsatz: Erst muss die Wirtschaft ohne G
 | 1 · Spielbarer Prototyp | Ein Spieler gegen 3 KI-Firmen; Kredit, Anlagenkauf, Börse, Eigen- und Fremdtransport; schlichte Listen-Oberfläche, auf dem Tablet getestet | Handbuch-Beispiel (Kredit, Ölanlage, Frachter, erster Auftrag) durchspielbar | ✅ fertig (kurzer Test auf echtem Tablet) |
 | 2 · Volle Wirtschaft und Balancing | 20 KI-Firmen, alle 17 Anlagen und 19 Schiffe, 21 Welten, Terra-Nachfrage; Firmenindex, Gravo-Stürme, Wirtschaftskrise; Werte gegen die Zielwerte justiert | KI-Firmen halten die Wirtschaft im Endlosspiel stabil (1.000 Tage) | ✅ fertig (Zielwerte bei Grundpreisen erreicht) |
 | 3 · Touch-Oberfläche | sechs Tabs, Sternkarte, Ketten-Graph, Auftrags-Benachrichtigung, Zeitsteuerung, Tutorial, Autosave, 10 Speicherplätze | Testrunde auf Tablet und Smartphone ohne Handbuch | umgesetzt, Testrunde offen |
-| 4 · Veröffentlichung | PWA über GitHub Pages, APK über Capacitor in GitHub Releases, optional F-Droid; danach Szenarien, Daueraufträge, ggf. Online-Mehrspieler | – | offen |
-| 5 · Endgame: Großprojekte und Modulwelten | teure Großprojekte mit Prestige; abgeschlossene Welten werden zu festen Modulen, neue Welten mit eigenen Waren, Endziel: alle sechs Quark-Sorten, je eine Modulwelt pro Sorte (Abschnitt „Vision: Großprojekte und Modulwelten“) | – | Vision, noch nicht entworfen |
+| 4 · Endgame: Großprojekte und Modulwelten | teure Großprojekte mit Prestige (fertig); „Welt abschließen“ mit einem freigeschalteten Quark, Kampagne mit festen Modulen und Gesamtübersicht, neue Welten mit eigenen Waren, Endziel: alle sechs Quark-Sorten, je eine Modulwelt pro Sorte (Abschnitt „Vision: Großprojekte und Modulwelten“) | – | Großprojekte fertig, Modulwelten offen |
+| 5 · Veröffentlichung | PWA über GitHub Pages (läuft schon für Tests), APK über Capacitor in GitHub Releases, optional F-Droid; danach Szenarien, Daueraufträge, ggf. Online-Mehrspieler | – | ganz am Ende |
 
 Jede Phase endet mit einem prüfbaren Tor; Phase 0 trägt das größte Risiko, weil die offenen Punkte zur Balance dort geklärt werden müssen.
 
@@ -514,7 +514,7 @@ Entwurf: `docs/superpowers/specs/2026-11-14-story-ereignisse-design.md`.
 | Schalter | „Ereignisse mit Geschichten“ beim neuen Spiel (Vorgabe an); alte Spielstände bekommen Ereignisse | Vergleich möglich |
 | Ausgang je nach Lieferung | später (Weg B), nach dem Test von A; gelieferte Mengen werden schon mitgezählt | Rocco |
 
-## Entscheidungen zu den Großprojekten und zum Quark-Trend
+## Entscheidungen zu den Großprojekten und zum Quark
 
 Entwurf: `docs/superpowers/specs/2026-11-14-grossprojekte-design.md` (Stufe 1 der Vision „Großprojekte und Modulwelten“).
 
@@ -525,9 +525,10 @@ Entwurf: `docs/superpowers/specs/2026-11-14-grossprojekte-design.md` (Stufe 1 de
 | Warenmengen | nach Tagen Ausstoß statt „Warenwert ≈ Preis“ | mit dem Wert-Richtwert wären es z. B. 155.000 Medikamente gewesen – über 6.000 Werks-Tage |
 | Baustelle | im Orbit von Terra, bestellt selbst an der Börse; aus eigenen Anlagen kostenlos, andere Firmen bezahlt der Spieler; neue Bestellung nur, wenn das Barkapital sie deckt | jedes Projekt bleibt erreichbar, kein Abrutschen in Schulden |
 | Quark-Felder der Waren | Industrie/Versorgung × leicht/mittel/schwer nach Basispreis, in `goods.json` | sechs Felder wie sechs Quark-Sorten |
-| Testschalter | „Quark-Modus“ beim neuen Spiel: Trend (alle Lieferungen an andere füllen Speicher, Halbwertszeit 120 Tage) oder Projekt (Fortschritt des laufenden Projekts) | Rocco testet beide und entscheidet dann |
-| Ziele des Trends | 4 / 7 / 10 Mio. Cr Warenwert für leicht / mittel / schwer | an den besten KI-Firmen kalibriert (mal zwei für einen konzentrierten Spieler); die Richtwerte 15 / 30 / 60 Mio. wären unerreichbar gewesen |
-| Abschluss | noch keiner: bei 90 / 100 % nur eine Meldung, als welches Quark sich die Welt schließen würde | Modulwelten kommen später |
+| Quark-Modus | **Projekt-Variante** (Rocco, nach dem Test beider Modi): jedes fertige Großprojekt schaltet das Quark seines Feldes frei; der Balken zeigt das laufende Projekt. Der Trend-Modus (alle Lieferungen füllen abklingende Speicher) und der Testschalter sind entfernt | der Trend füllte sich zu schnell; über die Projekte steuert der Spieler bewusst |
+| Mehrere Projekte pro Welt | erlaubt und erwünscht: jedes fertige Projekt bringt seinen Vorteil, Prestige und ein weiteres freigeschaltetes Quark | mehr Projekte = mehr Wahl beim Abschluss |
+| Abschluss | der Spieler schließt die Welt selbst ab („Welt abschließen…“) und wählt eins der freigeschalteten Quarks, das er noch nicht hat; kein Balken schließt die Welt gegen seinen Willen. Bis die Modulwelten gebaut sind: Meldungen bei 90 % und beim Freischalten | Rocco: der Spieler entscheidet immer selbst |
+| Abschlussprojekt wirkt global | das Großprojekt, mit dessen Quark eine Welt abgeschlossen wurde, wirkt in allen weiteren Modulwelten, ohne neu gebaut zu werden (Anzeige „aktiv aus Modul n“). Nur dieses eine – die anderen Projekte der Welt frieren mit ihr ein. Prestige zählt nur einmal, in der Welt, in der es gebaut wurde | Roccos Idee: die Abschlusswahl entscheidet auch, welchen Vorteil man mitnimmt; so zählt die Reihenfolge der Welten |
 
 ## Entscheidungen zu den Tönen
 
@@ -642,7 +643,18 @@ Physik dahinter (Stand der Teilchenphysik):
 
 ### Wie eine Welt zu einem Quark wird
 
-**Entschieden (Rocco):** Der Ausgang jeder Modulwelt ist **offen** – jede Welt kann jede Sorte werden. Eine Anzeige im Statusbalken zeigt, in welche Quark-Richtung sich die Welt gerade entwickelt. Einen guten Trend bestärkt man, sonst baut man die Welt um. Ist der Balken voll, schließt sich die Modulwelt, und die nächste beginnt.
+**Entschieden (Rocco):** Der Ausgang jeder Modulwelt ist **offen** – jede Welt kann jede Sorte werden. Eine Anzeige im Statusbalken zeigt, in welche Quark-Richtung sich die Welt gerade entwickelt.
+
+**Entschieden (Rocco, nach dem Test): Projekt-Variante mit freier Abschlusswahl.**
+
+- Jedes fertige Großprojekt schaltet das Quark seines Feldes für diese Welt frei. Mehrere Projekte pro Welt sind erwünscht – jedes bringt Vorteil, Prestige und eine weitere Wahlmöglichkeit.
+- Sobald mindestens ein Quark frei ist, gibt es „Welt abschließen…“: der Spieler wählt eins der freigeschalteten Quarks, das er noch nicht erzeugt hat. Dann friert die Welt als Modul ein, und die nächste beginnt. Nichts schließt die Welt gegen seinen Willen.
+- Ein Projekt, dessen Quark schon erzeugt ist, ist ausgegraut; es wirkt ohnehin schon (nächster Punkt).
+- **Das Abschlussprojekt wirkt global (Rocco):** Das Großprojekt, mit dessen Quark die Welt abgeschlossen wurde, gilt in allen weiteren Modulwelten, ohne neu gebaut zu werden („aktiv aus Modul n“). Nur dieses eine; die übrigen Projekte frieren mit der Welt ein. Prestige zählt einmal, in der Welt, in der es gebaut wurde. So entscheidet die Abschlusswahl auch, welchen Vorteil man mitnimmt, und die Reihenfolge der Welten zählt. Spätere Welten werden dadurch etwas leichter; ausgeglichen wird über ihre Startbedingungen, nicht über die Vorteile.
+- Dafür müssen die Vorteile in jeder Welt greifen: jede Modulwelt braucht einen Heimathafen in der Rolle von Terra (Orbitaldock, Baustelle), und die +2 Lieferrouten des Rechenzentrums gelten, sobald in der neuen Welt eine Logistikzentrale steht.
+- Die sechs Projektarten bleiben in jeder Welt; ihre Materiallisten kommen aus den Waren der jeweiligen Welt und ihren Quark-Feldern (wird mit der zweiten Welt entworfen).
+
+Der folgende Abschnitt „Der Balken“ beschreibt die verworfene Trend-Variante; er bleibt als Hintergrund stehen.
 
 **Zwei Achsen, sechs Felder** (Vorschlag, nach Ladung und Masse der Quarks):
 
@@ -656,7 +668,7 @@ Physik dahinter (Stand der Teilchenphysik):
 - **Masse = Gewicht der Wirtschaft:** z. B. Wert pro Einheit und Länge der Ketten. Wer von Rohstoffen und einfachen Waren lebt, ist leicht; lange Ketten und teure Endprodukte sind schwer.
 - Daraus ergibt sich eine natürliche Schwierigkeit: eine junge, kleine Welt landet eher bei up oder down, ein Top-Quark verlangt eine große Hochwert-Industrie.
 
-**Der Balken** (Vorschlag):
+**Der Balken** (Vorschlag, verworfen zugunsten der Projekt-Variante):
 
 - Er füllt sich mit dem, was die Welt liefert (Wert der Lieferungen) – ein Augenzwinkern an E = mc²: schwere Quarks brauchen mehr „Energie“.
 - Statusbalken: Trend und Füllstand, z. B. `Quark-Trend: ◐ charm ▓▓▓▓▓▓▓░░░ 68 %`; langes Drücken zeigt die Details (Anteil Industrie/Versorgung, Gewicht, was zur nächsten Sorte fehlt).
@@ -686,7 +698,6 @@ Physik dahinter (Stand der Teilchenphysik):
 ### Offene Fragen
 
 - Genaue Messgrößen der beiden Achsen (welche Waren Industrie bzw. Versorgung sind, wie „Gewicht“ berechnet wird) und die Grenzen zwischen leicht, mittel und schwer.
-- Wie viel „Energie“ jede Sorte braucht und wie schnell die Speicher abklingen.
-- Wie stark ein abgeschlossenes Modul die nächsten Welten beeinflusst.
+- Ob ein abgeschlossenes Modul über das globale Abschlussprojekt hinaus die nächsten Welten beeinflusst (z. B. Roboterwelt → Roboter günstiger).
 - Wie lang eine Modulwelt dauern soll.
-- Reihenfolge der Umsetzung: Großprojekte zuerst (empfohlen), Modulwelten als große Erweiterung nach der Veröffentlichung.
+- Reihenfolge der Umsetzung (entschieden): Großprojekte (fertig) → „Welt abschließen“, Kampagne und Gesamtübersicht → zweite Modulwelt mit eigenen Waren → weitere Welten → Veröffentlichung ganz am Ende.

@@ -192,17 +192,17 @@ describe('Großprojekte und Quark-Trend in der Oberfläche', () => {
     expect(html).toContain('role="meter"');
   });
 
-  it('die Quark-Karte zeigt sechs Felder', () => {
-    const { w } = richWorld();
-    w.quark = newQuark('trend');
-    w.quark.energy.charm = 3_500_000;
-    const html = quarkCard(w);
+  it('die Quark-Karte zeigt sechs Felder und freigeschaltete Quarks', () => {
+    const { w, me } = richWorld();
+    w.quark = newQuark();
+    expect(startProject(w, me, 'yard').ok).toBe(true);
+    w.projects![0]!.delivered = { steel: 16_000, plasticware: 12_000 };
+    let html = quarkCard(w);
     for (const n of ['Up', 'Down', 'Charm', 'Strange', 'Top', 'Bottom']) expect(html).toContain(n);
     expect(html).toContain('50 %');
-  });
-
-  it('der Quark-Modus wird beim neuen Spiel gesetzt', () => {
-    expect(newGame('T', 'med', 1, 1, true, 'project').quark?.mode).toBe('project');
-    expect(newGame('T', 'med', 1, 1).quark?.mode).toBe('trend');
+    w.projects![0]!.delivered = { steel: 32_000, plasticware: 24_000 };
+    projectsTick(w);
+    html = quarkCard(w);
+    expect(html).toContain('frei ✓');
   });
 });

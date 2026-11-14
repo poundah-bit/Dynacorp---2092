@@ -5,7 +5,7 @@ import { companyValue, debt, diff, repairShip, shipLoads, startQueued, startRout
 import { runAi } from './ai';
 import { routesTick } from './automation';
 import { hasProject, projectDelivered, projectsTick } from './projects';
-import { quarkFeed, quarkTick } from './quark';
+import { quarkTick } from './quark';
 import { storiesTick, storyFactor } from './stories';
 import type { Cargo, Demand, Facility, Ship, Transport, World } from './types';
 import {
@@ -298,7 +298,6 @@ export function deliverDemandPart(w: World, d: Demand, part: number) {
   }
   d.delivered = (d.delivered ?? 0) + part;
   projectDelivered(w, d, part);
-  quarkFeed(w, d, part);
   const story = d.story ? w.stories?.events.find((e) => e.id === d.story) : undefined;
   if (story) story.delivered += part;
   const complete = d.delivered >= d.amount;
