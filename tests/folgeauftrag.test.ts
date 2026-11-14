@@ -93,3 +93,55 @@ describe('Folgeauftrag', () => {
     expect(tanker.transport).not.toBe(t.id);
   });
 });
+
+// ---------- Transportaufträge anderer Firmen mit einem bald freien Schiff ----------
+
+import { carry, carryState } from '../src/ui/play';
+import { marketView } from '../src/ui/views';
+
+describe('Transport übernehmen als Folgeauftrag', () => {
+  /** An open public transport of an AI firm: 5,000 l oil from Vesta Nova to Terra. */
+  function withTransport() {
+    const b = busy();
+    const ai = 'c-ai';
+    b.w.companies.push({ ...company(b.w, b.me), id: ai, name: 'Ewing Orbital', isPlayer: false });
+    const t = { id: 't-ai', kind: 'goods', issuer: ai, carrier: null, demand: null, good: 'oil', cargo: 'tank', amount: 5000, fromPlanet: 'vesta-nova', toPlanet: 'terra', fromFacility: null, toFacility: null, fee: 50_000, own: false, status: 'open', ship: null, deadlineDay: b.w.day + 40, late: false, createdDay: b.w.day } as never as import('../src/sim/index').Transport;
+    b.w.transports.push(t);
+    return { ...b, t };
+  }
+
+  it('ein Schiff, das in höchstens 5 Tagen frei ist, kann übernehmen', () => {
+    const { w, me, tanker, t } = withTransport();
+    expect(carryState(w, me, t)).toBe('soon');
+    const html = marketView({ w, me, marketAll: true } as never);
+    expect(html).toMatch(/data-act="carry" data-a="t-ai" class="primary"(?![^>]*disabled)/);
+    expect(html).toContain('Folgeauftrag');
+    const r = carry(w, me, t.id, `ship:${tanker.id}`);
+    expect(r.ok).toBe(true);
+    expect(tanker.next).toBe(t.id);
+    expect(t.carrier).toBe(me);
+  });
+
+  it('länger unterwegs: noch nicht übernehmbar, die Zeile sagt wann', () => {
+    const { w, me, tanker, t } = withTransport();
+    tanker.route!.traveled = 0;
+    tanker.route!.distance = 2000;
+    expect(carryState(w, me, t)).toBe('busy');
+    const html = marketView({ w, me, marketAll: true } as never);
+    expect(html).toContain('frei in');
+  });
+});
+
+import { carrySheet } from '../src/ui/sheets';
+
+describe('Übernehmen-Dialog mit bald freiem Schiff', () => {
+  it('wählt das bald freie Schiff vor', () => {
+    const w0 = busy();
+    const ai = 'c-ai2';
+    w0.w.companies.push({ ...company(w0.w, w0.me), id: ai, name: 'KI', isPlayer: false });
+    w0.w.transports.push({ id: 't-ai2', kind: 'goods', issuer: ai, carrier: null, demand: null, good: 'oil', cargo: 'tank', amount: 5000, fromPlanet: 'vesta-nova', toPlanet: 'terra', fromFacility: null, toFacility: null, fee: 50_000, own: false, status: 'open', ship: null, deadlineDay: w0.w.day + 40, late: false, createdDay: w0.w.day } as never);
+    const body = carrySheet(w0.w, w0.me, 't-ai2').body;
+    expect(body).toContain(`value="ship:${w0.tanker.id}" checked`);
+    expect(body).toContain('Folgeauftrag');
+  });
+});

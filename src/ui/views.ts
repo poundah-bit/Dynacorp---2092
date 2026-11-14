@@ -41,6 +41,7 @@ import {
 import {
   areaStats,
   carryState,
+  firstFreeIn,
   deliverableDemands,
   idleFittingShips,
   openTransports,
@@ -637,10 +638,19 @@ export function marketView(ctx: ViewCtx): string {
     .sort((a, b) => b.t.fee - a.t.fee)
     .map(({ t, can }) => {
       const what = loadName(w, t);
-      const tag = can === 'idle' ? '<span class="good">passt zu freiem Schiff</span>' : can === 'busy' ? '<span class="muted">passendes Schiff gerade unterwegs</span>' : `<span class="muted">kein passendes Schiff</span>`;
+      const freeIn = can === 'soon' || can === 'busy' ? firstFreeIn(w, me, t) : null;
+      const when = freeIn === null ? '' : freeIn <= 1 ? ' – frei in 1 Tag' : ` – frei in ${num(freeIn)} Tagen`;
+      const tag =
+        can === 'idle'
+          ? '<span class="good">passt zu freiem Schiff</span>'
+          : can === 'soon'
+            ? `<span class="good">passendes Schiff${when} – als Folgeauftrag übernehmen</span>`
+            : can === 'busy'
+              ? `<span class="muted">passendes Schiff gerade unterwegs${when}${freeIn !== null ? ` (Übernehmen ab ${CONFIG.ships.queueDays} Tagen vorher)` : ''}</span>`
+              : `<span class="muted">kein passendes Schiff</span>`;
       return `<div class="row"><div class="grow">${cargoIcon(t.cargo)} <b>${what}</b> für ${who(w, t.issuer)} <span class="price">${cr(t.fee)}</span>
         <div class="small">${route(w, t.fromPlanet, t.toPlanet)} · ${cargoName(t.cargo)} ${qty(t.amount, t.cargo)} · ${deadlineIn(w, t.deadlineDay)}</div><div class="small">${tag}</div></div>
-        <div class="acts">${btn('Übernehmen…', 'carry', t.id, `class="primary" data-tip="Fährt die Ladung einer anderen Firma mit einem freien eigenen Schiff – gegen das genannte Honorar." ${can === 'idle' ? '' : 'disabled'}`)}</div></div>`;
+        <div class="acts">${btn('Übernehmen…', 'carry', t.id, `class="primary" data-tip="Fährt die Ladung einer anderen Firma mit einem eigenen Schiff – gegen das genannte Honorar. Ein Schiff, das in höchstens ${CONFIG.ships.queueDays} Tagen frei wird, übernimmt sie als Folgeauftrag." ${can === 'idle' || can === 'soon' ? '' : 'disabled'}`)}</div></div>`;
     })
     .join('');
 
