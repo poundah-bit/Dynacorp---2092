@@ -379,6 +379,34 @@ export function moveTransport(w: World, me: string, transportId: string, choice:
   return a.ok ? { ok: true, value: t } : a;
 }
 
+/** Other facilities/storage bought at Dynacore waiting for a ship to the same planet (same route as `transportId`). */
+export function assetBundle(w: World, me: string, transportId: string): Transport[] {
+  const t = transport(w, transportId);
+  if (!t || t.kind !== 'asset') return [];
+  return waitingTransports(w, me).filter((x) => x.id !== t.id && x.kind === 'asset' && x.fromPlanet === t.fromPlanet && x.toPlanet === t.toPlanet && x.cargo === t.cargo);
+}
+
+/**
+ * „Alle Anlagen mitnehmen“: moves this facility with the chosen own ship (or a newly bought one), then puts every
+ * other facility for the same planet on that ship while it fits (whole loads only).
+ */
+export function moveAll(w: World, me: string, transportId: string, choice: Choice): Result<{ count: number; amount: number }> {
+  if (choice === 'public') return fail('Bitte wähle ein eigenes Schiff – alle Anlagen fliegen dann zusammen.');
+  const others = assetBundle(w, me, transportId);
+  const first = moveTransport(w, me, transportId, choice);
+  if (!first.ok) return first;
+  const s = w.ships.find((x) => x.id === first.value.ship);
+  let count = 1;
+  let amount = first.value.amount;
+  for (const t of others) {
+    if (!s || !canJoin(w, s, t)) continue;
+    if (!assignShip(w, me, s.id, t.id).ok) continue;
+    count += 1;
+    amount += t.amount;
+  }
+  return { ok: true, value: { count, amount } };
+}
+
 /** Take on another company's public transport and send an own idle ship right away. */
 export function carry(w: World, me: string, transportId: string, choice: Choice): Result<Transport> {
   const t = transport(w, transportId);
