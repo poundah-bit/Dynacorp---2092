@@ -100,7 +100,9 @@ export function validateData(): string[] {
   {
     const own = new Set(PLANETS.map((p) => p.name));
     if (new Set(PLANET_NAMES).size !== PLANET_NAMES.length) problems.push('planetnames.json: doppelte Namen');
-    if (PLANET_NAMES.length < 60) problems.push('planetnames.json: weniger als 60 Namen');
+    // worlds 2 to 6 of a campaign (one per further Großprojekt/quark) each need fresh names
+    const need = (PROJECTS.length - 1) * PLANETS.filter((p) => p.facility).length;
+    if (PLANET_NAMES.length < need) problems.push(`planetnames.json: weniger als ${need} Namen`);
     for (const n of PLANET_NAMES) if (own.has(n)) problems.push(`planetnames.json: ${n} gibt es schon in Welt 1`);
   }
   for (const p of PLANETS) {

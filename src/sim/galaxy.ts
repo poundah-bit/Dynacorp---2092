@@ -112,6 +112,7 @@ export function generatePlanets(w: World, usedNames: string[]): PlanetDef[] {
   const tol = CONFIG.campaign.pathTolerance;
   let best: { planets: PlanetDef[]; dev: number } | null = null;
   const pool = PLANET_NAMES.filter((n) => !usedNames.includes(n));
+  if (pool.length < PLANETS.length - 1) throw new Error(`Zu wenige Planetennamen frei (${pool.length})`);
   for (let attempt = 0; attempt < CONFIG.campaign.attempts; attempt++) {
     const pos = layout(w, types);
     if (!pos) continue;

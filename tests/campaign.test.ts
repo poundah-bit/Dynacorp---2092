@@ -132,3 +132,29 @@ describe('Welt abschließen', () => {
     expect(w.rng).toBe(2646734069);
   });
 });
+
+describe('Ganze Kampagne', () => {
+  it('fünf echte Abschlüsse hintereinander: jede Welt bekommt neue Namen, die sechste schließt die Kampagne', () => {
+    const order: [string, 'up' | 'down' | 'charm' | 'strange' | 'top' | 'bottom'][] = [
+      ['dock', 'up'], ['dome', 'down'], ['yard', 'charm'], ['city', 'strange'], ['datacenter', 'top'], ['clinic', 'bottom'],
+    ];
+    let w = createWorld({ seed: 9, playerName: 'T', aiCompanies: 1 });
+    const names = new Set<string>();
+    for (const [id, f] of order) {
+      const me = w.playerId!;
+      company(w, me).cash = 1e9;
+      expect(startProject(w, me, id).ok).toBe(true);
+      w.projects!.at(-1)!.buildDaysLeft = 1;
+      projectsTick(w);
+      const r = closeWorld(w, f);
+      if (!r.ok) throw new Error(r.error);
+      w = r.value;
+      for (const p of w.planets ?? []) if (p.id !== 'terra' && campaignOf(w).world > 1 && !campaignComplete(w)) {
+        expect(names.has(p.name)).toBe(false);
+        names.add(p.name);
+      }
+    }
+    expect(campaignComplete(w)).toBe(true);
+    expect(campaignOf(w).modules.map((m) => m.quark)).toEqual(['up', 'down', 'charm', 'strange', 'top', 'bottom']);
+  });
+});
