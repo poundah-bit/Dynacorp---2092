@@ -2,6 +2,7 @@
 // ("accept and send a ship") and the step-by-step guide for the manual's example.
 // Pure functions on the world – no DOM – so tests can drive them like the UI does.
 
+import type { PlanetSource } from '../sim/index';
 import {
   COMPANIES,
   CONFIG,
@@ -94,8 +95,8 @@ export function shipLegDays(s: Ship): number {
  * Rough days for an idle ship (or a new one at Terra) to pick up at `from` and deliver at `to`.
  * `readyIn`: days until the goods are produced – the ship waits at the plant until then.
  */
-export function tripDays(speed: number, at: string, from: string, to: string, readyIn = 0): number {
-  return Math.max(Math.ceil(distance(at, from) / speed), readyIn) + Math.ceil(distance(from, to) / speed) + handlingDays();
+export function tripDays(w: PlanetSource, speed: number, at: string, from: string, to: string, readyIn = 0): number {
+  return Math.max(Math.ceil(distance(w, at, from) / speed), readyIn) + Math.ceil(distance(w, from, to) / speed) + handlingDays();
 }
 
 /** Own ships the player may plan with: everything except Linienschiffe of active Lieferrouten. */
@@ -239,7 +240,7 @@ export function queuedTripDays(w: World, s: Ship, from: string, to: string, read
   const speed = shipDef(s.model).speed;
   const free = daysUntilFree(w, s) ?? 0;
   const at = s.route?.to ?? s.at ?? TERRA;
-  return free + tripDays(speed, at, from, to, readyIn);
+  return free + tripDays(w, speed, at, from, to, readyIn);
 }
 
 /** Idle own ships of a cargo type, any size (several of them can share a demand). */
@@ -383,7 +384,7 @@ export function defaultPlan(w: World, me: string, cargo: Cargo, amount: number, 
   const ships: string[] = [];
   let left = amount;
   const joining = to ? joinableShips(w, me, cargo, at, to) : [];
-  const idle = idleShipsOfCargo(w, me, cargo).sort((a, b) => distance(a.at ?? TERRA, at) - distance(b.at ?? TERRA, at));
+  const idle = idleShipsOfCargo(w, me, cargo).sort((a, b) => distance(w, a.at ?? TERRA, at) - distance(w, b.at ?? TERRA, at));
   for (const s of [...joining, ...idle]) {
     if (left <= 0) break;
     ships.push(s.id);
@@ -452,7 +453,7 @@ export function carry(w: World, me: string, transportId: string, choice: Choice)
 export function defaultChoice(w: World, me: string, cargo: Cargo, amount: number, at: string, allowBuy = false, to?: string): Choice {
   const joining = to ? joinableShips(w, me, cargo, at, to, amount)[0] : undefined;
   if (joining) return `ship:${joining.id}`;
-  const idle = idleFittingShips(w, me, cargo, amount).sort((a, b) => distance(a.at ?? TERRA, at) - distance(b.at ?? TERRA, at))[0];
+  const idle = idleFittingShips(w, me, cargo, amount).sort((a, b) => distance(w, a.at ?? TERRA, at) - distance(w, b.at ?? TERRA, at))[0];
   if (idle) return `ship:${idle.id}`;
   const model = cheapestShipFor(cargo, amount);
   if (allowBuy && model && company(w, me).cash >= model.price) return `buy:${model.id}`;
@@ -495,7 +496,7 @@ export function guide(w: World, me: string): GuideStep {
 
   // 1–2: money and the first facility
   if (!facs.length && !pendingFacs.length) {
-    const site = planetsFor(FIRST_FACILITY).sort((a, b) => distance(TERRA, a.id) - distance(TERRA, b.id))[0]!;
+    const site = planetsFor(w, FIRST_FACILITY).sort((a, b) => distance(w, TERRA, a.id) - distance(w, TERRA, b.id))[0]!;
     const def = facilityDef(FIRST_FACILITY);
     const need = def.price + (cheapestShipFor('piece', def.size)?.price ?? 0);
     if (c.cash < need && c.loans.length === 0) {
@@ -510,7 +511,7 @@ export function guide(w: World, me: string): GuideStep {
     return {
       id: 'facility',
       title: `${def.name} kaufen`,
-      text: `Kaufe bei Dynacore eine ${def.name} für ${site.name}. Das ist die nächste Ölwelt bei Terra (${Math.round(distance(TERRA, site.id))} Parsec), Erdöl wird immer gebraucht.`,
+      text: `Kaufe bei Dynacore eine ${def.name} für ${site.name}. Das ist die nächste Ölwelt bei Terra (${Math.round(distance(w, TERRA, site.id))} Parsec), Erdöl wird immer gebraucht.`,
       tab: 'terra',
       target: `buy-${FIRST_FACILITY}-${site.id}`,
     };
@@ -520,7 +521,7 @@ export function guide(w: World, me: string): GuideStep {
   if (!facs.length) {
     const p = pendingFacs[0]!;
     const t = p.transport;
-    const where = planet(p.asset.planet).name;
+    const where = planet(w, p.asset.planet).name;
     const name = facilityDef(p.asset.defId).name;
     if (t && t.status === 'open') {
       return {
@@ -559,7 +560,7 @@ export function guide(w: World, me: string): GuideStep {
     return {
       id: 'wait-build',
       title: 'Die Anlage wird gebaut',
-      text: `Die ${facilityDef(f.type).name} auf ${planet(f.planet).name} ist in ${f.buildDaysLeft} ${f.buildDaysLeft === 1 ? 'Tag' : 'Tagen'} fertig. Danach musst du sie selbst in Betrieb nehmen.`,
+      text: `Die ${facilityDef(f.type).name} auf ${planet(w, f.planet).name} ist in ${f.buildDaysLeft} ${f.buildDaysLeft === 1 ? 'Tag' : 'Tagen'} fertig. Danach musst du sie selbst in Betrieb nehmen.`,
       tab: 'facilities',
       target: 'time',
       wait: true,

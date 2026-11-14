@@ -210,3 +210,90 @@ describe('Großprojekte und Quark-Trend in der Oberfläche', () => {
     expect(html).toContain('frei ✓');
   });
 });
+
+// ---------- Welt abschließen in der Oberfläche ----------
+
+import { closeWorldSheet } from '../src/ui/sheets';
+import { closeWorld, createWorld as mkWorld, type World as W } from '../src/sim/index';
+
+describe('Welt abschließen in der Oberfläche', () => {
+  const done = (ids: string[]) => {
+    const w = mkWorld({ seed: 3, playerName: 'T', aiCompanies: 2 });
+    const me = w.playerId!;
+    company(w, me).cash = 1e9;
+    for (const id of ids) {
+      expect(startProject(w, me, id).ok).toBe(true);
+      w.projects!.at(-1)!.buildDaysLeft = 1;
+      projectsTick(w);
+    }
+    return { w, me };
+  };
+
+  it('die Quark-Karte bietet „Welt abschließen“ nur mit freiem Quark', () => {
+    expect(quarkCard(done([]).w)).not.toContain('Welt abschließen');
+    expect(quarkCard(done(['dock']).w)).toContain('Welt abschließen');
+  });
+
+  it('der Dialog nennt Projekt, Vorteil, Neustart und ein laufendes Projekt', () => {
+    const { w, me } = done(['dock', 'yard']);
+    let s = closeWorldSheet(w, me, () => {});
+    expect(s.body).toContain('Orbitaldock Terra');
+    expect(s.body).toContain('Großwerft');
+    expect(s.body).toContain('Reparatur vor Ort');
+    expect(s.body).toContain('neuen Firma und normalem Startkapital');
+    expect(s.body).not.toContain('geht verloren');
+    expect(startProject(w, me, 'dome').ok).toBe(true);
+    s = closeWorldSheet(w, me, () => {});
+    expect(s.body).toContain('geht verloren');
+  });
+
+  it('Projektkarte in Welt 2: „aktiv aus Modul 1“ ohne Startknopf', () => {
+    const { w } = done(['dock']);
+    const w2 = (closeWorld(w, 'up') as { ok: true; value: W }).value;
+    const html = projectsCard(w2, w2.playerId!);
+    expect(html).toContain('aktiv aus Modul 1');
+    expect(html).not.toContain('data-a="dock"');
+    expect(quarkCard(w2)).toContain('erzeugt');
+  });
+});
+
+// ---------- Gesamtübersicht und Finale ----------
+
+import { finaleHtml, moduleDetail, overviewHtml } from '../src/ui/overview';
+
+describe('Gesamtübersicht', () => {
+  const world2 = () => {
+    const w = mkWorld({ seed: 3, playerName: 'T', aiCompanies: 2 });
+    company(w, w.playerId!).cash = 1e9;
+    expect(startProject(w, w.playerId!, 'dock').ok).toBe(true);
+    w.projects![0]!.buildDaysLeft = 1;
+    projectsTick(w);
+    return (closeWorld(w, 'up') as { ok: true; value: W }).value;
+  };
+
+  it('sechs Plätze in Generationen-Reihenfolge, besetzt und frei, Beschleuniger in der Mitte', () => {
+    const w2 = world2();
+    const html = overviewHtml(w2);
+    const order = [...html.matchAll(/data-quark="(\w+)"/g)].map((m) => m[1]);
+    expect(order).toEqual(['up', 'down', 'charm', 'strange', 'top', 'bottom']);
+    expect(html).toContain('Welt 1 · Terra-Sektor');
+    expect(html).toContain('frei');
+    expect(html).toContain('Beschleuniger');
+    expect(html).toContain('Welt 2 läuft');
+  });
+
+  it('Antippen: Modulwerte oder Zielangaben', () => {
+    const w2 = world2();
+    expect(moduleDetail(w2, 'up')).toContain('Welt 1 · Terra-Sektor');
+    const free = moduleDetail(w2, 'charm');
+    expect(free).toContain('Großwerft');
+    expect(free).toContain('25.000.000');
+  });
+
+  it('Finale nennt das vervollständigte Standardmodell und den Kampagnenwert', () => {
+    const w2 = world2();
+    const html = finaleHtml(w2);
+    expect(html).toContain('Das Standardmodell ist vervollständigt');
+    expect(html).toContain('Kampagnenwert');
+  });
+});

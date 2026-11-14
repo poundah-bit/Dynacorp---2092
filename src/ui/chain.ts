@@ -2,7 +2,7 @@
 // on the right. Tapping a good highlights what it is made from and what it goes into, and the panel
 // below says who produces it, who needs it and how the market stands. Pure HTML/SVG strings, no DOM.
 
-import { FACILITIES, GOODS, PLANETS, facilitiesOf, facilityDef, good, type World } from '../sim/index';
+import { FACILITIES, GOODS, facilitiesOf, facilityDef, good, planetsFor, type World } from '../sim/index';
 import { amt, cr, dec, esc, gName, num, perUnit, pName } from './format';
 
 export interface ChainNode {
@@ -158,11 +158,11 @@ export function chainDetail(w: World, me: string, goodId: string): string {
   const producers = FACILITIES.filter((f) => goodId in f.outputs);
   const consumers = FACILITIES.filter((f) => goodId in f.inputs);
   const where = (type: string) => {
-    const planets = PLANETS.filter((p) => p.facility === type).map((p) => p.id);
+    const planets = planetsFor(w, type).map((p) => p.id);
     const built = w.facilities.filter((f) => f.type === type);
     const units = built.reduce((s, f) => s + f.units, 0);
     const mine = built.filter((f) => f.owner === me).reduce((s, f) => s + f.units, 0);
-    return `${planets.map(pName).join(', ')} · ${units ? `${num(units)} in Betrieb${mine ? `, davon ${num(mine)} deine` : ''}` : 'noch niemand'}`;
+    return `${planets.map((id) => pName(w, id)).join(', ')} · ${units ? `${num(units)} in Betrieb${mine ? `, davon ${num(mine)} deine` : ''}` : 'noch niemand'}`;
   };
   const line = (type: string, io: 'in' | 'out') => {
     const def = facilityDef(type);

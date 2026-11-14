@@ -65,7 +65,7 @@ export function routeGoods(w: World, from: string, to: string): string[] {
 
 const routesOf = (w: World, c: string) => (w.routes ?? []).filter((r) => r.owner === c);
 export const routeName = (w: World, r: { from: string; to: string; fromPlanet?: string; toPlanet?: string }) => {
-  const name = (id: string, kept?: string) => planet(kept ?? facility(w, id)?.planet ?? TERRA).name;
+  const name = (id: string, kept?: string) => planet(w, kept ?? facility(w, id)?.planet ?? TERRA).name;
   return `${name(r.from, r.fromPlanet)} → ${name(r.to, r.toPlanet)}`;
 };
 
@@ -78,7 +78,7 @@ export function addRoute(w: World, c: string, input: RouteInput): Result<Route> 
   if (!from || !to || from.owner !== c || to.owner !== c) return fail('Quelle und Ziel müssen eigene Anlagen sein.');
   if (from.id === to.id) return fail('Quelle und Ziel müssen verschieden sein.');
   if (from.status === 'construction' || to.status === 'construction') return fail('Die Anlage ist noch im Bau.');
-  if (!routeGoods(w, from.id, to.id).includes(input.good)) return fail(`${planet(to.planet).name} braucht keine Ware von ${planet(from.planet).name}.`);
+  if (!routeGoods(w, from.id, to.id).includes(input.good)) return fail(`${planet(w, to.planet).name} braucht keine Ware von ${planet(w, from.planet).name}.`);
   const s = ship(w, input.ship);
   if (!s || s.owner !== c) return fail('Schiff nicht gefunden.');
   const def = shipDef(s.model);
@@ -167,8 +167,8 @@ const SHIP_BUSY: Partial<Record<Ship['phase'], string>> = {
 };
 
 /** A waiting Linienschiff waits at the source, so the next trip starts without the flight there. */
-function goHome(s: Ship, planetId: string) {
-  if (s.phase === 'idle' && s.at && s.at !== planetId) startRoute(s, planetId, 'toHome');
+function goHome(w: World, s: Ship, planetId: string) {
+  if (s.phase === 'idle' && s.at && s.at !== planetId) startRoute(w, s, planetId, 'toHome');
 }
 
 /** Repairs a Linienschiff below its service limit: on the spot from level II (with surcharge), else on Terra. */
@@ -245,18 +245,18 @@ export function routesTick(w: World): void {
     const have = (to!.stock[r.good] ?? 0) + coming;
     if (have >= r.refillBelow) {
       r.status = `Ziel hat genug: ${fmt(have)} ${unit}, Nachschub unter ${fmt(r.refillBelow)} ${unit}`;
-      goHome(sh, from!.planet);
+      goHome(w, sh, from!.planet);
       continue;
     }
     if (freeCapacity(to!, r.good) - coming < r.amount) {
       r.status = `Wartet auf Platz am Ziel: ${fmt(Math.max(0, freeCapacity(to!, r.good) - coming))} / ${fmt(r.amount)} ${unit} frei`;
-      goHome(sh, from!.planet);
+      goHome(w, sh, from!.planet);
       continue;
     }
     const free = available(from!, r.good);
     if (free < r.amount) {
       r.status = `Wartet auf Ware: ${fmt(Math.max(0, free))} / ${fmt(r.amount)} ${unit}`;
-      goHome(sh, from!.planet);
+      goHome(w, sh, from!.planet);
       continue;
     }
     const d = postDemand(w, r.owner, to!.id, r.good, r.amount, from!.id);

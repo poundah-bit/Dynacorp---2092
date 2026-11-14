@@ -1,6 +1,6 @@
 // The daily tick. One call to step() advances the world by one game day.
 
-import { CONFIG, FACILITIES, GOODS, PLANETS, SHIPS, TERRA, distance, facilityDef, good, loadingDays, planet, shipDef, storageDef, unitOf } from './data';
+import { CONFIG, FACILITIES, GOODS, SHIPS, TERRA, distance, facilityDef, good, loadingDays, planet, shipDef, storageDef, unitOf, worldPlanets } from './data';
 import { companyValue, debt, diff, repairShip, shipLoads, startQueued, startRoute, transportDeadline } from './actions';
 import { runAi } from './ai';
 import { routesTick } from './automation';
@@ -98,7 +98,7 @@ function facilitiesTick(w: World) {
       f.buildDaysLeft -= 1;
       if (f.buildDaysLeft <= 0) {
         f.status = 'stopped';
-        log(w, f.owner, `${def.name} auf ${planet(f.planet).name} ist fertig gebaut.`, 2);
+        log(w, f.owner, `${def.name} auf ${planet(w, f.planet).name} ist fertig gebaut.`, 2);
       }
       continue;
     }
@@ -239,7 +239,7 @@ function load(w: World, s: Ship) {
     n.f.reserved[n.good] = Math.max(0, (n.f.reserved[n.good] ?? 0) - n.amount);
   }
   for (const t of loads) t.status = 'loaded';
-  startRoute(s, loads[0]!.toPlanet, 'toDelivery');
+  startRoute(w, s, loads[0]!.toPlanet, 'toDelivery');
 }
 
 function unload(w: World, s: Ship) {
@@ -249,7 +249,7 @@ function unload(w: World, s: Ship) {
     if (!t.own && t.carrier) {
       pay(w, t.issuer, t.carrier, t.fee);
       reputation(w, t.carrier, t.late ? -2 : 1);
-      log(w, t.carrier, `${company(w, t.carrier).name} erhält ${t.fee} Cr Transporthonorar (${planet(t.toPlanet).name}).`);
+      log(w, t.carrier, `${company(w, t.carrier).name} erhält ${t.fee} Cr Transporthonorar (${planet(w, t.toPlanet).name}).`);
     }
     t.status = 'done';
     t.doneDay = w.day;
@@ -319,7 +319,7 @@ function deliverAsset(w: World, t: Transport) {
     const existing = w.facilities.find((f) => f.owner === a.owner && f.type === a.defId && f.planet === a.planet);
     if (existing) {
       existing.units += 1;
-      log(w, a.owner, `${facilityDef(a.defId).name} auf ${planet(a.planet).name} wurde erweitert.`, 1);
+      log(w, a.owner, `${facilityDef(a.defId).name} auf ${planet(w, a.planet).name} wurde erweitert.`, 1);
     } else {
       w.facilities.push({
         id: newId(w, 'f'),
@@ -370,7 +370,7 @@ function ordersTick(w: World) {
     if (t.status === 'open' && !t.own && w.day > t.deadlineDay) {
       t.deadlineDay = transportDeadline(w, t.cargo, t.amount, t.fromPlanet, t.toPlanet);
       t.fee = Math.round(t.fee * (1 + CONFIG.orders.reofferFeeIncrease));
-      log(w, t.issuer, `Niemand hat Transport ${t.id} nach ${planet(t.toPlanet).name} übernommen – neu ausgeschrieben für ${t.fee} Cr.`, 2);
+      log(w, t.issuer, `Niemand hat Transport ${t.id} nach ${planet(w, t.toPlanet).name} übernommen – neu ausgeschrieben für ${t.fee} Cr.`, 2);
     }
   }
   for (const t of w.transports) {
@@ -515,7 +515,7 @@ export function priceIndex(w: World): number {
 function gravoStorms(w: World) {
   const e = CONFIG.events;
   if (random(w) >= e.gravoStormChancePerDay) return;
-  const outer = PLANETS.filter((p) => distance(TERRA, p.id) > e.outerRingParsec);
+  const outer = worldPlanets(w).filter((p) => distance(w, TERRA, p.id) > e.outerRingParsec);
   const p = outer[Math.floor(random(w) * outer.length)];
   if (!p) return;
   const [lo, hi] = e.gravoStormDamage as [number, number];

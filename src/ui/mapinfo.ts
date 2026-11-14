@@ -9,8 +9,8 @@ const btn = (label: string, act: string, a = '', extra = '') => `<button data-ac
 
 export function planetInfo(w: World, me: string, id: string): string {
   if (!id) return '<p class="hint">Tippe auf einen Planeten für Details. Ziehen verschiebt die Karte, zwei Finger oder das Mausrad zoomen.</p>';
-  const p = planet(id);
-  const far = distance(TERRA, id);
+  const p = planet(w, id);
+  const far = distance(w, TERRA, id);
   const storm = far > CONFIG.events.outerRingParsec;
   const myShips = shipsOf(w, me).filter((s) => s.at === id || s.route?.to === id);
   const shipList = myShips.length

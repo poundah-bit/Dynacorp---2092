@@ -1,5 +1,6 @@
 // Formatting for the game UI: German number format, labels, HTML escaping.
 
+import type { PlanetSource } from '../sim/index';
 import { CARGO_UNIT, CONFIG, productionEfficiency, cargoName, facility, facilityDef, good, planet, shipDef, shipLoads, storageDef, unitOf, type Cargo, type Facility, type Ship, type Transport, type World } from '../sim/index';
 import { cargoIconName, icon, type IconName } from './icons';
 import { companyName, shipLegDays } from './play';
@@ -60,7 +61,7 @@ export const esc = (s: string) => s.replace(/[&<>"']/g, (ch) => ESC[ch]!);
 /** Ticker lines come from the simulation with raw numbers; show them with German thousands separators. */
 export const logText = (s: string) => esc(s).replace(/\b\d{4,}\b/g, (n) => num(Number(n)));
 
-export const pName = (id: string) => planet(id).name;
+export const pName = (w: PlanetSource, id: string) => planet(w, id).name;
 export const gName = (id: string) => good(id).name;
 export const who = (w: World, id: string | null) => esc(companyName(w, id));
 export { cargoName };
@@ -79,25 +80,25 @@ export function shipStatus(w: World, s: Ship): { text: string; cls: string } {
   const load = loadsName(w, loads);
   switch (s.phase) {
     case 'idle':
-      return { text: `Frei auf ${pName(s.at ?? 'terra')}`, cls: 'good' };
+      return { text: `Frei auf ${pName(w, s.at ?? 'terra')}`, cls: 'good' };
     case 'toPickup':
-      return { text: `Fliegt zum Laden nach ${pName(s.route!.to)} – noch ${days(left)}`, cls: 'warn' };
+      return { text: `Fliegt zum Laden nach ${pName(w, s.route!.to)} – noch ${days(left)}`, cls: 'warn' };
     case 'loading': {
       const from = t?.kind === 'goods' && t.fromFacility ? facility(w, t.fromFacility) : undefined;
       const onStock = from && t?.good ? (from.stock[t.good] ?? 0) : Infinity;
       // several loads from the same plant are loaded together
       const needed = loads.filter((x) => x.fromFacility === t?.fromFacility && x.good === t?.good).reduce((sum, x) => sum + x.amount, 0);
       if (t && onStock < needed) {
-        return { text: `Wartet auf ${pName(s.at!)} auf Ware – ${amt(onStock, t.good!)} von ${amt(needed, t.good!)} ${gName(t.good!)} produziert`, cls: 'bad' };
+        return { text: `Wartet auf ${pName(w, s.at!)} auf Ware – ${amt(onStock, t.good!)} von ${amt(needed, t.good!)} ${gName(t.good!)} produziert`, cls: 'bad' };
       }
-      return { text: `Lädt ${load} auf ${pName(s.at!)}`, cls: 'warn' };
+      return { text: `Lädt ${load} auf ${pName(w, s.at!)}`, cls: 'warn' };
     }
     case 'toDelivery':
-      return { text: `Bringt ${load} nach ${pName(s.route!.to)} – noch ${days(left)}`, cls: 'warn' };
+      return { text: `Bringt ${load} nach ${pName(w, s.route!.to)} – noch ${days(left)}`, cls: 'warn' };
     case 'unloading':
-      return { text: `Entlädt auf ${pName(s.at!)}`, cls: 'warn' };
+      return { text: `Entlädt auf ${pName(w, s.at!)}`, cls: 'warn' };
     case 'toHome':
-      return { text: `Fliegt zurück zur Quelle nach ${pName(s.route!.to)} – noch ${days(left)}`, cls: 'warn' };
+      return { text: `Fliegt zurück zur Quelle nach ${pName(w, s.route!.to)} – noch ${days(left)}`, cls: 'warn' };
     case 'toTerra':
       return { text: `Fliegt nach Terra – noch ${days(left)}`, cls: 'warn' };
     case 'repair':
@@ -106,7 +107,7 @@ export function shipStatus(w: World, s: Ship): { text: string; cls: string } {
 }
 
 export const shipLabel = (s: Ship) => `${shipDef(s.model).name} <span class="muted">#${s.id.slice(1)}</span>`;
-export const facilityLabel = (f: Facility) => `${facilityDef(f.type).name} auf ${pName(f.planet)}`;
+export const facilityLabel = (w: PlanetSource, f: Facility) => `${facilityDef(f.type).name} auf ${pName(w, f.planet)}`;
 
 /** "350 l Erdöl" lists for facility inputs/outputs. */
 export function flows(rec: Record<string, number>, units = 1): string {

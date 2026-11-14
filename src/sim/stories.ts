@@ -2,7 +2,7 @@
 // The pure part (lexicon, pick, texts, strength) lives here; the daily tick follows below it.
 
 import storiesJson from '../data/stories.json';
-import { CONFIG, GOODS, PLANETS, TERRA, distance, facilityDef, good, planet } from './data';
+import { CONFIG, GOODS, PLANETS, TERRA, distance, facilityDef, good, planet, worldPlanets, type PlanetSource } from './data';
 import { terraDemandAmount, terraOrderScale } from './engine';
 import type { Demand, Lore, PlaceRule, StoryCause, StoryContext, StoryEvent, World } from './types';
 import { hasProject } from './projects';
@@ -23,10 +23,10 @@ export function fillText(template: string, slots: Record<string, string>): strin
 }
 
 /** A city, a person and an institute for every planet – invented once per game. */
-export function makeLore(rand: Rand): Lore {
+export function makeLore(rand: Rand, src: PlanetSource = {}): Lore {
   const n = STORY_NAMES;
   const lore: Lore = {};
-  for (const p of PLANETS) {
+  for (const p of worldPlanets(src)) {
     const city = `${pick(rand, n.cityStart)}${pick(rand, n.cityEnd)}`;
     const last = pick(rand, n.last);
     const leader = `${pick(rand, n.first)} ${last}`;
@@ -37,12 +37,12 @@ export function makeLore(rand: Rand): Lore {
 }
 
 /** Planets (or Terra) a place rule allows. */
-export function placesFor(rule: PlaceRule): string[] {
+export function placesFor(rule: PlaceRule, src: PlanetSource = {}): string[] {
   if (rule.kind === 'terra') return [TERRA];
-  return PLANETS.filter((p) => p.id !== TERRA)
+  return worldPlanets(src).filter((p) => p.id !== TERRA)
     .filter((p) => !rule.industry || rule.industry.includes(p.facility ?? ''))
     .filter((p) => !rule.notIndustry || !rule.notIndustry.includes(p.facility ?? ''))
-    .filter((p) => !rule.inner || distance(TERRA, p.id) <= CONFIG.stories.innerParsec)
+    .filter((p) => !rule.inner || distance(src, TERRA, p.id) <= CONFIG.stories.innerParsec)
     .map((p) => p.id);
 }
 
@@ -77,10 +77,10 @@ function eligible(c: StoryCause, ctx: StoryContext): { places: string[]; effects
   // a planet never orders what its own industry makes (no plague on the pharma world)
   const ordered = c.effects.filter((x) => x.at === 'place').map((x) => x.good);
   const makesOwn = (p: string) => {
-    const f = p === TERRA ? null : planet(p).facility;
+    const f = p === TERRA ? null : planet(ctx, p).facility;
     return !!f && ordered.some((g) => g in facilityDef(f).outputs);
   };
-  const places = placesFor(c.place).filter((p) => !busy.has(p) && p !== ctx.recentStormPlanet && !makesOwn(p));
+  const places = placesFor(c.place, ctx).filter((p) => !busy.has(p) && p !== ctx.recentStormPlanet && !makesOwn(p));
   return places.length ? { places, effects } : null;
 }
 
@@ -109,7 +109,7 @@ function buildStory(rand: Rand, c: StoryCause, place: string, effects: StoryCaus
   const n = STORY_NAMES;
   const up = rolled.filter((x) => x.factor > 1);
   const slots: Record<string, string> = {
-    ort: planet(place).name,
+    ort: planet(ctx, place).name,
     stadt: lore.city,
     person: lore.leader,
     institut: lore.institute,
@@ -122,7 +122,7 @@ function buildStory(rand: Rand, c: StoryCause, place: string, effects: StoryCaus
     faktor: factorPhrase(rolled[0]!.factor),
     bonus: `${Math.round(priceBonus * 100)} %`,
     tage: String(days),
-    sturm: ctx.recentStormPlanet ? planet(ctx.recentStormPlanet).name : '',
+    sturm: ctx.recentStormPlanet ? planet(ctx, ctx.recentStormPlanet).name : '',
   };
   return {
     id,
@@ -177,7 +177,7 @@ const randOf = (w: World) => () => random(w);
 /** Switches story events on or off for a world; the lexicon is invented right away. */
 export function initStories(w: World, on: boolean): void {
   const sc = CONFIG.stories;
-  w.stories = { on, lore: makeLore(randOf(w)), events: [], nextDay: sc.firstDay + randInt(w, 0, sc.firstDayJitter), lastRecessionDay: null };
+  w.stories = { on, lore: makeLore(randOf(w), w), events: [], nextDay: sc.firstDay + randInt(w, 0, sc.firstDayJitter), lastRecessionDay: null };
 }
 
 const active = (w: World) => (w.stories?.events ?? []).filter((e) => e.phase !== 'done');
@@ -190,7 +190,7 @@ function context(w: World): StoryContext {
     for (const g of Object.keys(facilityDef(f.type).outputs)) produced.add(g);
   }
   const storm = st.lastStorm && w.day - st.lastStorm.day <= CONFIG.stories.recentStormDays ? st.lastStorm.planet : null;
-  return { day: w.day, producedGoods: produced, recentStormPlanet: storm, active: active(w), lastRecessionDay: st.lastRecessionDay, lore: st.lore };
+  return { day: w.day, producedGoods: produced, recentStormPlanet: storm, active: active(w), lastRecessionDay: st.lastRecessionDay, lore: st.lore, planets: w.planets };
 }
 
 function begin(w: World, e: StoryEvent) {
