@@ -52,6 +52,8 @@ import {
   idleShipsOfCargo,
   joinableShips,
   moveTransport,
+  assetBundle,
+  moveAll,
   bundleCandidates,
   shipAll,
   shipDemand,
@@ -258,6 +260,7 @@ export function moveSheet(w: World, me: string, transportId: string): Sheet {
   if (!t) return { title: 'Transport', body: '<p>Diesen Transport gibt es nicht mehr.</p>' };
   const what = loadName(w, t);
   const asset = t.kind === 'asset';
+  const bundle = assetBundle(w, me, transportId);
   return {
     title: `${what} nach ${pName(t.toPlanet)}`,
     body: `${asset ? '<p class="hint">Anlagen und Lager reisen als Stückgut. Ohne eigenen Stückgutfrachter kannst du hier gleich einen kaufen oder den Flug an der Börse ausschreiben.</p>' : ''}
@@ -268,6 +271,25 @@ export function moveSheet(w: World, me: string, transportId: string): Sheet {
       if (!c) return { error: 'Bitte wähle, wie die Ladung reisen soll.' };
       return done(moveTransport(w, me, transportId, c, readFee(form)), choiceMessage(c));
     },
+    ...(bundle.length
+      ? {
+          // the extra button only makes sense with an own ship
+          live: (form: HTMLFormElement) => {
+            const alt = form.querySelector<HTMLButtonElement>('[data-alt]');
+            if (alt) alt.disabled = readChoice(form) === 'public';
+          },
+          alt: {
+            label: `Alle Anlagen mitnehmen (${bundle.length + 1})`,
+            tip: `Lädt alle gekauften Anlagen und Lager für ${pName(t.toPlanet)} auf das gewählte Schiff, solange Platz ist.`,
+            run(form: HTMLFormElement): SheetResult {
+              const c = readChoice(form);
+              if (!c) return { error: 'Bitte wähle ein Schiff.' };
+              const r = moveAll(w, me, transportId, c);
+              return r.ok ? { message: `${r.value.count} Ladungen fliegen zusammen nach ${pName(t.toPlanet)}.` } : { error: r.error };
+            },
+          },
+        }
+      : {}),
   };
 }
 

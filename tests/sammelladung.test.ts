@@ -1,8 +1,8 @@
 // Sammelladung: all accepted deliveries of one route go onto the chosen ships in one tap.
 import { describe, expect, it } from 'vitest';
-import { acceptDemand, buyShip, company, run, terraOrderScale, type Demand, type Ship, type World } from '../src/sim/index';
-import { arrangeSheet } from '../src/ui/sheets';
-import { shipAll, unshippedDemands } from '../src/ui/play';
+import { acceptDemand, buyFacility, buyShip, company, run, terraOrderScale, type Demand, type Ship, type World } from '../src/sim/index';
+import { arrangeSheet, moveSheet } from '../src/ui/sheets';
+import { assetBundle, moveAll, shipAll, unshippedDemands } from '../src/ui/play';
 import { oilWellWithTanker, player, soloWorld, terraOilDemand } from './helpers';
 
 /** Accepted Terra oil demand from the well with a fixed deadline (days from now). */
@@ -119,5 +119,26 @@ describe('Mitwachsende Terra-Aufträge', () => {
     const meds = [...seen.values()].filter((d) => d.good === 'medicine' && !d.big);
     expect(meds.length).toBeGreaterThan(0);
     for (const d of meds) expect(d.amount).toBeLessThanOrEqual(800);
+  });
+});
+
+describe('Mehrere Anlagen in einem Frachter', () => {
+  it('„Alle Anlagen mitnehmen“ lädt alle Anlagen für denselben Planeten auf das gewählte Schiff', () => {
+    const w = soloWorld();
+    const me = player(w);
+    company(w, me).cash = 10_000_000;
+    const a = buyFacility(w, me, 'oilwell', 'vesta-nova');
+    const b = buyFacility(w, me, 'oilwell', 'vesta-nova');
+    const other = buyFacility(w, me, 'oilwell', 'kharon');
+    const ship = buyShip(w, me, 'piece-c'); // 38.000 FE, an oil well is 8.000 FE
+    if (!a.ok || !b.ok || !other.ok || !ship.ok) throw new Error('Kauf fehlgeschlagen');
+    expect(assetBundle(w, me, a.value.id).map((t) => t.id)).toEqual([b.value.id]);
+    const sheet = moveSheet(w, me, a.value.id);
+    expect(sheet.alt?.label).toBe('Alle Anlagen mitnehmen (2)');
+    const r = moveAll(w, me, a.value.id, `ship:${ship.value.id}`);
+    expect(r.ok && r.value).toEqual({ count: 2, amount: 16_000 });
+    expect(b.value.ship).toBe(ship.value.id);
+    expect(other.value.ship).toBeNull();
+    expect(moveAll(w, me, other.value.id, 'public').ok).toBe(false);
   });
 });
