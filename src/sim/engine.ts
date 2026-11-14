@@ -1,5 +1,6 @@
 // The daily tick. One call to step() advances the world by one game day.
 
+import type { Result } from './actions';
 import { CONFIG, FACILITIES, GOODS, SHIPS, TERRA, distance, facilityDef, good, loadingDays, planet, shipDef, storageDef, unitOf, worldPlanets } from './data';
 import { companyValue, debt, diff, repairShip, shipLoads, startQueued, startRoute, transportDeadline } from './actions';
 import { runAi } from './ai';
@@ -390,6 +391,9 @@ function ordersTick(w: World) {
       log(w, d.supplier, `Frist überschritten: ${d.amount} ${unitOf(d.good)} ${good(d.good).name} an ${buyerName(w, d.requester)}. Bei Ankunft werden ${Math.round(diff(w).penaltyRate * 100)} % abgezogen, je weiteren Tag ${Math.round(CONFIG.orders.latePenaltyPerDay * 100)} % mehr (höchstens ${Math.round(CONFIG.orders.latePenaltyMax * 100)} %).`, 2);
     }
     if (d.status === 'open' && w.day - d.createdDay > CONFIG.terra.openOrderExpiryDays) d.status = 'cancelled';
+    // a promised delivery that never comes does not stay forever
+    // (only between companies: a late Terra or planet order still arrives at a cut price and blocks nobody)
+    if (d.late && !isOutsideBuyer(d.requester) && ['accepted', 'shipping'].includes(d.status) && w.day - d.deadlineDay > CONFIG.orders.overdueCancelDays) dropOverdue(w, d);
   }
   // keep the lists short: drop finished orders after 30 days
   const keep = (o: { status: string; createdDay: number }) =>
@@ -399,6 +403,52 @@ function ordersTick(w: World) {
   w.demands = w.demands.filter((d) => keep(d) || routed.has(d.id));
   w.transports = w.transports.filter(keep);
 }
+
+// ---------- overdue deliveries ----------
+
+/** Why an overdue delivery cannot be cancelled now (null = it can). */
+function overdueBlock(w: World, d: Demand): string | null {
+  if (!['accepted', 'shipping'].includes(d.status) || !d.supplier || d.supplier === d.requester || d.own) return 'Diese Lieferung lässt sich nicht stornieren.';
+  if (w.day <= d.deadlineDay) return 'Die Frist läuft noch.';
+  if (w.transports.some((t) => t.demand === d.id && t.status === 'loaded')) return 'Die Ware ist schon unterwegs.';
+  return null;
+}
+
+/**
+ * Cancels the undelivered rest of an overdue delivery: the supplier's reservation is freed, transports not yet
+ * loaded are dropped (their ships are free again) and the supplier pays the buyer the compensation.
+ */
+function dropOverdue(w: World, d: Demand): void {
+  if (overdueBlock(w, d)) return;
+  const supplier = d.supplier!;
+  const loaded = w.transports.filter((t) => t.demand === d.id && ['loaded', 'done'].includes(t.status)).reduce((s, t) => s + t.amount, 0);
+  const from = d.supplierFacility ? facility(w, d.supplierFacility) : undefined;
+  if (from) from.reserved[d.good] = Math.max(0, (from.reserved[d.good] ?? 0) - Math.max(0, d.amount - loaded));
+  for (const t of w.transports) if (t.demand === d.id && !['done', 'cancelled'].includes(t.status)) t.status = 'cancelled';
+  for (const s of w.ships) if (s.transport) pruneLoads(w, s);
+  const missing = d.amount - (d.delivered ?? 0);
+  const comp = isOutsideBuyer(d.requester) ? 0 : Math.round(missing * d.pricePerFe * CONFIG.orders.overdueCompensation);
+  if (comp) pay(w, supplier, d.requester, comp);
+  d.status = 'cancelled';
+  reputation(w, supplier, -3);
+  const what = `${missing} ${unitOf(d.good)} ${good(d.good).name}`;
+  const money = comp ? ` ${company(w, supplier).name} zahlt ${comp} Cr Entschädigung.` : '';
+  log(w, d.requester, `Lieferung storniert: ${what} von ${company(w, supplier).name} kam nicht.${money}`, 2);
+  log(w, supplier, `Lieferung storniert: ${what} an ${buyerName(w, d.requester)} – Frist weit überzogen.${comp ? ` ${comp} Cr Entschädigung gezahlt.` : ''}`, 2);
+}
+
+/** The buyer cancels an overdue delivery himself (not before the deadline, not while the goods are on the way). */
+export function cancelOverdue(w: World, companyId: string, demandId: string): Result<undefined> {
+  const d = demand(w, demandId);
+  if (!d || d.requester !== companyId) return { ok: false, error: 'Nachfrage nicht gefunden.' };
+  const block = overdueBlock(w, d);
+  if (block) return { ok: false, error: block };
+  dropOverdue(w, d);
+  return { ok: true, value: undefined };
+}
+
+/** Can the buyer cancel this delivery now? (for the button) */
+export const canCancelOverdue = (w: World, d: Demand) => overdueBlock(w, d) === null;
 
 // ---------- Terra: buyer of final goods and base demand for everything else ----------
 

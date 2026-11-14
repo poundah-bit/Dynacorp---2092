@@ -41,7 +41,9 @@
     "maxAmount": 15000,
     "reofferFeeIncrease": 0.2,
     "latePenaltyPerDay": 0.02,
-    "latePenaltyMax": 0.5
+    "latePenaltyMax": 0.5,
+    "overdueCancelDays": 30,
+    "overdueCompensation": 0.2
   },
   "terra": {
     "demandChancePerGoodPerDay": 0.18,
