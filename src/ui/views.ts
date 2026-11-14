@@ -215,7 +215,7 @@ const projectChip = (id: string | undefined) =>
 
 const PHASE: Record<StoryEvent['phase'], string> = { rise: 'Anlauf', peak: 'Höhepunkt', fade: 'klingt ab', done: 'vorbei' };
 
-/** „Lage in der Galaxie“: the running story events (empty without any). */
+/** „Lage in dieser Region“: the running story events (empty without any). */
 export function storyCard(w: World): string {
   const running = (w.stories?.events ?? []).filter((e) => e.phase !== 'done' && w.day < e.endDay);
   const next = w.stories?.upcoming;
@@ -231,7 +231,7 @@ export function storyCard(w: World): string {
         <div class="small muted">${esc(e.texts.start)}</div></div></div>`;
     })
     .join('');
-  return `<section class="card story-card"><h2>${icon('story')} Lage in der Galaxie</h2>${soon}${rows}</section>`;
+  return `<section class="card story-card"><h2>${icon('story')} Lage in dieser Region</h2>${soon}${rows}</section>`;
 }
 
 export function terraView({ w, me }: ViewCtx): string {

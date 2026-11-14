@@ -25,7 +25,7 @@
       "peak": [
         "Höhepunkt der Umrüstung: Die Nachfrage nach Robotern ist {faktor}. Lieferzeiten sind das neue Gesprächsthema in {stadt}.",
         "Der {technik}-Boom erreicht seinen Gipfel. Die Nachfrage nach Robotern ist {faktor}.",
-        "{person} vom Industrierat Terras: „Wir brauchen jeden Roboter, den die Galaxie liefern kann.“"
+        "{person} vom Industrierat Terras: „Wir brauchen jeden Roboter, den die Region liefern kann.“"
       ],
       "end": [
         "Die Technik ist ausgereift, die meisten Werke sind umgerüstet. Terra bestellt Roboter wieder wie gewohnt.",
@@ -280,7 +280,7 @@
       "end": [
         "Die neue Ernte ist eingebracht. Terra bestellt wieder wie gewohnt.",
         "Terras Felder tragen wieder. Die Nachfrage nach {warenDativ} normalisiert sich.",
-        "Die Kornkammern füllen sich. {person} dankt der ganzen Galaxie."
+        "Die Kornkammern füllen sich. {person} dankt der ganzen Region."
       ]
     },
     {
