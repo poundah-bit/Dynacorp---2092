@@ -75,7 +75,7 @@
   "stories": {
     "firstDay": 40,
     "firstDayJitter": 20,
-    "pauseDays": [20, 50],
+    "pauseDays": [30, 60],
     "maxActive": 2,
     "planetBaseChance": 0.06,
     "recessionMinDay": 250,

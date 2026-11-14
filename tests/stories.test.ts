@@ -115,3 +115,100 @@ describe('Story-Baukasten', () => {
 
   it('Daten sind gültig', () => expect([...validateData(), ...validateStories()]).toEqual([]));
 });
+
+// ---------- events in the economy ----------
+
+import { company, createWorld, run, storyFactor, startStory, initStories, terraDemandAmount, type Demand, type World } from '../src/sim/index';
+import { deliver } from '../src/ui/play';
+import { oilWellWithTanker, player, runUntil, soloWorld } from './helpers';
+
+/** Solo world with a running pharma plant for the player and events on (none drawn by chance). */
+function pharmaWorld(): World {
+  const w = soloWorld();
+  const me = player(w);
+  w.facilities.push({ id: 'f-ph', owner: me, type: 'pharma', planet: 'asklepios', units: 1, status: 'running', buildDaysLeft: 0, condition: 100, stock: {}, reserved: {}, storages: [], idleDays: 0 });
+  company(w, me).cash = 1e9;
+  initStories(w, true);
+  w.stories!.nextDay = 1e9;
+  return w;
+}
+
+describe('Story-Ereignisse in der Wirtschaft', () => {
+  it('eine Seuche lässt den Planeten Medikamente bestellen – und danach nicht mehr', () => {
+    const w = pharmaWorld();
+    const e = startStory(w, 'seuche', 'liora');
+    const seen = new Map<string, Demand>();
+    while (w.day < e.endDay + 30) {
+      run(w, 1);
+      for (const d of w.demands) seen.set(d.id, d);
+    }
+    const ordered = [...seen.values()].filter((d) => d.requester === 'world:liora' && d.good === 'medicine');
+    expect(ordered.length).toBeGreaterThan(0);
+    for (const d of ordered) {
+      expect(d.toPlanet).toBe('liora');
+      expect(d.story).toBe(e.id);
+      expect(d.createdDay).toBeLessThan(e.endDay);
+    }
+    expect(e.phase).toBe('done');
+    const news = w.log.filter((l) => l.priority === 3 && l.company === null).map((l) => l.text);
+    expect(news.some((t) => t.includes(e.texts.start))).toBe(true);
+    expect(news).toContain(e.texts.peak);
+    expect(news).toContain(e.texts.end);
+  });
+
+  it('Planeten-Aufträge werden wie Terra bezahlt', () => {
+    const w = soloWorld();
+    const me = player(w);
+    const well = oilWellWithTanker(w);
+    well.stock.oil = 5000;
+    const tanker = w.ships.find((s) => s.owner === me && s.model === 'tank-a')!;
+    const d: Demand = {
+      id: 'd-world', requester: 'world:pyros', good: 'oil', amount: 2000, toPlanet: 'pyros', toFacility: null, pricePerFe: 25,
+      own: false, status: 'open', supplier: null, supplierFacility: null, transport: null, createdDay: w.day, deadlineDay: w.day + 60, late: false,
+    };
+    w.demands.push(d);
+    expect(deliver(w, me, d.id, well.id, { ships: [tanker.id], rest: 'public' }).ok).toBe(true);
+    const before = company(w, me).revenue;
+    runUntil(w, () => d.status === 'done', 60);
+    expect(company(w, me).revenue - before).toBe(2000 * 25);
+  });
+
+  it('Planeten-Aufträge für Rohstoffe wachsen nicht mit großen Anlagen', () => {
+    const w = pharmaWorld();
+    const me = player(w);
+    w.facilities.push({ id: 'f-ws', owner: me, type: 'waterstation', planet: 'aquilon', units: 3, status: 'running', buildDaysLeft: 0, condition: 100, stock: {}, reserved: {}, storages: [], idleDays: 0 });
+    const e = startStory(w, 'duerre', 'seidra');
+    const seen = new Map<string, Demand>();
+    while (w.day < e.endDay) {
+      run(w, 1);
+      for (const d of w.demands) if (d.requester === 'world:seidra') seen.set(d.id, d);
+    }
+    const water = [...seen.values()].filter((d) => d.good === 'water' && !d.big);
+    expect(water.length).toBeGreaterThan(0);
+    for (const d of water) expect(d.amount).toBeLessThanOrEqual(terraDemandAmount('water', 30));
+  });
+
+  it('zwei Ereignisse auf dieselbe Ware werden begrenzt', () => {
+    const w = pharmaWorld();
+    for (const e of [startStory(w, 'technologiesprung', 'terra'), startStory(w, 'technologiesprung', 'terra')]) {
+      Object.assign(e, { startDay: w.day - 10, peakDay: w.day - 5, fadeDay: w.day + 50, endDay: w.day + 60 });
+      e.effects[0]!.factor = 3;
+    }
+    expect(storyFactor(w, 'robots', 'terra').factor).toBe(3);
+    expect(storyFactor(w, 'medicine', 'terra').factor).toBe(1);
+  });
+
+  it('ohne Schalter gibt es keine Ereignisse', () => {
+    const w = createWorld({ seed: 1 });
+    run(w, 300);
+    expect(w.stories).toBeUndefined();
+    expect(w.demands.some((d) => d.story)).toBe(false);
+  });
+
+  it('mit Schalter beginnen Ereignisse von selbst', () => {
+    const w = createWorld({ seed: 2, stories: true });
+    run(w, 250);
+    expect(w.stories!.events.length).toBeGreaterThan(0);
+    expect(w.stories!.events[0]!.startDay).toBeGreaterThanOrEqual(CONFIG.stories.firstDay);
+  });
+});

@@ -25,7 +25,7 @@ describe('Endlosspiel: 1.000 Tage', () => {
     [5, 'prof'],
   ];
   it.each(cases)('Seed %i (%s), 20 KI-Firmen: stabil, ganze Kette gebaut, Terra bekommt jedes Endprodukt', (seed, difficulty) => {
-    const w = createWorld({ seed, difficulty });
+    const w = createWorld({ seed, difficulty, stories: true });
     const r = runWithStats(w);
     expect(w.day).toBe(DAYS);
     expect(r.collapsed).toBe(false);

@@ -138,6 +138,8 @@ export interface Demand {
   delivered?: number;
   /** a rare big order from Terra (several plants' output) */
   big?: boolean;
+  /** id of the story event that caused this order */
+  story?: string;
 }
 
 export type TransportStatus = 'open' | 'accepted' | 'assigned' | 'loaded' | 'done' | 'cancelled';
@@ -216,6 +218,19 @@ export interface World {
   collapsed: boolean;
   /** the player's Lieferrouten (missing in older saves = none) */
   routes?: Route[];
+  /** story events (missing = switched off; old saves get them in the UI) */
+  stories?: StoryState;
+}
+
+export interface StoryState {
+  on: boolean;
+  lore: Lore;
+  events: StoryEvent[];
+  /** earliest day for the next event */
+  nextDay: number;
+  lastRecessionDay: number | null;
+  /** last gravo storm, for stories that follow one */
+  lastStorm?: { planet: string; day: number };
 }
 
 /** An automatic delivery from an own plant to another own plant with a fixed Linienschiff. */

@@ -30,7 +30,7 @@ const runs: RunStats[] = [];
 const avgPrices: Record<string, number> = Object.fromEntries(GOODS.map((g) => [g.id, 0]));
 let samples = 0;
 for (const seed of seeds) {
-  const w = createWorld({ seed, difficulty });
+  const w = createWorld({ seed, difficulty, stories: true });
   const stats = statsCollector(w);
   for (let d = 0; d < days && !w.collapsed; d++) {
     step(w);

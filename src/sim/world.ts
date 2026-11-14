@@ -1,4 +1,5 @@
-import { COMPANIES, CONFIG, GOODS, facilityDef, good, shipDef, storageDef } from './data';
+import { COMPANIES, CONFIG, GOODS, facilityDef, good, planet, shipDef, storageDef } from './data';
+import { initStories } from './stories';
 import type { Cargo, Company, Difficulty, Facility, LogEntry, Ship, World } from './types';
 
 // ---------- deterministic RNG (mulberry32, state kept in the world) ----------
@@ -27,6 +28,8 @@ export interface NewWorldOptions {
   /** Name of the human player's company; omit for an all-AI world (headless balancing runs). */
   playerName?: string;
   aiCompanies?: number;
+  /** story events on (default off: headless runs and the early gates stay as they were) */
+  stories?: boolean;
 }
 
 export function createWorld(opts: NewWorldOptions = {}): World {
@@ -71,7 +74,18 @@ export function createWorld(opts: NewWorldOptions = {}): World {
     const def = pool.splice(Math.floor(random(w) * pool.length), 1)[0]!;
     w.companies.push(mk(def.name, false, def.prefers));
   }
+  if (opts.stories) initStories(w, true);
   return w;
+}
+
+/** Terra or a planet's population (`world:<planet>`) – buyers that pay from outside the economy. */
+export const isOutsideBuyer = (id: string) => id === 'terra' || id.startsWith('world:');
+
+/** Name of a buyer for messages: Terra, „Bevölkerung von <Planet>“ or the company. */
+export function buyerName(w: World, id: string): string {
+  if (id === 'terra') return 'Terra';
+  if (id.startsWith('world:')) return `Bevölkerung von ${planet(id.slice(6)).name}`;
+  return company(w, id).name;
 }
 
 // ---------- lookups ----------
