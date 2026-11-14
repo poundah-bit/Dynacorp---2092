@@ -4,6 +4,7 @@ import { CONFIG, FACILITIES, GOODS, PLANETS, SHIPS, TERRA, distance, facilityDef
 import { companyValue, debt, diff, repairShip, shipLoads, startRoute, transportDeadline } from './actions';
 import { runAi } from './ai';
 import { routesTick } from './automation';
+import { projectDelivered, projectsTick } from './projects';
 import { storiesTick, storyFactor } from './stories';
 import type { Cargo, Demand, Facility, Ship, Transport, World } from './types';
 import {
@@ -36,6 +37,7 @@ export function step(w: World): void {
   updatePrices(w);
   gravoStorms(w);
   routesTick(w);
+  projectsTick(w);
   runAi(w);
   checkBankruptcies(w);
   checkCollapse(w);
@@ -262,9 +264,11 @@ function cancelTransport(w: World, t: Transport, why: string) {
 
 function deliverGoods(w: World, t: Transport) {
   const d = t.demand ? demand(w, t.demand) : undefined;
-  if (!d) return;
-  // a demand may be split over several ships: each part is stored and paid on its own
-  const part = t.amount;
+  if (d) deliverDemandPart(w, d, t.amount);
+}
+
+/** Books one delivered part of a demand: store, pay, count (a demand may be split over several ships). */
+export function deliverDemandPart(w: World, d: Demand, part: number) {
   const value = Math.round(part * d.pricePerFe);
   if (isOutsideBuyer(d.requester)) {
     pay(w, null, d.supplier, value);
@@ -279,6 +283,7 @@ function deliverGoods(w: World, t: Transport) {
     if (d.supplier !== d.requester) pay(w, d.requester, d.supplier, value);
   }
   d.delivered = (d.delivered ?? 0) + part;
+  projectDelivered(w, d, part);
   const story = d.story ? w.stories?.events.find((e) => e.id === d.story) : undefined;
   if (story) story.delivered += part;
   const complete = d.delivered >= d.amount;
@@ -536,7 +541,7 @@ export function companyIndex(w: World, companyId: string): number {
   if (c.bankrupt) return 0;
   const value = companyValue(w, companyId);
   const profit = c.revenue - c.expenses;
-  const raw = value + 0.5 * profit + c.reputation * 5000;
+  const raw = value + 0.5 * profit + c.reputation * 5000 + (c.prestige ?? 0) * 1000;
   return Math.max(0, Math.round(raw / 1000));
 }
 

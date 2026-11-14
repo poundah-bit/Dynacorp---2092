@@ -5,12 +5,14 @@ import planetsJson from '../data/planets.json';
 import storagesJson from '../data/storages.json';
 import companiesJson from '../data/companies.json';
 import configJson from '../data/config.json';
+import projectsJson from '../data/projects.json';
 import type {
   Cargo,
   CompanyDef,
   FacilityDef,
   GoodDef,
   PlanetDef,
+  ProjectDef,
   ShipDef,
   StorageDef,
 } from './types';
@@ -22,6 +24,9 @@ export const PLANETS = planetsJson as unknown as PlanetDef[];
 export const STORAGES = storagesJson as unknown as StorageDef[];
 export const COMPANIES = companiesJson as CompanyDef[];
 export const CONFIG = configJson;
+export const PROJECTS = projectsJson as unknown as ProjectDef[];
+const projectMap = new Map(PROJECTS.map((p) => [p.id, p]));
+export const projectDef = (id: string) => must(projectMap, id, 'Großprojekt');
 export type Config = typeof configJson;
 
 const byId = <T extends { id: string }>(list: T[]) => new Map(list.map((x) => [x.id, x]));
@@ -83,5 +88,7 @@ export function validateData(): string[] {
   }
   const maxPiece = Math.max(...SHIPS.filter((s) => s.cargo === 'piece').map((s) => s.capacity));
   for (const f of FACILITIES) if (f.size > maxPiece) problems.push(`${f.id}: zu groß für jeden Stückgutfrachter`);
+  for (const g of GOODS) if (!g.quark) problems.push(`${g.id}: keine Quark-Klasse`);
+  for (const p of PROJECTS) for (const g of Object.keys(p.materials)) if (!goodMap.has(g)) problems.push(`Großprojekt ${p.id}: unbekannte Ware ${g}`);
   return problems;
 }
