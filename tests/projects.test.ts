@@ -191,6 +191,19 @@ describe('Vorteile der Großprojekte', () => {
     expect(s.value.phase).toBe('repair');
   });
 
+  it('Orbitaldock: die Reparatur auf Terra ist kostenlos – auch ohne Geld', () => {
+    const { w, me } = rich();
+    const s = buyShip(w, me, 'tank-a');
+    if (!s.ok) throw new Error(s.error);
+    finished(w, 'dock');
+    s.value.condition = 40;
+    company(w, me).cash = 0;
+    run(w, 1);
+    expect(s.value.phase).toBe('repair');
+    expect(w.log.some((l) => l.text.includes('kostenlos'))).toBe(true);
+    expect(w.log.some((l) => l.text.includes('nicht möglich'))).toBe(false);
+  });
+
   it('Forschungskuppel: das nächste Ereignis wird 7 Tage vorher angekündigt', () => {
     const w = createWorld({ seed: 2, stories: true, playerName: 'T', aiCompanies: 5 });
     finished(w, 'dome');
