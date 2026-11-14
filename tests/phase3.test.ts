@@ -4,7 +4,10 @@ import { describe, expect, it } from 'vitest';
 import { FACILITIES, GOODS, PLANETS, assignShip, buyFacility, buyShip, facilitiesOf, startFacility, takeLoan, type Demand, type World } from '../src/sim/index';
 import { CHAIN_EDGES, chainDetail, chainLayout, chainSvg, goodRoles } from '../src/ui/chain';
 import { planetInfo } from '../src/ui/mapinfo';
-import { fittingOffers, newOffers } from '../src/ui/play';
+import { companyName, ensureStories, fittingOffers, newOffers, startedStories } from '../src/ui/play';
+import { storyCard } from '../src/ui/views';
+import { storyPlanets } from '../src/ui/mapfx';
+import { initStories, run, startStory } from '../src/sim/index';
 import { oilWellWithTanker, player, runUntil, soloWorld, terraOilDemand } from './helpers';
 
 describe('Benachrichtigung bei passenden Aufträgen', () => {
@@ -93,5 +96,47 @@ describe('Sternkarte: Planeten-Infos', () => {
     const w = soloWorld();
     expect(planetInfo(w, player(w), 'automa')).toContain('Gravo-Sturm-Zone');
     expect(planetInfo(w, player(w), 'vesta-nova')).not.toContain('Gravo-Sturm-Zone');
+  });
+});
+
+describe('Story-Ereignisse in der Oberfläche', () => {
+  it('die Lage zeigt laufende Ereignisse mit Ort und Waren', () => {
+    const w = soloWorld();
+    expect(storyCard(w)).toBe('');
+    initStories(w, true);
+    w.stories!.nextDay = 1e9;
+    startStory(w, 'seuche', 'liora');
+    run(w, 5);
+    const html = storyCard(w);
+    expect(html).toContain('Lage in der Galaxie');
+    expect(html).toContain('Liora');
+    expect(html).toContain('Medikamente');
+    expect(html).toContain('Sonderpreis');
+  });
+
+  it('Planeten-Aufträge heißen „Bevölkerung von …“', () => {
+    expect(companyName(soloWorld(), 'world:liora')).toBe('Bevölkerung von Liora');
+  });
+
+  it('alte Spielstände bekommen Ereignisse', () => {
+    const w = soloWorld();
+    expect(w.stories).toBeUndefined();
+    ensureStories(w);
+    expect(w.stories?.on).toBe(true);
+    expect(w.stories?.lore.liora?.city).toBeTruthy();
+    run(w, 100);
+    ensureStories(w); // a second call changes nothing
+    expect(w.day).toBe(100);
+  });
+
+  it('neue Lage meldet nur Ereignisse, die heute beginnen', () => {
+    const w = soloWorld();
+    initStories(w, true);
+    w.stories!.nextDay = 1e9;
+    const e = startStory(w, 'seuche', 'liora');
+    expect(startedStories(w, w.day).map((x) => x.id)).toEqual([e.id]);
+    run(w, 1);
+    expect(startedStories(w, w.day)).toEqual([]);
+    expect(storyPlanets(w).has('liora')).toBe(true);
   });
 });

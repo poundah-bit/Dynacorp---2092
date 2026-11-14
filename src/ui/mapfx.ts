@@ -14,6 +14,11 @@ export interface DayEvents {
 
 const STORM = /^Gravo-Sturm bei (.+?)!/;
 
+/** Planets (or Terra) where a story event is running – the map shows a halo there. */
+export function storyPlanets(w: World): Set<string> {
+  return new Set((w.stories?.events ?? []).filter((e) => e.phase !== 'done' && w.day < e.endDay).map((e) => e.place));
+}
+
 export function mapEvents(w: World, me: string): DayEvents {
   // idleDays is reset only on a day with production (efficiency now would describe tomorrow)
   const pulses = [...new Set(facilitiesOf(w, me).filter((f) => f.status === 'running' && f.idleDays === 0).map((f) => f.planet))];

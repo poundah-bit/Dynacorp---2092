@@ -48,6 +48,7 @@ export const ICONS = {
   repairMarked: ['M15 4a5 5 0 0 0 -5 6.5L4 16.5L7.5 20l6 -6A5 5 0 0 0 20 9l-3 3l-3 -1l-1 -3Z'],
   critical: ['M12 3l10 18H2Z', 'M12 10v5', 'M12 18v.01'],
   deadline: [CIRCLE, 'M12 7v5l3 2'],
+  story: ['M5 4h11a2 2 0 0 1 2 2v14H7a2 2 0 0 1-2-2Z', 'M18 9h2v9a2 2 0 0 1-2 2', 'M8 8h7', 'M8 12h7', 'M8 16h4'],
   bigOrder: ['M12 3l2.7 5.6l6.1 .9l-4.4 4.3l1 6.1L12 17l-5.4 2.9l1 -6.1l-4.4 -4.3l6.1 -.9Z'],
 } satisfies Record<string, string[]>;
 

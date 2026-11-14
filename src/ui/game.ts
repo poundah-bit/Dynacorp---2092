@@ -32,7 +32,7 @@ import {
 import { cueTracker, type Cue, type CueTracker } from './cues';
 import { cr, esc, isCriticalShip, logText } from './format';
 import { icon, type IconName } from './icons';
-import { AI_DEFAULT, AI_MAX, AI_MIN, areaStats, clampAi, fittingOffers, guide, newGame, newOffers, type GuideTab } from './play';
+import { AI_DEFAULT, AI_MAX, AI_MIN, areaStats, clampAi, ensureStories, fittingOffers, guide, newGame, newOffers, startedStories, type GuideTab } from './play';
 import { clearSave, loadGame, saveGame, type SaveData } from './save';
 import { enableDrag } from './drag';
 import { emptyOrder, parseOrder, reorderVisible, type ListOrder } from './order';
@@ -137,6 +137,7 @@ function showStart() {
           </div>
           <span class="small muted">${AI_MIN} bis ${AI_MAX}. Mehr Gegner heißt mehr Nachfrage und mehr Konkurrenz um Aufträge.</span>
         </div>
+        <label class="opt"><input type="checkbox" name="stories" checked><span><b>Ereignisse mit Geschichten</b><br><small>Booms, Krisen und Notlagen verändern zeitweise die Nachfrage. Jedes Spiel erzählt andere Geschichten.</small></span></label>
         <button type="submit" class="primary big">Spiel starten</button>
       </form>
       <p class="small muted">Das Spiel beginnt pausiert; ein Hinweiskasten führt dich durch die ersten Schritte. Der Spielstand wird automatisch gespeichert.</p>
@@ -161,12 +162,13 @@ function showStart() {
     const data = new FormData(form);
     if (save && !confirm('Der gespeicherte Spielstand wird dabei überschrieben. Neues Spiel starten?')) return;
     const difficulty = String(data.get('diff') ?? 'med') as Difficulty;
-    begin(newGame(String(data.get('name') ?? ''), difficulty, Date.now() % 1_000_000, clampAi(Number(data.get('ai')))), false);
+    begin(newGame(String(data.get('name') ?? ''), difficulty, Date.now() % 1_000_000, clampAi(Number(data.get('ai'))), data.get('stories') === 'on'), false);
     openSheet(introSheet());
   });
 }
 
 function begin(world: World, hideGuide: boolean, order?: unknown) {
+  ensureStories(world);
   w = world;
   listOrder = parseOrder(order);
   me = world.playerId!;
@@ -321,6 +323,8 @@ function advance() {
   map.dayEvents(mapEvents(w, me));
   if (cues) playDay(cues.next(w));
   notifyOffers();
+  const fresh = startedStories(w, w.day);
+  if (fresh.length && !sheet) toast(`Neue Lage: ${fresh.map((e) => e.title).join(' · ')}`);
   persist();
   // don't swap the buttons away under a finger that is just tapping
   if (pointerDown) dirty = true;

@@ -384,3 +384,7 @@ td .bar { height: 8px; min-width: 64px; margin-left: auto; }
 .conds .ic { vertical-align: -3px; }
 .card.automation, .card.routes { border-color: color-mix(in srgb, var(--route) 45%, var(--line)); }
 .card.automation h2 .ic, .card.routes h2 .ic { color: var(--route); width: 20px; height: 20px; }
+
+/* story events: amber like the map halo, a quiet card */
+.chip.story { color: var(--warn); }
+.story-card .story-row + .story-row { border-top: 1px solid var(--panel-2); }

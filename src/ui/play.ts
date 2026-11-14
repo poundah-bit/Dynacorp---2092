@@ -47,6 +47,10 @@ import {
   type ShipDef,
   type Transport,
   type World,
+  buyerName,
+  initStories,
+  isOutsideBuyer,
+  type StoryEvent,
 } from '../sim/index';
 
 /** AI competitors: chosen on the start screen, 10 by default, at most as many as companies.json lists. */
@@ -56,12 +60,20 @@ export const AI_MAX = COMPANIES.length;
 
 export const clampAi = (n: number) => Math.max(AI_MIN, Math.min(AI_MAX, Math.round(Number.isFinite(n) ? n : AI_DEFAULT)));
 
-export function newGame(name: string, difficulty: Difficulty, seed: number, aiCompanies = AI_DEFAULT): World {
-  return createWorld({ seed, difficulty, playerName: name.trim() || 'Meine Firma', aiCompanies: clampAi(aiCompanies) });
+export function newGame(name: string, difficulty: Difficulty, seed: number, aiCompanies = AI_DEFAULT, stories = true): World {
+  return createWorld({ seed, difficulty, playerName: name.trim() || 'Meine Firma', aiCompanies: clampAi(aiCompanies), stories });
 }
 
 export const companyName = (w: World, id: string | null) =>
-  !id ? '–' : id === 'terra' ? 'Terra' : (w.companies.find((c) => c.id === id)?.name ?? '?');
+  !id ? '–' : isOutsideBuyer(id) ? buyerName(w, id) : (w.companies.find((c) => c.id === id)?.name ?? '?');
+
+/** Saves from before the story events get them switched on (missing = on). */
+export function ensureStories(w: World): void {
+  if (!w.stories) initStories(w, true);
+}
+
+/** Story events that began on this day (for the „Neue Lage“ toast). */
+export const startedStories = (w: World, day: number): StoryEvent[] => (w.stories?.events ?? []).filter((e) => e.startDay === day);
 
 // ---------- ships ----------
 
