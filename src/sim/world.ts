@@ -31,8 +31,6 @@ export interface NewWorldOptions {
   aiCompanies?: number;
   /** story events on (default off: headless runs and the early gates stay as they were) */
   stories?: boolean;
-  /** Quark-Trend test mode (default: none – the UI sets up old saves in trend mode) */
-  quarkMode?: 'project' | 'trend';
 }
 
 export function createWorld(opts: NewWorldOptions = {}): World {
@@ -78,7 +76,7 @@ export function createWorld(opts: NewWorldOptions = {}): World {
     w.companies.push(mk(def.name, false, def.prefers));
   }
   if (opts.stories) initStories(w, true);
-  if (opts.quarkMode) w.quark = newQuark(opts.quarkMode);
+  w.quark = newQuark();
   return w;
 }
 

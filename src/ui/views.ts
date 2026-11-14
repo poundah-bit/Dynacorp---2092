@@ -296,7 +296,7 @@ export function terraView({ w, me }: ViewCtx): string {
   ${projectsCard(w, me)}`;
 }
 
-// ---------- Großprojekte and Quark-Trend ----------
+// ---------- Großprojekte and Quark ----------
 
 const QUARK_SIDE: Record<Flavour, string> = { up: 'Industrie, leicht', down: 'Versorgung, leicht', charm: 'Industrie, mittel', strange: 'Versorgung, mittel', top: 'Industrie, schwer', bottom: 'Versorgung, schwer' };
 const quarkTag = (f: Flavour) => `<span class="qtag q-${f}">${QUARK_NAME[f]}</span>`;
@@ -335,24 +335,29 @@ export function projectsCard(w: World, me: string): string {
 /** Statistik card: the six quark cells (industry | supply × light, middle, heavy). */
 export function quarkCard(w: World): string {
   const s = quarkStatus(w);
-  const cell = (f: Flavour) =>
-    `<div class="qcell q-${f}${s.flavour === f ? ' lead' : ''}"><b>${QUARK_NAME[f]}</b><span class="small muted">${QUARK_SIDE[f]}</span>${bar({ value: s.cells[f] * 100, max: 100, tone: 'neutral', label: `${QUARK_NAME[f]}-Quark` })}<span class="small">${Math.round(s.cells[f] * 100)} %</span></div>`;
-  const mode = s.mode === 'project' ? 'Test-Modus „Projekt“: der Balken zeigt das laufende Großprojekt.' : 'Test-Modus „Trend“: was du lieferst, füllt das Feld seiner Waren; ohne Nachschub klingt es langsam ab.';
+  const cell = (f: Flavour) => {
+    const free = s.unlocked.includes(f);
+    const state = free ? '<span class="small good">frei ✓</span>' : `<span class="small">${Math.round(s.cells[f] * 100)} %</span>`;
+    return `<div class="qcell q-${f}${s.flavour === f || free ? ' lead' : ''}"><b>${QUARK_NAME[f]}</b><span class="small muted">${QUARK_SIDE[f]}</span>${bar({ value: s.cells[f] * 100, max: 100, tone: 'neutral', label: `${QUARK_NAME[f]}-Quark` })}${state}</div>`;
+  };
   return `<section class="card quark"><h2>${icon('quark')} Diese Welt entwickelt sich zu folgendem …</h2>
-    <p class="hint">${mode}</p>
+    <p class="hint">Jedes fertige Großprojekt schaltet das Quark seines Feldes frei, der Balken zeigt das laufende Projekt. Später schließt du die Welt mit einem freigeschalteten Quark als Modul ab – das Großprojekt dazu wirkt dann in allen weiteren Welten.</p>
     <div class="qgrid"><span></span><span class="small muted">Industrie (Ladung +⅔)</span><span class="small muted">Versorgung (Ladung −⅓)</span>
       <span class="small muted">leicht</span>${cell('up')}${cell('down')}
       <span class="small muted">mittel</span>${cell('charm')}${cell('strange')}
       <span class="small muted">schwer</span>${cell('top')}${cell('bottom')}</div>
-    <p class="small muted">Es gibt sechs Quark-Sorten in drei Generationen. Up, Charm und Top tragen +⅔ der Elementarladung, Down, Strange und Bottom −⅓; von Generation zu Generation werden sie schwerer – das Top-Quark ist das schwerste bekannte Elementarteilchen. Schwere Quarks brauchen hier mehr „Energie“.</p>
+    <p class="small muted">Es gibt sechs Quark-Sorten in drei Generationen. Up, Charm und Top tragen +⅔ der Elementarladung, Down, Strange und Bottom −⅓; von Generation zu Generation werden sie schwerer – das Top-Quark ist das schwerste bekannte Elementarteilchen. Schwere Quarks verlangen hier teurere Großprojekte.</p>
   </section>`;
 }
 
-/** Header chip: where the world is heading. */
+/** Header chip: the running Großprojekt's quark, else the unlocked ones. */
 export function quarkChip(w: World): string {
   const s = quarkStatus(w);
-  if (!s.flavour) return `<span class="muted small" data-tip="Quark-Trend: Sobald deine Welt liefert${s.mode === 'project' ? ' bzw. ein Großprojekt läuft' : ''}, zeigt sich hier, zu welcher Quark-Sorte sie sich entwickelt.">${icon('quark')} –</span>`;
-  return `<span class="qchip q-${s.flavour}" data-tip="Quark-Trend: deine Welt entwickelt sich zu einem ${QUARK_NAME[s.flavour]}-Quark (${QUARK_SIDE[s.flavour]}). Mehr dazu im Tab Statistik.">${icon('quark')} ${QUARK_NAME[s.flavour]} ${bar({ value: s.fill * 100, max: 100, tone: 'neutral', label: 'Quark-Trend' })} ${Math.round(s.fill * 100)} %</span>`;
+  if (s.flavour)
+    return `<span class="qchip q-${s.flavour}" data-tip="Dein Großprojekt schaltet ein ${QUARK_NAME[s.flavour]}-Quark frei (${QUARK_SIDE[s.flavour]}). Mehr dazu im Tab Statistik.">${icon('quark')} ${QUARK_NAME[s.flavour]} ${bar({ value: s.fill * 100, max: 100, tone: 'neutral', label: 'Quark' })} ${Math.round(s.fill * 100)} %</span>`;
+  if (s.unlocked.length)
+    return `<span class="qchip q-${s.unlocked[0]}" data-tip="Freigeschaltete Quarks: Mit einem davon kannst du deine Welt später als Modul abschließen. Mehr dazu im Tab Statistik.">${icon('quark')} ${s.unlocked.map((f) => QUARK_NAME[f]).join(', ')} ✓</span>`;
+  return `<span class="muted small" data-tip="Quark: Jedes fertige Großprojekt (Tab Terra) schaltet ein Quark frei. Hier siehst du, zu welcher Sorte sich deine Welt entwickelt.">${icon('quark')} –</span>`;
 }
 
 // ---------- Logistikzentrale (Dynacore) ----------

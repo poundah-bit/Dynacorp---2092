@@ -230,7 +230,7 @@ export interface World {
   stories?: StoryState;
   /** the player's Großprojekte (missing = none) */
   projects?: ProjectState[];
-  /** Quark-Trend (missing = not set up; the UI sets up old saves in trend mode) */
+  /** Quark messages already sent (missing in old saves: `ensureQuark`) */
   quark?: QuarkState;
 }
 
@@ -328,7 +328,7 @@ export interface StoryContext {
   lore: Lore;
 }
 
-// ---------- Großprojekte and Quark-Trend ----------
+// ---------- Großprojekte and Quark ----------
 
 export type Flavour = 'up' | 'down' | 'charm' | 'strange' | 'top' | 'bottom';
 
@@ -355,9 +355,6 @@ export interface ProjectState {
 }
 
 export interface QuarkState {
-  mode: 'project' | 'trend';
-  /** delivered goods value per cell, decaying (trend mode) */
-  energy: Record<Flavour, number>;
   /** flavours already announced at 90 % / reached 100 % (each message once per game) */
   warned: Flavour[];
   reached: Flavour[];
