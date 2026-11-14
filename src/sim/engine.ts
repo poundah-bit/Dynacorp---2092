@@ -4,6 +4,8 @@ import { CONFIG, FACILITIES, GOODS, PLANETS, SHIPS, TERRA, distance, facilityDef
 import { companyValue, debt, diff, repairShip, shipLoads, startRoute, transportDeadline } from './actions';
 import { runAi } from './ai';
 import { routesTick } from './automation';
+import { hasProject, projectDelivered, projectsTick } from './projects';
+import { quarkFeed, quarkTick } from './quark';
 import { storiesTick, storyFactor } from './stories';
 import type { Cargo, Demand, Facility, Ship, Transport, World } from './types';
 import {
@@ -36,6 +38,8 @@ export function step(w: World): void {
   updatePrices(w);
   gravoStorms(w);
   routesTick(w);
+  projectsTick(w);
+  quarkTick(w);
   runAi(w);
   checkBankruptcies(w);
   checkCollapse(w);
@@ -165,7 +169,8 @@ function shipsTick(w: World) {
       }
     }
     // repair marked in advance: done automatically as soon as the ship stands idle on Terra
-    if (s.repairAtTerra && s.phase === 'idle' && s.at === TERRA) {
+    // marked ships – and with the Orbitaldock every worn ship – are repaired as soon as they stand idle on Terra
+    if ((s.repairAtTerra || (s.condition < 100 && hasProject(w, s.owner, 'dock'))) && s.phase === 'idle' && s.at === TERRA) {
       const r = repairShip(w, s.owner, s.id);
       if (r.ok) log(w, s.owner, `${def.name} wird wie vorgemerkt auf Terra repariert.`);
       else {
@@ -262,9 +267,11 @@ function cancelTransport(w: World, t: Transport, why: string) {
 
 function deliverGoods(w: World, t: Transport) {
   const d = t.demand ? demand(w, t.demand) : undefined;
-  if (!d) return;
-  // a demand may be split over several ships: each part is stored and paid on its own
-  const part = t.amount;
+  if (d) deliverDemandPart(w, d, t.amount);
+}
+
+/** Books one delivered part of a demand: store, pay, count (a demand may be split over several ships). */
+export function deliverDemandPart(w: World, d: Demand, part: number) {
   const value = Math.round(part * d.pricePerFe);
   if (isOutsideBuyer(d.requester)) {
     pay(w, null, d.supplier, value);
@@ -279,6 +286,8 @@ function deliverGoods(w: World, t: Transport) {
     if (d.supplier !== d.requester) pay(w, d.requester, d.supplier, value);
   }
   d.delivered = (d.delivered ?? 0) + part;
+  projectDelivered(w, d, part);
+  quarkFeed(w, d, part);
   const story = d.story ? w.stories?.events.find((e) => e.id === d.story) : undefined;
   if (story) story.delivered += part;
   const complete = d.delivered >= d.amount;
@@ -354,7 +363,8 @@ function ordersTick(w: World) {
     }
   }
   for (const d of w.demands) {
-    if (['accepted', 'shipping'].includes(d.status) && d.supplier && !d.own && !d.late && w.day > d.deadlineDay) {
+    // no penalty for supplying oneself (the player's own Großprojekt)
+    if (['accepted', 'shipping'].includes(d.status) && d.supplier && d.supplier !== d.requester && !d.own && !d.late && w.day > d.deadlineDay) {
       d.late = true;
       const to = isOutsideBuyer(d.requester) ? null : d.requester;
       pay(w, d.supplier, to, Math.round(goodsValue(w, d.good, d.amount) * rate));
@@ -490,10 +500,15 @@ function gravoStorms(w: World) {
   const p = outer[Math.floor(random(w) * outer.length)];
   if (!p) return;
   const [lo, hi] = e.gravoStormDamage as [number, number];
-  for (const f of w.facilities.filter((x) => x.planet === p.id)) f.condition = Math.max(0, f.condition - randInt(w, lo, hi));
+  // the Klinikring halves the damage to its owner's plants and ships (same dice, so the RNG stays the same)
+  const damage = (owner: string) => {
+    const d = randInt(w, lo, hi);
+    return hasProject(w, owner, 'clinic') ? Math.ceil(d * CONFIG.projects.stormDamageFactor) : d;
+  };
+  for (const f of w.facilities.filter((x) => x.planet === p.id)) f.condition = Math.max(0, f.condition - damage(f.owner));
   for (const s of w.ships) {
     const near = s.at === p.id || s.route?.to === p.id || s.route?.from === p.id;
-    if (near) s.condition = Math.max(0, s.condition - randInt(w, lo, hi));
+    if (near) s.condition = Math.max(0, s.condition - damage(s.owner));
   }
   log(w, null, `Gravo-Sturm bei ${p.name}! Schiffe und Anlagen beschädigt.`, 3);
   if (w.stories) w.stories.lastStorm = { planet: p.id, day: w.day };
@@ -536,7 +551,7 @@ export function companyIndex(w: World, companyId: string): number {
   if (c.bankrupt) return 0;
   const value = companyValue(w, companyId);
   const profit = c.revenue - c.expenses;
-  const raw = value + 0.5 * profit + c.reputation * 5000;
+  const raw = value + 0.5 * profit + c.reputation * 5000 + (c.prestige ?? 0) * 1000;
   return Math.max(0, Math.round(raw / 1000));
 }
 

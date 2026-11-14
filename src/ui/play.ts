@@ -60,8 +60,8 @@ export const AI_MAX = COMPANIES.length;
 
 export const clampAi = (n: number) => Math.max(AI_MIN, Math.min(AI_MAX, Math.round(Number.isFinite(n) ? n : AI_DEFAULT)));
 
-export function newGame(name: string, difficulty: Difficulty, seed: number, aiCompanies = AI_DEFAULT, stories = true): World {
-  const w = createWorld({ seed, difficulty, playerName: name.trim() || 'Meine Firma', aiCompanies: clampAi(aiCompanies), stories });
+export function newGame(name: string, difficulty: Difficulty, seed: number, aiCompanies = AI_DEFAULT, stories = true, quarkMode: 'project' | 'trend' = 'trend'): World {
+  const w = createWorld({ seed, difficulty, playerName: name.trim() || 'Meine Firma', aiCompanies: clampAi(aiCompanies), stories, quarkMode });
   // switched off on the start screen: keep the state, so loading the game does not switch them on
   if (!stories) initStories(w, false);
   return w;
@@ -156,7 +156,8 @@ export function deliverableDemands(w: World, me: string): DeliverOption[] {
   const mine = facilitiesOf(w, me);
   const out: DeliverOption[] = [];
   for (const d of w.demands) {
-    if (d.status !== 'open' || d.requester === me || d.own) continue;
+    // own orders are not for sale – except the player's Großprojekt, which his own plants supply
+    if (d.status !== 'open' || d.own || (d.requester === me && !d.project)) continue;
     const producers = mine.filter((f) => d.good in facilityDef(f.type).outputs);
     if (!producers.length) continue;
     const facs = producers.filter((f) => readiness(f, d.good, d.amount).fits);

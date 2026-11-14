@@ -89,6 +89,18 @@
     "daysLimits": [20, 120],
     "keepDoneDays": 200
   },
+  "projects": {
+    "openOrdersPerGood": 2,
+    "stormDamageFactor": 0.5,
+    "extraSites": 1,
+    "extraRoutes": 2,
+    "warningDays": 7
+  },
+  "quark": {
+    "halfLifeDays": 120,
+    "targets": [4000000, 7000000, 10000000],
+    "warnAt": 0.9
+  },
   "automation": {
     "levels": [
       { "price": 2500000, "routes": 1 },

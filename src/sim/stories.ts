@@ -5,6 +5,7 @@ import storiesJson from '../data/stories.json';
 import { CONFIG, GOODS, PLANETS, TERRA, distance, facilityDef, good, planet } from './data';
 import { terraDemandAmount, terraOrderScale } from './engine';
 import type { Demand, Lore, PlaceRule, StoryCause, StoryContext, StoryEvent, World } from './types';
+import { hasProject } from './projects';
 import { company, log, newId, random, randInt } from './world';
 
 export const STORY_CAUSES = storiesJson.causes as StoryCause[];
@@ -297,8 +298,19 @@ export function storiesTick(w: World): void {
     }
   }
   st.events = st.events.filter((e) => e.phase !== 'done' || w.day - e.endDay <= sc.keepDoneDays);
+  // Forschungskuppel: the next event is drawn a few days early and announced (without it nothing changes)
+  const me = w.playerId;
+  const warn = CONFIG.projects.warningDays;
+  if (me && hasProject(w, me, 'dome') && !st.upcoming && w.day >= st.nextDay - warn && w.day < st.nextDay && active(w).length < sc.maxActive) {
+    const e = pickStory(randOf(w), { ...context(w), day: st.nextDay }, newId(w, 'st'));
+    if (e) {
+      st.upcoming = e;
+      log(w, me, `In ${st.nextDay - w.day} Tagen: ${e.title}`, 3);
+    }
+  }
   if (w.day >= st.nextDay && active(w).length < sc.maxActive) {
-    const e = pickStory(randOf(w), context(w), newId(w, 'st'));
+    const e = st.upcoming ?? pickStory(randOf(w), context(w), newId(w, 'st'));
+    st.upcoming = undefined;
     if (e) begin(w, e);
     st.nextDay = w.day + randInt(w, sc.pauseDays[0]!, sc.pauseDays[1]!);
   }

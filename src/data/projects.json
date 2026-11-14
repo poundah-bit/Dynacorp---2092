@@ -1,0 +1,14 @@
+[
+  { "id": "dock", "name": "Orbitaldock Terra", "quark": "up", "price": 10000000, "prestige": 5000, "materials": { "plastic": 27000, "fuel": 22500 },
+    "effect": "Jedes eigene Schiff wird bei jedem Halt auf Terra automatisch repariert." },
+  { "id": "dome", "name": "Forschungskuppel", "quark": "down", "price": 10000000, "prestige": 5000, "materials": { "water": 60000, "agro": 30000, "fiber": 22500 },
+    "effect": "Frühwarnung: Ereignisse werden 7 Tage vor Beginn angekündigt." },
+  { "id": "yard", "name": "Großwerft", "quark": "charm", "price": 25000000, "prestige": 10000, "materials": { "steel": 32000, "plasticware": 24000 },
+    "effect": "Reparatur vor Ort: Schiffe lassen sich an jedem Planeten mit eigener Anlage zum Werftpreis reparieren." },
+  { "id": "city", "name": "Siedlerstadt", "quark": "strange", "price": 25000000, "prestige": 10000, "materials": { "food": 28000, "textiles": 20000, "beverages": 36000 },
+    "effect": "Ein zusätzlicher Standort für deine Firma." },
+  { "id": "datacenter", "name": "Rechenzentrum", "quark": "top", "price": 60000000, "prestige": 20000, "materials": { "robots": 7500, "machines": 15000 },
+    "effect": "Zwei zusätzliche Lieferrouten in der Logistikzentrale." },
+  { "id": "clinic", "name": "Klinikring", "quark": "bottom", "price": 60000000, "prestige": 20000, "materials": { "medicine": 6250 },
+    "effect": "Schäden durch Gravo-Stürme an deinen Anlagen und Schiffen halbiert." }
+]

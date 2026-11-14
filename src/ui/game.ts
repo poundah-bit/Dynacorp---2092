@@ -11,8 +11,15 @@ import {
   buyFacility,
   buyShip,
   cancelDemand,
+  abortProject,
   cancelTransport,
   company,
+  ensureQuark,
+  good,
+  projectDef,
+  repairShipOnSite,
+  startProject,
+  unitOf,
   debt,
   facilityDef,
   repairFacility,
@@ -30,7 +37,7 @@ import {
   type World,
 } from '../sim/index';
 import { cueTracker, type Cue, type CueTracker } from './cues';
-import { cr, esc, isCriticalShip, logText } from './format';
+import { cr, esc, isCriticalShip, logText, num } from './format';
 import { icon, type IconName } from './icons';
 import { AI_DEFAULT, AI_MAX, AI_MIN, areaStats, clampAi, ensureStories, fittingOffers, guide, newGame, newOffers, startedStories, type GuideTab } from './play';
 import { clearSave, loadGame, saveGame, type SaveData } from './save';
@@ -137,6 +144,11 @@ function showStart() {
           </div>
           <span class="small muted">${AI_MIN} bis ${AI_MAX}. Mehr Gegner heißt mehr Nachfrage und mehr Konkurrenz um Aufträge.</span>
         </div>
+        <div class="field">Quark-Modus <span class="chip warn">Test</span>
+          <div class="opts">
+            <label class="opt"><input type="radio" name="quark" value="trend" checked><span><b>Trend</b> – alles, was deine Welt liefert, prägt ihr Quark; der Balken kann auch wieder sinken.</span></label>
+            <label class="opt"><input type="radio" name="quark" value="project"><span><b>Projekt</b> – das laufende Großprojekt bestimmt das Quark; der Balken zeigt seinen Fortschritt.</span></label>
+          </div></div>
         <label class="opt"><input type="checkbox" name="stories" checked><span><b>Ereignisse mit Geschichten</b><br><small>Booms, Krisen und Notlagen verändern zeitweise die Nachfrage. Jedes Spiel erzählt andere Geschichten.</small></span></label>
         <button type="submit" class="primary big">Spiel starten</button>
       </form>
@@ -162,13 +174,14 @@ function showStart() {
     const data = new FormData(form);
     if (save && !confirm('Der gespeicherte Spielstand wird dabei überschrieben. Neues Spiel starten?')) return;
     const difficulty = String(data.get('diff') ?? 'med') as Difficulty;
-    begin(newGame(String(data.get('name') ?? ''), difficulty, Date.now() % 1_000_000, clampAi(Number(data.get('ai'))), data.get('stories') === 'on'), false);
+    begin(newGame(String(data.get('name') ?? ''), difficulty, Date.now() % 1_000_000, clampAi(Number(data.get('ai'))), data.get('stories') === 'on', data.get('quark') === 'project' ? 'project' : 'trend'), false);
     openSheet(introSheet());
   });
 }
 
 function begin(world: World, hideGuide: boolean, order?: unknown) {
   ensureStories(world);
+  ensureQuark(world);
   w = world;
   listOrder = parseOrder(order);
   me = world.playerId!;
@@ -213,6 +226,7 @@ function render() {
   $('cash').textContent = cr(c.cash);
   $('cash').className = c.cash < 0 ? 'bad' : '';
   $('debt').textContent = cr(debt(w, me));
+  $('quark').innerHTML = V.quarkChip(w);
   document.querySelectorAll<HTMLButtonElement>('[data-act="speed"]').forEach((b) => b.classList.toggle('on', Number(b.dataset.a) === speed));
 
   const news = w.log.filter((l) => l.company === me || l.priority === 3).slice(-1)[0];
@@ -319,7 +333,9 @@ function advance() {
   if (!w) return;
   priceHistory.push({ ...w.prices });
   if (priceHistory.length > 6) priceHistory.shift();
+  const finished = (w.projects ?? []).filter((p) => p.status === 'done').length;
   step(w);
+  if ((w.projects ?? []).filter((p) => p.status === 'done').length > finished) play('automation');
   map.dayEvents(mapEvents(w, me));
   if (cues) playDay(cues.next(w));
   notifyOffers();
@@ -535,6 +551,25 @@ const ACTS: Record<string, (a: string) => void> = {
 
   // Terra
   loan: () => openSheet(S.loanSheet(w!, me)),
+  'project-start'(id) {
+    const def = projectDef(id);
+    openSheet({
+      title: `Großprojekt ${def.name}`,
+      body: `<p>Preis <b>${cr(def.price)}</b> aus Barkapital, dann bestellt die Baustelle im Orbit von Terra: ${Object.entries(def.materials).map(([g, n]) => `${num(n)} ${unitOf(g)} ${good(g).name}`).join(', ')}.</p>
+        <p>Fertig bringt es <b>${num(def.prestige)} Prestige</b> im Firmenindex und: ${def.effect}</p>
+        <p class="small muted">Aus eigenen Anlagen lieferst du kostenlos; liefert eine andere Firma, zahlst du den Marktpreis. Neue Bestellungen gehen nur raus, wenn dein Barkapital sie deckt.</p>`,
+      confirm: 'Starten',
+      run: () => {
+        const r = startProject(w!, me, id);
+        return r.ok ? { message: `${def.name}: Baustelle eröffnet.` } : { error: r.error };
+      },
+    });
+  },
+  'project-abort'() {
+    if (!confirm('Großprojekt abbrechen? Bezahltes Geld und gelieferte Waren sind verloren.')) return;
+    result(abortProject(w!, me), 'Großprojekt abgebrochen.');
+  },
+  'repair-onsite': (id) => result(repairShipOnSite(w!, me, id), 'Das Schiff wird vor Ort repariert.', 'repair'),
   'buy-automation'() {
     const r = buyAutomation(w!, me);
     result(r, r.ok ? `${automationName(r.value)} eröffnet!` : '', 'automation');

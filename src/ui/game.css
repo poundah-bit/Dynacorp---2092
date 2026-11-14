@@ -1,4 +1,6 @@
 :root {
+  /* six quark colours – frame only, never status (green/yellow/red stay status) */
+  --q-up: #6ea8ff; --q-down: #b48cff; --q-charm: #4fd1c5; --q-strange: #f6a5c0; --q-top: #ff9f5a; --q-bottom: #c7d36f;
   --bg: #0b1020;
   --panel: #131a30;
   --panel-2: #1a2340;
@@ -388,3 +390,17 @@ td .bar { height: 8px; min-width: 64px; margin-left: auto; }
 /* story events: amber like the map halo, a quiet card */
 .chip.story { color: var(--warn); }
 .story-card .story-row + .story-row { border-top: 1px solid var(--panel-2); }
+
+/* Großprojekte and Quark-Trend */
+.qtag { display: inline-block; padding: 0 6px; border-radius: 6px; font-size: 12px; border: 1px solid currentColor; }
+.q-up { color: var(--q-up); } .q-down { color: var(--q-down); } .q-charm { color: var(--q-charm); }
+.q-strange { color: var(--q-strange); } .q-top { color: var(--q-top); } .q-bottom { color: var(--q-bottom); }
+.qchip { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; }
+.qchip .bar { width: 64px; }
+.qgrid { display: grid; grid-template-columns: auto 1fr 1fr; gap: 8px; align-items: center; }
+.qcell { display: flex; flex-direction: column; gap: 3px; padding: 8px; border-radius: 10px; border: 1px solid color-mix(in srgb, currentColor 35%, transparent); }
+.qcell b { color: inherit; }
+.qcell .small { color: var(--text); }
+.qcell.lead { border-width: 2px; box-shadow: 0 0 0 1px currentColor inset; }
+.chip.project { color: var(--accent); }
+.project.done { opacity: 0.85; }

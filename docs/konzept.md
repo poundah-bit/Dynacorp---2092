@@ -510,6 +510,21 @@ Entwurf: `docs/superpowers/specs/2026-11-14-story-ereignisse-design.md`.
 | Schalter | „Ereignisse mit Geschichten“ beim neuen Spiel (Vorgabe an); alte Spielstände bekommen Ereignisse | Vergleich möglich |
 | Ausgang je nach Lieferung | später (Weg B), nach dem Test von A; gelieferte Mengen werden schon mitgezählt | Rocco |
 
+## Entscheidungen zu den Großprojekten und zum Quark-Trend
+
+Entwurf: `docs/superpowers/specs/2026-11-14-grossprojekte-design.md` (Stufe 1 der Vision „Großprojekte und Modulwelten“).
+
+| Thema | Entscheidung | Grund |
+|---|---|---|
+| Belohnung | Komfort und neue Möglichkeiten plus Prestige im Firmenindex, nie mehr Einkommen | Geld hatte im Endgame keinen Gegenwert mehr; mehr Einkommen würde das verschärfen (Rocco) |
+| Sechs Projekte | Orbitaldock (up), Forschungskuppel (down), Großwerft (charm), Siedlerstadt (strange), Rechenzentrum (top), Klinikring (bottom); 10 / 25 / 60 Mio. Cr, dann Waren aus ihrem Quark-Feld (150 / 200 / 250 Tage Ausstoß eines Werks je Ware) | Roccos Idee: die Wahl des Projekts lenkt die Wirtschaft planbar in eine Quark-Richtung |
+| Warenmengen | nach Tagen Ausstoß statt „Warenwert ≈ Preis“ | mit dem Wert-Richtwert wären es z. B. 155.000 Medikamente gewesen – über 6.000 Werks-Tage |
+| Baustelle | im Orbit von Terra, bestellt selbst an der Börse; aus eigenen Anlagen kostenlos, andere Firmen bezahlt der Spieler; neue Bestellung nur, wenn das Barkapital sie deckt | jedes Projekt bleibt erreichbar, kein Abrutschen in Schulden |
+| Quark-Felder der Waren | Industrie/Versorgung × leicht/mittel/schwer nach Basispreis, in `goods.json` | sechs Felder wie sechs Quark-Sorten |
+| Testschalter | „Quark-Modus“ beim neuen Spiel: Trend (alle Lieferungen an andere füllen Speicher, Halbwertszeit 120 Tage) oder Projekt (Fortschritt des laufenden Projekts) | Rocco testet beide und entscheidet dann |
+| Ziele des Trends | 4 / 7 / 10 Mio. Cr Warenwert für leicht / mittel / schwer | an den besten KI-Firmen kalibriert (mal zwei für einen konzentrierten Spieler); die Richtwerte 15 / 30 / 60 Mio. wären unerreichbar gewesen |
+| Abschluss | noch keiner: bei 90 / 100 % nur eine Meldung, als welches Quark sich die Welt schließen würde | Modulwelten kommen später |
+
 ## Entscheidungen zu den Tönen
 
 | Thema | Entscheidung | Warum |

@@ -13,6 +13,8 @@ export interface GoodDef {
   tier: Tier;
   cargo: Cargo;
   basePrice: number; // Credits per FE
+  /** Quark class: industry (up-type) or supply (down-type), weight 1 light … 3 heavy */
+  quark?: { side: 'industry' | 'supply'; weight: 1 | 2 | 3 };
 }
 
 export interface FacilityDef {
@@ -84,6 +86,8 @@ export interface Company {
   expenses: number; // lifetime
   /** Logistikzentrale level 0..3 (missing in older saves = 0) */
   automation?: number;
+  /** prestige from finished Großprojekte, in index points (missing = 0) */
+  prestige?: number;
 }
 
 export type FacilityStatus = 'construction' | 'stopped' | 'running';
@@ -140,6 +144,8 @@ export interface Demand {
   big?: boolean;
   /** id of the story event that caused this order */
   story?: string;
+  /** id of the player's Großprojekt this order supplies */
+  project?: string;
 }
 
 export type TransportStatus = 'open' | 'accepted' | 'assigned' | 'loaded' | 'done' | 'cancelled';
@@ -220,6 +226,10 @@ export interface World {
   routes?: Route[];
   /** story events (missing = switched off; old saves get them in the UI) */
   stories?: StoryState;
+  /** the player's Großprojekte (missing = none) */
+  projects?: ProjectState[];
+  /** Quark-Trend (missing = not set up; the UI sets up old saves in trend mode) */
+  quark?: QuarkState;
 }
 
 export interface StoryState {
@@ -231,6 +241,8 @@ export interface StoryState {
   lastRecessionDay: number | null;
   /** last gravo storm, for stories that follow one */
   lastStorm?: { planet: string; day: number };
+  /** the next event, drawn early and announced (only with the Forschungskuppel) */
+  upcoming?: StoryEvent;
 }
 
 /** An automatic delivery from an own plant to another own plant with a fixed Linienschiff. */
@@ -312,4 +324,39 @@ export interface StoryContext {
   active: StoryEvent[];
   lastRecessionDay: number | null;
   lore: Lore;
+}
+
+// ---------- Großprojekte and Quark-Trend ----------
+
+export type Flavour = 'up' | 'down' | 'charm' | 'strange' | 'top' | 'bottom';
+
+export interface ProjectDef {
+  id: string;
+  name: string;
+  quark: Flavour;
+  price: number;
+  prestige: number;
+  /** amount per good that has to be delivered */
+  materials: Record<string, number>;
+  /** German one-liner: the advantage once it is finished */
+  effect: string;
+}
+
+export interface ProjectState {
+  id: string;
+  status: 'building' | 'done';
+  startDay: number;
+  delivered: Record<string, number>;
+  doneDay?: number;
+  /** why no new order goes out right now (German), e.g. „wartet auf Geld“ */
+  waiting?: string;
+}
+
+export interface QuarkState {
+  mode: 'project' | 'trend';
+  /** delivered goods value per cell, decaying (trend mode) */
+  energy: Record<Flavour, number>;
+  /** flavours already announced at 90 % / reached 100 % (each message once per game) */
+  warned: Flavour[];
+  reached: Flavour[];
 }

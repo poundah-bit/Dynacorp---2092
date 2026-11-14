@@ -246,6 +246,7 @@ export function createStarMap(): StarMap {
     }
     const showSub = scale > 0.55;
     const stories = storyPlanets(w);
+    const station = (w.projects ?? []).filter((x) => x.status === 'done').length;
     ctx.textAlign = 'center';
     const zoom = scale / fitScale;
     for (const p of PLANETS) {
@@ -273,6 +274,16 @@ export function createStarMap(): StarMap {
       if (look.ring) ringHalf(Math.PI);
       ctx.drawImage(planetSprite(p, rad), x - rad - 1, y - rad - 1, rad * 2 + 2, rad * 2 + 2);
       if (look.ring) ringHalf(0);
+      if (!p.facility && station > 0) {
+        // finished Großprojekte: small lights on an orbit around Terra, one per project
+        for (let i = 0; i < station; i++) {
+          const a = -Math.PI / 2 + (i * Math.PI * 2) / 6;
+          ctx.fillStyle = col.accent;
+          ctx.beginPath();
+          ctx.arc(x + Math.cos(a) * (rad + 6), y + Math.sin(a) * (rad + 6), Math.max(2, rad * 0.16), 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
       if (stories.has(p.id)) {
         // a story event is running here: a slow amber halo (steady with reduced motion)
         const k = reducedMotion() ? 0.5 : 0.5 + 0.5 * Math.sin((performance.now() / 2600) * Math.PI * 2);
