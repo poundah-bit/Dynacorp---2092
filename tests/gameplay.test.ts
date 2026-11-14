@@ -20,6 +20,7 @@ import {
   storageCapacity,
   takeLoan,
   terraDemandAmount,
+  latePenaltyRate,
   type Demand,
   type World,
 } from '../src/sim/index';
@@ -149,24 +150,17 @@ describe('Aufträge', () => {
     expect(well.reserved.oil).toBe(0);
   });
 
-  it('wer zu viel annimmt und die Frist verpasst, zahlt Strafe und verliert Ruf', () => {
+  it('wer zu viel annimmt und die Frist verpasst, verliert Ruf – die Strafe wird bei Ankunft abgezogen', () => {
     const w = soloWorld();
     const me = player(w);
     const well = setupOilWell(w);
     const d = terraDemand(w, 'dbig', 30000); // ~86 days of production
     expect(acceptDemand(w, me, 'dbig', well.id).ok).toBe(true);
     const rep = company(w, me).reputation;
-    let penalty = 0;
-    let spentThatDay = 0;
-    for (let i = 0; i < 120 && !d.late; i++) {
-      const before = company(w, me).expenses;
-      penalty = Math.round(d.amount * w.prices.oil! * CONFIG.difficulties.med.penaltyRate);
-      run(w, 1);
-      spentThatDay = company(w, me).expenses - before;
-    }
+    for (let i = 0; i < 120 && !d.late; i++) run(w, 1);
     expect(d.late).toBe(true);
-    expect(spentThatDay).toBeGreaterThanOrEqual(penalty); // penalty on top of the daily running costs
     expect(company(w, me).reputation).toBe(rep - 3);
+    expect(latePenaltyRate(w, d)).toBe(CONFIG.difficulties.med.penaltyRate);
   });
 
   it('mehr als ins Anlagenlager passt, kann nicht angenommen werden – ein Zusatzlager hilft', () => {

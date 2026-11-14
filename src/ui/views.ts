@@ -47,7 +47,7 @@ import {
   unshippedDemands,
   waitingTransports,
 } from './play';
-import { PROJECTS, QUARK_NAME, automationLevel, automationName, buildingProject, hasProject, lineRoute, nextAutomation, projectState, quarkStatus, routeLimit, routeName, serviceLimit, storyStrength, unitOf, unshippedAmount, type Flavour, type StoryEvent } from '../sim/index';
+import { PROJECTS, QUARK_NAME, latePenaltyRate, automationLevel, automationName, buildingProject, hasProject, lineRoute, nextAutomation, projectState, quarkStatus, routeLimit, routeName, serviceLimit, storyStrength, unitOf, unshippedAmount, type Flavour, type StoryEvent } from '../sim/index';
 import { chainDetail, chainSvg } from './chain';
 import {
   cr,
@@ -645,7 +645,7 @@ export function marketView(ctx: ViewCtx): string {
 export function ordersView({ w, me }: ViewCtx): string {
   const unshipped = unshippedDemands(w, me)
     .map(
-      (d) => `<div class="row"><div class="grow">${cargoIcon(good(d.good).cargo)} <b>${amt(d.amount, d.good)} ${gName(d.good)}</b> an ${who(w, d.requester)}${deadlineBar(w, d.deadlineDay)}<div class="small">Zugesagt – ${deadlineIn(w, d.deadlineDay)}. ${unshippedAmount(d) < d.amount ? `${amt(d.amount - unshippedAmount(d), d.good)} sind unterwegs, für ${amt(unshippedAmount(d), d.good)} fehlt noch der Transport.` : 'Es fehlt noch der Transport.'}</div></div>
+      (d) => `<div class="row"><div class="grow">${cargoIcon(good(d.good).cargo)} <b>${amt(d.amount, d.good)} ${gName(d.good)}</b> an ${who(w, d.requester)}${deadlineBar(w, d.deadlineDay)}<div class="small">Zugesagt – ${deadlineIn(w, d.deadlineDay)}.${latePenaltyRate(w, d) > 0 && d.supplier !== d.requester ? ` <span class="bad">Abzug bei Ankunft jetzt ${Math.round(latePenaltyRate(w, d) * 100)} %, morgen mehr.</span>` : ''} ${unshippedAmount(d) < d.amount ? `${amt(d.amount - unshippedAmount(d), d.good)} sind unterwegs, für ${amt(unshippedAmount(d), d.good)} fehlt noch der Transport.` : 'Es fehlt noch der Transport.'}</div></div>
       <div class="acts">${btn('Transport organisieren…', 'arrange', d.id, 'class="primary" data-guide="arrange" data-tip="Wählt eigene Schiffe für die zugesagte Lieferung oder schreibt den Transport an der Börse aus."')}</div></div>`,
     )
     .join('');

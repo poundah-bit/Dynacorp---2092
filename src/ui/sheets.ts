@@ -317,7 +317,7 @@ export function deliverSheet(w: World, me: string, demandId: string): Sheet {
   const self = !!d.project && d.requester === me;
   const risk = r.missing && !self
     ? `<p class="warn-box"><b>Risiko:</b> Die Ware ist noch nicht komplett. Dein Schiff wartet an der Anlage, bis genug produziert ist – solange laufen seine Betriebskosten.
-       Nach der Annahme bleiben etwa ${days(deadline)} bis zur Frist. Wird sie überschritten, zahlst du rund ${cr(latePenalty(w, d))} Strafe an ${who(w, d.requester)}.</p>`
+       Nach der Annahme bleiben etwa ${days(deadline)} bis zur Frist. Wird sie überschritten, zieht ${who(w, d.requester)} bei Ankunft rund ${cr(latePenalty(w, d))} ab – und jeden weiteren Tag mehr.</p>`
     : `<p class="small muted">Nach der Annahme bleiben etwa ${days(deadline)} bis zur Frist.</p>`;
   const load: Load = { cargo: good(d.good).cargo, amount: d.amount, from: from.planet, to: d.toPlanet, good: d.good, allowPublic: true, readyIn: Number.isFinite(r.daysToReady) ? r.daysToReady : 0 };
   return {
@@ -325,7 +325,7 @@ export function deliverSheet(w: World, me: string, demandId: string): Sheet {
     body: `${
       self
         ? `<p>Lieferung an deine eigene Baustelle: kein Erlös, die Ware geht ins Großprojekt. ${r.missing ? 'Die Ware ist noch nicht komplett – dein Schiff wartet an der Anlage.' : ''}</p>`
-        : `<p>Erlös bei Ankunft: <b>${cr(d.amount * d.pricePerFe)}</b> (${perUnit(d.pricePerFe, d.good)}). Wer zu spät liefert, zahlt eine Strafe von ${Math.round(diff(w).penaltyRate * 100)} % des Warenwerts.</p>`
+        : `<p>Erlös bei Ankunft: <b>${cr(d.amount * d.pricePerFe)}</b> (${perUnit(d.pricePerFe, d.good)}). Bei Verspätung wird gekürzt: ${Math.round(diff(w).penaltyRate * 100)} % am ersten Tag, je weiteren Tag ${Math.round(CONFIG.orders.latePenaltyPerDay * 100)} % mehr, höchstens ${Math.round(CONFIG.orders.latePenaltyMax * 100)} %.</p>`
     }
       ${facChoice}${risk}
       <h3>Wie kommt die Ware hin?</h3>

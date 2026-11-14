@@ -278,7 +278,10 @@ function deliverGoods(w: World, t: Transport) {
 
 /** Books one delivered part of a demand: store, pay, count (a demand may be split over several ships). */
 export function deliverDemandPart(w: World, d: Demand, part: number) {
-  const value = Math.round(part * d.pricePerFe);
+  const full = Math.round(part * d.pricePerFe);
+  // late: the buyer deducts the penalty – the difficulty's rate, 2 % more per further day, at most 50 %
+  const cut = d.supplier && d.supplier !== d.requester && !d.own ? Math.round(full * latePenaltyRate(w, d)) : 0;
+  const value = full - cut;
   if (isOutsideBuyer(d.requester)) {
     pay(w, null, d.supplier, value);
   } else {
@@ -302,7 +305,8 @@ export function deliverDemandPart(w: World, d: Demand, part: number) {
     if (complete) reputation(w, d.supplier, d.late ? -2 : 1);
     const buyer = buyerName(w, d.requester);
     const of = part < d.amount ? ` (Teillieferung, ${d.delivered} von ${d.amount} ${unitOf(d.good)})` : '';
-    log(w, d.supplier, `${company(w, d.supplier).name} liefert ${part} ${unitOf(d.good)} ${good(d.good).name} an ${buyer} und erhält ${value} Cr${of}.`);
+    const late = cut ? ` (${Math.round((cut / full) * 100)} % Abzug für ${w.day - d.deadlineDay} Tage Verspätung)` : '';
+    log(w, d.supplier, `${company(w, d.supplier).name} liefert ${part} ${unitOf(d.good)} ${good(d.good).name} an ${buyer} und erhält ${value} Cr${of}${late}.`);
   }
 }
 
@@ -344,6 +348,14 @@ export function reputation(w: World, companyId: string, delta: number) {
 
 // ---------- orders: deadlines, penalties, expiry ----------
 
+/** Share deducted from a late delivery on this day: 0 in time, else the difficulty's rate + per-day growth, capped. */
+export function latePenaltyRate(w: World, d: Demand, day = w.day): number {
+  const over = day - d.deadlineDay;
+  if (over <= 0) return 0;
+  const o = CONFIG.orders;
+  return Math.min(o.latePenaltyMax, Math.round((diff(w).penaltyRate + o.latePenaltyPerDay * (over - 1)) * 1000) / 1000);
+}
+
 function goodsValue(w: World, goodId: string | null, amount: number) {
   return goodId ? amount * (w.prices[goodId] ?? 0) : amount * 10;
 }
@@ -371,10 +383,10 @@ function ordersTick(w: World) {
   for (const d of w.demands) {
     // no penalty for supplying oneself (the player's own Großprojekt)
     if (['accepted', 'shipping'].includes(d.status) && d.supplier && d.supplier !== d.requester && !d.own && !d.late && w.day > d.deadlineDay) {
+      // the penalty is deducted on arrival and grows with every day (see deliverDemandPart)
       d.late = true;
-      const to = isOutsideBuyer(d.requester) ? null : d.requester;
-      pay(w, d.supplier, to, Math.round(goodsValue(w, d.good, d.amount) * rate));
       reputation(w, d.supplier, -3);
+      log(w, d.supplier, `Frist überschritten: ${d.amount} ${unitOf(d.good)} ${good(d.good).name} an ${buyerName(w, d.requester)}. Bei Ankunft werden ${Math.round(diff(w).penaltyRate * 100)} % abgezogen, je weiteren Tag ${Math.round(CONFIG.orders.latePenaltyPerDay * 100)} % mehr (höchstens ${Math.round(CONFIG.orders.latePenaltyMax * 100)} %).`, 2);
     }
     if (d.status === 'open' && w.day - d.createdDay > CONFIG.terra.openOrderExpiryDays) d.status = 'cancelled';
   }

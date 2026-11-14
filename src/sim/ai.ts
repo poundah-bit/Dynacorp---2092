@@ -54,6 +54,7 @@ function turn(w: World, c: Company) {
   takeBackOwnFreight(w, c);
   haulFreight(w, c);
   buyShipsForOutputs(w, c);
+  buyShipsForFreight(w, c);
   expand(w, c);
   maintain(w, c);
   repay(w, c);
@@ -206,6 +207,28 @@ function haulFreight(w: World, c: Company) {
     if (!best) continue;
     const acc = acceptTransport(w, c.id, best.t.id);
     if (acc.ok) assignShip(w, c.id, s.id, best.t.id);
+  }
+}
+
+/**
+ * Freight business: when several public transports of one cargo have been waiting for a carrier for a while
+ * (e.g. livestock of poor ranches), a company with spare cash buys a ship of that cargo and hauls them.
+ */
+function buyShipsForFreight(w: World, c: Company) {
+  const cfg = CONFIG.aiFreight;
+  const stuck = new Map<Cargo, number>();
+  for (const t of w.transports) {
+    if (t.status === 'open' && t.issuer !== c.id && w.day - t.createdDay >= cfg.stuckDays) stuck.set(t.cargo, (stuck.get(t.cargo) ?? 0) + 1);
+  }
+  for (const [cargo, n] of stuck) {
+    if (n < cfg.stuckMin) continue;
+    const fleet = shipsOf(w, c.id).filter((s) => shipDef(s.model).cargo === cargo);
+    if (fleet.length >= cfg.maxShipsPerCargo || fleet.some((s) => s.phase === 'idle')) continue;
+    const model = cheapestShip(cargo);
+    if (model && c.cash > model.price + 2 * RESERVE) {
+      buyShip(w, c.id, model.id);
+      return; // one purchase per turn
+    }
   }
 }
 
