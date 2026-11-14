@@ -16,6 +16,8 @@ export interface GalaxyStats {
   meanTerra: number;
   minSpacing: number;
   ringMean: Record<Tier, number>;
+  /** mean distance from every facility input to its nearest producer – how long the supply lines are */
+  supplyMean: number;
 }
 
 const radius = (p: PlanetDef) => Math.hypot(p.x, p.y);
@@ -36,7 +38,19 @@ export function galaxyStats(planets: PlanetDef[]): GalaxyStats {
     const r = outer.filter((p) => tierOfFacility(p.facility!) === t).map(radius);
     return r.reduce((s, x) => s + x, 0) / (r.length || 1);
   };
+  let supply = 0;
+  let inputs = 0;
+  for (const p of outer) {
+    const def = FACILITIES.find((f) => f.id === p.facility)!;
+    for (const g of Object.keys(def.inputs)) {
+      const prods = outer.filter((q) => g in FACILITIES.find((f) => f.id === q.facility)!.outputs);
+      if (!prods.length) continue;
+      supply += Math.min(...prods.map((q) => Math.hypot(q.x - p.x, q.y - p.y)));
+      inputs++;
+    }
+  }
   return {
+    supplyMean: supply / (inputs || 1),
     meanPair: sum / (n || 1),
     meanTerra: outer.reduce((s, p) => s + radius(p), 0) / (outer.length || 1),
     minSpacing: min,
@@ -64,7 +78,8 @@ const slug = (name: string) =>
 
 /** How far a layout is from world 1 (0 = same mean distances). */
 function deviation(s: GalaxyStats): number {
-  return Math.max(Math.abs(s.meanPair / REF.meanPair - 1), Math.abs(s.meanTerra / REF.meanTerra - 1));
+  // supply lines may be shorter than in world 1, never much longer
+  return Math.max(Math.abs(s.meanPair / REF.meanPair - 1), Math.abs(s.meanTerra / REF.meanTerra - 1), s.supplyMean / REF.supplyMean - 1);
 }
 
 /** One random layout; null if the planets could not be placed with enough spacing. */

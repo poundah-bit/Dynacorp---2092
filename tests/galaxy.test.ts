@@ -34,6 +34,7 @@ describe('Planetengenerator', () => {
       const s = galaxyStats(gen(seed));
       expect(Math.abs(s.meanPair / ref.meanPair - 1), `seed ${seed}`).toBeLessThanOrEqual(tol);
       expect(Math.abs(s.meanTerra / ref.meanTerra - 1), `seed ${seed}`).toBeLessThanOrEqual(tol);
+      expect(s.supplyMean / ref.supplyMean - 1, `seed ${seed}`).toBeLessThanOrEqual(tol);
       expect(s.minSpacing, `seed ${seed}`).toBeGreaterThanOrEqual(ref.minSpacing * CONFIG.campaign.minSpacingFactor);
     }
   });
