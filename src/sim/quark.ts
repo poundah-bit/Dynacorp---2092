@@ -2,7 +2,7 @@
 // supply = down-type; light, middle, heavy); every finished Großprojekt unlocks the flavour of its cell.
 
 import { CONFIG, good, projectDef } from './data';
-import { buildingProject } from './projects';
+import { buildingProject, projectProgress } from './projects';
 import type { Flavour, QuarkState, World } from './types';
 import { log } from './world';
 
@@ -39,15 +39,10 @@ export interface QuarkStatus {
   unlocked: Flavour[];
 }
 
-/** Progress of a project's materials, 0..1. */
+/** Progress of a project: material fills the first half, the build the second. */
 function progress(w: World, id: string): number {
-  const def = projectDef(id);
-  const p = (w.projects ?? []).find((x) => x.id === id);
-  if (!p) return 0;
-  if (p.status === 'done') return 1;
-  const need = Object.values(def.materials).reduce((s, x) => s + x, 0);
-  const got = Object.entries(def.materials).reduce((s, [g, x]) => s + Math.min(x, p.delivered[g] ?? 0), 0);
-  return Math.min(1, got / need);
+  const { material, build } = projectProgress(w, id);
+  return material / 2 + build / 2;
 }
 
 /** Unlocked flavours and the running project's progress. */

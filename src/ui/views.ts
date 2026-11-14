@@ -310,6 +310,14 @@ export function projectsCard(w: World, me: string): string {
     const goods = Object.entries(def.materials);
     const head = `<b>${def.name}</b> ${quarkTag(def.quark)} <span class="price">${cr(def.price)}</span> <span class="muted small">+${num(def.prestige)} Prestige</span>`;
     if (st?.status === 'done') return `<div class="row project done"><div class="grow">${head} <span class="good">fertig ✓</span><div class="small">${def.effect}</div></div></div>`;
+    if (st?.buildDaysLeft !== undefined) {
+      const total = CONFIG.projects.buildDays;
+      const doneDays = total - st.buildDaysLeft;
+      const pct = Math.round((doneDays / total) * 100);
+      return `<div class="row project building"><div class="grow">${head} <span class="warn">im Bau</span>
+        <div class="meters">${meterRow(`Bau ${pct} % – noch ${st.buildDaysLeft} Tage`, bar({ value: doneDays, max: total, tone: 'neutral', label: `Bau: ${pct} %` }))}</div><div class="small">${def.effect}</div></div>
+        <div class="acts">${btn('Abbrechen', 'project-abort', def.id, 'class="ghost" data-tip="Bricht das Großprojekt ab. Bezahltes Geld und gelieferte Waren sind verloren."')}</div></div>`;
+    }
     if (st) {
       const bars = goods
         .map(([g, need]) => {

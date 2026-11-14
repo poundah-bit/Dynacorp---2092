@@ -105,7 +105,8 @@
     "stormDamageFactor": 0.5,
     "extraSites": 1,
     "extraRoutes": 2,
-    "warningDays": 7
+    "warningDays": 7,
+    "buildDays": 200
   },
   "quark": {
     "warnAt": 0.9

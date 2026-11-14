@@ -199,9 +199,13 @@ describe('Großprojekte und Quark-Trend in der Oberfläche', () => {
     w.projects![0]!.delivered = { steel: 16_000, plasticware: 12_000 };
     let html = quarkCard(w);
     for (const n of ['Up', 'Down', 'Charm', 'Strange', 'Top', 'Bottom']) expect(html).toContain(n);
-    expect(html).toContain('50 %');
+    expect(html).toContain('25 %');
     w.projects![0]!.delivered = { steel: 32_000, plasticware: 24_000 };
     projectsTick(w);
+    const card = projectsCard(w, me);
+    expect(card).toContain('Bau ');
+    expect(card).toContain('noch 200 Tage');
+    for (let i = 0; i < 200; i++) projectsTick(w);
     html = quarkCard(w);
     expect(html).toContain('frei ✓');
   });

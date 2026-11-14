@@ -143,7 +143,7 @@ describe('Großprojekte', () => {
     expect(startProject(w, me, 'clinic').ok).toBe(true);
     const index = companyIndex(w, me);
     w.projects![0]!.delivered.medicine = 6250;
-    projectsTick(w);
+    for (let i = 0; i <= CONFIG.projects.buildDays; i++) projectsTick(w);
     expect(w.projects![0]!.status).toBe('done');
     expect(company(w, me).prestige).toBe(20_000);
     expect(companyIndex(w, me)).toBe(index + 20_000);
@@ -298,12 +298,13 @@ describe('Quark', () => {
     expect(quarkStatus(w)).toMatchObject({ flavour: null, unlocked: [] });
     expect(startProject(w, me, 'yard').ok).toBe(true);
     w.projects![0]!.delivered = { steel: 16_000, plasticware: 12_000 };
-    expect(quarkStatus(w)).toMatchObject({ flavour: 'charm', fill: 0.5 });
+    expect(quarkStatus(w)).toMatchObject({ flavour: 'charm', fill: 0.25 });
     w.projects![0]!.delivered = { steel: 32_000, plasticware: 24_000 };
-    quarkTick(w);
+    for (let i = 0; i <= CONFIG.projects.buildDays; i++) {
+      projectsTick(w);
+      quarkTick(w);
+    }
     expect(w.log.filter((l) => l.text.includes('verdichtet sich zu einem Charm-Quark')).length).toBe(1);
-    projectsTick(w);
-    quarkTick(w);
     quarkTick(w);
     expect(quarkStatus(w)).toMatchObject({ flavour: null, unlocked: ['charm'] });
     expect(quarkStatus(w).cells.charm).toBe(1);
@@ -324,5 +325,67 @@ describe('Quark', () => {
     expect(w.quark).toEqual({ warned: [], reached: [] });
     run(w, 50);
     expect(w.day).toBe(50);
+  });
+});
+
+// ---------- Bauphase ----------
+
+import { hasProject, projectProgress } from '../src/sim/index';
+
+describe('Bauphase', () => {
+  /** Yard started, all material delivered. */
+  function full() {
+    const { w, me } = rich();
+    expect(startProject(w, me, 'yard').ok).toBe(true);
+    w.projects![0]!.delivered = { steel: 32_000, plasticware: 24_000 };
+    return { w, me, p: w.projects![0]! };
+  }
+
+  it('nach dem letzten Material beginnen 200 Tage Bau, erst dann fertig', () => {
+    const { w, me, p } = full();
+    const prestige = company(w, me).prestige ?? 0;
+    projectsTick(w);
+    expect(p.status).toBe('building');
+    expect(p.buildDaysLeft).toBe(200);
+    expect(company(w, me).prestige ?? 0).toBe(prestige);
+    for (let i = 0; i < 199; i++) projectsTick(w);
+    expect(p.status).toBe('building');
+    projectsTick(w);
+    expect(p.status).toBe('done');
+    expect(company(w, me).prestige).toBe(prestige + 10_000);
+    expect(hasProject(w, me, 'yard')).toBe(true);
+  });
+
+  it('Balken: Material zählt bis 50 %, Bau bis 100 %', () => {
+    const { w, me } = rich();
+    expect(startProject(w, me, 'yard').ok).toBe(true);
+    w.projects![0]!.delivered = { steel: 16_000, plasticware: 12_000 };
+    expect(quarkStatus(w).fill).toBe(0.25);
+    w.projects![0]!.delivered = { steel: 32_000, plasticware: 24_000 };
+    for (let i = 0; i < 101; i++) projectsTick(w); // day 1 starts the build, 100 build days follow
+    expect(projectProgress(w, 'yard')).toEqual({ material: 1, build: 0.5 });
+    expect(quarkStatus(w).fill).toBe(0.75);
+  });
+
+  it('Abbrechen in der Bauphase: alles verloren', () => {
+    const { w, me } = full();
+    projectsTick(w);
+    expect(abortProject(w, me).ok).toBe(true);
+    expect(w.projects).toEqual([]);
+  });
+
+  it('Meldung verdichtet sich erst in der Bauphase bei 90 %', () => {
+    const { w } = full();
+    const said = () => w.log.filter((l) => l.text.includes('verdichtet sich')).length;
+    for (let i = 0; i < 160; i++) {
+      projectsTick(w);
+      quarkTick(w);
+    }
+    expect(said()).toBe(0); // 159 build days = 89.75 %
+    for (let i = 0; i < 2; i++) {
+      projectsTick(w);
+      quarkTick(w);
+    }
+    expect(said()).toBe(1);
   });
 });

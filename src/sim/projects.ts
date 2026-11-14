@@ -11,6 +11,18 @@ const fail = (error: string): Result<never> => ({ ok: false, error });
 export const projectState = (w: World, id: string) => (w.projects ?? []).find((p) => p.id === id);
 export const buildingProject = (w: World) => (w.projects ?? []).find((p) => p.status === 'building');
 
+/** Material (0..1, by amount over all goods) and build progress (0..1) of a project. */
+export function projectProgress(w: World, id: string): { material: number; build: number } {
+  const p = projectState(w, id);
+  if (!p) return { material: 0, build: 0 };
+  if (p.status === 'done') return { material: 1, build: 1 };
+  const def = projectDef(id);
+  const need = Object.values(def.materials).reduce((s, x) => s + x, 0);
+  const got = Object.entries(def.materials).reduce((s, [g, x]) => s + Math.min(x, p.delivered[g] ?? 0), 0);
+  const days = CONFIG.projects.buildDays;
+  return { material: Math.min(1, got / need), build: p.buildDaysLeft === undefined ? 0 : (days - p.buildDaysLeft) / days };
+}
+
 /** Has this company finished the project? (only the player builds projects) */
 export const hasProject = (w: World, c: string, id: string) => c === w.playerId && projectState(w, id)?.status === 'done';
 
@@ -55,6 +67,12 @@ export function projectsTick(w: World): void {
   const def = projectDef(p.id);
   const co = company(w, me);
   p.waiting = undefined;
+  // building phase: all material is there, the site counts down
+  if (p.buildDaysLeft !== undefined) {
+    p.buildDaysLeft = Math.max(0, p.buildDaysLeft - 1);
+    if (p.buildDaysLeft === 0) finish(w, p, me);
+    return;
+  }
   // everything other firms may still deliver is owed by the player: keep it all covered by cash
   let committed = w.demands
     .filter((d) => d.project === p.id && ['open', 'accepted', 'shipping'].includes(d.status) && d.supplier !== me)
@@ -97,11 +115,19 @@ export function projectsTick(w: World): void {
     }
   }
   if (done) {
-    p.status = 'done';
-    p.doneDay = w.day;
-    co.prestige = (co.prestige ?? 0) + def.prestige;
-    log(w, me, `Großprojekt ${def.name} fertig! +${def.prestige} Prestige. ${def.effect}`, 3);
+    p.buildDaysLeft = CONFIG.projects.buildDays;
+    log(w, me, `${def.name}: Das Material ist komplett – der Bau beginnt (${CONFIG.projects.buildDays} Tage).`, 3);
   }
+}
+
+function finish(w: World, p: ProjectState, me: string): void {
+  const def = projectDef(p.id);
+  const co = company(w, me);
+  p.status = 'done';
+  p.doneDay = w.day;
+  p.buildDaysLeft = undefined;
+  co.prestige = (co.prestige ?? 0) + def.prestige;
+  log(w, me, `Großprojekt ${def.name} fertig! +${def.prestige} Prestige. ${def.effect}`, 3);
 }
 
 /** A delivery for a project arrived (called by the engine for every delivered part). */
