@@ -91,6 +91,31 @@ describe('Großprojekte', () => {
     expect(w.projects![0]!.waiting).toBe('wartet auf Geld');
   });
 
+  it('alle offenen Bestellungen zusammen bleiben im Barkapital – kein Abrutschen in Schulden', () => {
+    const { w, me } = rich();
+    company(w, me).cash = 27_500_000;
+    expect(startProject(w, me, 'city').ok).toBe(true);
+    for (let i = 0; i < 3; i++) projectsTick(w);
+    const committed = orders(w, 'city').reduce((s, d) => s + d.amount * d.pricePerFe, 0);
+    expect(committed).toBeLessThanOrEqual(company(w, me).cash);
+    expect(w.projects![0]!.waiting).toBe('wartet auf Geld');
+  });
+
+  it('wer seine eigene Baustelle zu spät beliefert, verliert keinen Ruf', () => {
+    const { w, me } = rich();
+    const own = plant(w, me, 'plasticplant', 'sulcis', { plastic: 50_000 });
+    expect(startProject(w, me, 'dock').ok).toBe(true);
+    projectsTick(w);
+    const p = orders(w, 'dock').find((d) => d.good === 'plastic')!;
+    arrive(w, p, me, own.id);
+    p.deadlineDay = w.day - 1;
+    const rep = company(w, me).reputation;
+    const revenue = company(w, me).revenue;
+    run(w, 1);
+    expect(company(w, me).reputation).toBe(rep);
+    expect(company(w, me).revenue).toBe(revenue);
+  });
+
   it('Lieferung aus eigener Anlage kostet nichts, Lieferung einer KI-Firma zahlt der Spieler', () => {
     const { w, me } = rich();
     const ai = 'c-ai';

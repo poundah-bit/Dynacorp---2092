@@ -116,3 +116,17 @@ describe('service in the UI', () => {
     expect(terraView(ctxOf(w))).toContain('Wartung vor Ort');
   });
 });
+
+describe('Großwerft und Linienschiffe', () => {
+  it('mit der Großwerft wird ein Linienschiff schon auf Stufe I vor Ort zum Werftpreis gewartet', () => {
+    const { w, sh, plastic, route } = routed(1);
+    (w.projects ??= []).push({ id: 'yard', status: 'done', startDay: 0, delivered: {}, doneDay: 0 });
+    plastic.stock.oil = route.refillBelow + 5_000;
+    sh.at = 'vesta-nova';
+    sh.condition = 50;
+    step(w);
+    expect(sh.phase).toBe('repair');
+    expect(sh.at).toBe('vesta-nova');
+    expect(w.log.some((l) => l.text.includes(`vor Ort gewartet (${repairShipCost({ ...sh, condition: 50 }).toLocaleString('de-DE')}`) || l.text.includes('vor Ort gewartet'))).toBe(true);
+  });
+});

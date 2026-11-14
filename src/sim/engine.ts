@@ -363,7 +363,8 @@ function ordersTick(w: World) {
     }
   }
   for (const d of w.demands) {
-    if (['accepted', 'shipping'].includes(d.status) && d.supplier && !d.own && !d.late && w.day > d.deadlineDay) {
+    // no penalty for supplying oneself (the player's own Großprojekt)
+    if (['accepted', 'shipping'].includes(d.status) && d.supplier && d.supplier !== d.requester && !d.own && !d.late && w.day > d.deadlineDay) {
       d.late = true;
       const to = isOutsideBuyer(d.requester) ? null : d.requester;
       pay(w, d.supplier, to, Math.round(goodsValue(w, d.good, d.amount) * rate));

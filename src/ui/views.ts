@@ -591,7 +591,7 @@ export function marketView(ctx: ViewCtx): string {
         : o.ready
           ? `<span class="good">Lager reicht (${amt(available(f, d.good), d.good)} frei)</span>`
           : `<span class="warn">Lager: ${amt(Math.max(0, available(f, d.good)), d.good)} frei${o.daysToReady < Infinity ? ` – genug ${inDays(o.daysToReady)}` : ' – die Anlage produziert gerade nicht'}. Annehmen geht, ist aber riskant.</span>`;
-      return `<div class="row"><div class="grow">${cargoIcon(good(d.good).cargo)} <b>${amt(d.amount, d.good)} ${gName(d.good)}</b> für ${who(w, d.requester)} <span class="price">${cr(value)}</span>${d.big ? ` <span class="chip warn">${icon('bigOrder')}Großauftrag</span>` : ''}${storyChip(w, d.story)}${projectChip(d.project)}
+      return `<div class="row"><div class="grow">${cargoIcon(good(d.good).cargo)} <b>${amt(d.amount, d.good)} ${gName(d.good)}</b> ${d.project && d.requester === me ? 'für deine eigene Baustelle <span class="muted">kein Erlös</span>' : `für ${who(w, d.requester)} <span class="price">${cr(value)}</span>`}${d.big ? ` <span class="chip warn">${icon('bigOrder')}Großauftrag</span>` : ''}${storyChip(w, d.story)}${projectChip(d.project)}
         <div class="small">${perUnit(d.pricePerFe, d.good)} · ${route(f.planet, d.toPlanet)} · ${cargoName(good(d.good).cargo)} · seit ${days(w.day - d.createdDay)} offen</div>
         <div class="small">${state}</div></div>
         <div class="acts">${btn('Liefern…', 'deliver', d.id, `class="${o.ready ? 'primary' : ''}" ${guide} data-tip="Nimmt die Nachfrage an und wählt die Schiffe dafür. Wer zuerst annimmt, bekommt den Auftrag." ${o.tooBig ? 'disabled' : ''}`)}</div></div>`;

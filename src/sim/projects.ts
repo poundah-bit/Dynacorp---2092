@@ -55,6 +55,10 @@ export function projectsTick(w: World): void {
   const def = projectDef(p.id);
   const co = company(w, me);
   p.waiting = undefined;
+  // everything other firms may still deliver is owed by the player: keep it all covered by cash
+  let committed = w.demands
+    .filter((d) => d.project === p.id && ['open', 'accepted', 'shipping'].includes(d.status) && d.supplier !== me)
+    .reduce((s, d) => s + (d.amount - (d.delivered ?? 0)) * d.pricePerFe, 0);
   let done = true;
   for (const [g, need] of Object.entries(def.materials)) {
     const delivered = p.delivered[g] ?? 0;
@@ -65,7 +69,7 @@ export function projectsTick(w: World): void {
       const amount = Math.min(rest, maxOrderAmount(w, me, g));
       const price = Math.round((w.prices[g] ?? good(g).basePrice) * 100) / 100;
       // an AI firm may deliver and the player pays: only order what the cash covers
-      if (co.cash < amount * price) {
+      if (co.cash - committed < amount * price) {
         p.waiting = 'wartet auf Geld';
         break;
       }
@@ -88,6 +92,7 @@ export function projectsTick(w: World): void {
         project: p.id,
       };
       w.demands.push(d);
+      committed += amount * price;
       rest -= amount;
     }
   }

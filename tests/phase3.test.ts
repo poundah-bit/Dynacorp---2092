@@ -6,6 +6,7 @@ import { CHAIN_EDGES, chainDetail, chainLayout, chainSvg, goodRoles } from '../s
 import { planetInfo } from '../src/ui/mapinfo';
 import { companyName, deliverableDemands, ensureStories, fittingOffers, newGame, newOffers, startedStories } from '../src/ui/play';
 import { projectsCard, quarkCard, storyCard } from '../src/ui/views';
+import { deliverSheet } from '../src/ui/sheets';
 import { storyPlanets } from '../src/ui/mapfx';
 import { company, initStories, newQuark, projectsTick, run, startProject, startStory } from '../src/sim/index';
 import { oilWellWithTanker, player, runUntil, soloWorld, terraOilDemand } from './helpers';
@@ -165,6 +166,18 @@ describe('Großprojekte und Quark-Trend in der Oberfläche', () => {
     const mine = deliverableDemands(w, me).filter((o) => o.d.project === 'dock');
     expect(mine.length).toBeGreaterThan(0);
     expect(mine.every((o) => o.d.good === 'plastic')).toBe(true);
+  });
+
+  it('der Liefern-Dialog verspricht für die eigene Baustelle keinen Erlös', () => {
+    const { w, me } = richWorld();
+    w.facilities.push({ id: 'f-pp', owner: me, type: 'plasticplant', planet: 'sulcis', units: 1, status: 'running', buildDaysLeft: 0, condition: 100, stock: { plastic: 40_000 }, reserved: {}, storages: [], idleDays: 0 });
+    expect(startProject(w, me, 'dock').ok).toBe(true);
+    projectsTick(w);
+    const d = w.demands.find((x) => x.project === 'dock' && x.good === 'plastic')!;
+    const body = deliverSheet(w, me, d.id).body;
+    expect(body).toContain('eigene Baustelle');
+    expect(body).not.toContain('Erlös bei Ankunft');
+    expect(body).not.toContain('Strafe');
   });
 
   it('die Projektkarte zeigt Angebote und den Fortschritt', () => {

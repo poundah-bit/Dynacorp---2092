@@ -179,8 +179,10 @@ function service(w: World, r: Route, s: Ship): string {
     const done = repairShip(w, r.owner, s.id);
     return done.ok ? 'Linienschiff in Wartung auf Terra' : `Wartung nicht bezahlbar (${fmt(repairShipCost(s))} Cr)`;
   }
-  if (onsiteService(w, r.owner) && s.at) {
-    const cost = Math.round(repairShipCost(s) * CONFIG.automation.onsiteServiceFactor);
+  // Großwerft: at a planet with an own plant, on the spot at the yard price (from level I)
+  const yard = !!s.at && hasProject(w, r.owner, 'yard') && w.facilities.some((f) => f.owner === r.owner && f.planet === s.at);
+  if ((yard || onsiteService(w, r.owner)) && s.at) {
+    const cost = Math.round(repairShipCost(s) * (yard ? 1 : CONFIG.automation.onsiteServiceFactor));
     if (company(w, r.owner).cash < cost) return `Wartung nicht bezahlbar (${fmt(cost)} Cr)`;
     pay(w, r.owner, null, cost);
     s.phase = 'repair';
