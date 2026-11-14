@@ -48,7 +48,7 @@ import {
   unshippedDemands,
   waitingTransports,
 } from './play';
-import { PROJECTS, QUARK_NAME, campaignOf, campaignValue, closableQuarks, canQueue, daysUntilFree, latePenaltyRate, transport, automationLevel, automationName, buildingProject, hasProject, lineRoute, nextAutomation, projectState, quarkStatus, routeLimit, routeName, serviceLimit, storyStrength, unitOf, unshippedAmount, type Flavour, type StoryEvent } from '../sim/index';
+import { PROJECTS, QUARK_NAME, canCancelOverdue, campaignOf, campaignValue, closableQuarks, canQueue, daysUntilFree, latePenaltyRate, transport, automationLevel, automationName, buildingProject, hasProject, lineRoute, nextAutomation, projectState, quarkStatus, routeLimit, routeName, serviceLimit, storyStrength, unitOf, unshippedAmount, type Flavour, type StoryEvent } from '../sim/index';
 import { chainDetail, chainSvg } from './chain';
 import {
   cr,
@@ -710,9 +710,20 @@ export function ordersView({ w, me }: ViewCtx): string {
   const mine = w.demands
     .filter((d) => d.requester === me && ['open', 'accepted', 'shipping'].includes(d.status))
     .map((d) => {
-      const state = d.status === 'open' ? 'Offen – wartet auf einen Lieferanten' : d.own ? 'Aus eigener Anlage' : `Liefert ${who(w, d.supplier)}`;
+      const overdue = d.status !== 'open' && !d.own && w.day > d.deadlineDay;
+      const drop = d.deadlineDay + CONFIG.orders.overdueCancelDays + 1;
+      const state =
+        d.status === 'open'
+          ? 'Offen – wartet auf einen Lieferanten'
+          : d.own
+            ? 'Aus eigener Anlage'
+            : `Liefert ${who(w, d.supplier)}${overdue ? ` · <span class="bad">Frist überzogen</span> – ohne Lieferung automatisch storniert ${(n => (n === 1 ? 'in 1 Tag' : `in ${num(n)} Tagen`))(Math.max(1, drop - w.day))}` : ''}`;
+      const comp = Math.round((d.amount - (d.delivered ?? 0)) * d.pricePerFe * CONFIG.orders.overdueCompensation);
+      const cancel = canCancelOverdue(w, d)
+        ? btn('Stornieren', 'cancel-overdue', d.id, `class="ghost" data-tip="Storniert die überfällige Lieferung. ${who(w, d.supplier)} zahlt dir ${num(comp)} Cr Entschädigung (${Math.round(CONFIG.orders.overdueCompensation * 100)} % des Warenwerts), und du kannst neu bestellen."`)
+        : '';
       return `<div class="row"><div class="grow">${cargoIcon(good(d.good).cargo)} <b>${amt(d.amount, d.good)} ${gName(d.good)}</b> nach ${pName(w, d.toPlanet)} <span class="price">${perUnit(d.pricePerFe, d.good)}</span>${d.status === 'open' ? '' : deadlineBar(w, d.deadlineDay)}<div class="small">${state}</div></div>
-      <div class="acts">${d.status === 'open' ? btn('Stornieren', 'cancel-demand', d.id, 'class="ghost"') : ''}</div></div>`;
+      <div class="acts">${d.status === 'open' ? btn('Stornieren', 'cancel-demand', d.id, 'class="ghost"') : cancel}</div></div>`;
     })
     .join('');
 

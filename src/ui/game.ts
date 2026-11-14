@@ -13,6 +13,7 @@ import {
   buyFacility,
   buyShip,
   cancelDemand,
+  cancelOverdue,
   abortProject,
   unqueueTransport,
   cancelTransport,
@@ -650,6 +651,7 @@ const ACTS: Record<string, (a: string) => void> = {
   carry: (id) => openSheet(S.carrySheet(w!, me, id)),
   arrange: (id) => openSheet(S.arrangeSheet(w!, me, id)),
   'cancel-demand': (id) => result(cancelDemand(w!, me, id), 'Nachfrage storniert.'),
+  'cancel-overdue': (id) => result(cancelOverdue(w!, me, id), 'Lieferung storniert – du kannst neu bestellen.'),
 };
 
 // sheet buttons that switch state should also close the sheet
