@@ -381,6 +381,7 @@ Die Reihenfolge folgt dem Architektur-Grundsatz: Erst muss die Wirtschaft ohne G
 | 2 · Volle Wirtschaft und Balancing | 20 KI-Firmen, alle 17 Anlagen und 19 Schiffe, 21 Welten, Terra-Nachfrage; Firmenindex, Gravo-Stürme, Wirtschaftskrise; Werte gegen die Zielwerte justiert | KI-Firmen halten die Wirtschaft im Endlosspiel stabil (1.000 Tage) | ✅ fertig (Zielwerte bei Grundpreisen erreicht) |
 | 3 · Touch-Oberfläche | sechs Tabs, Sternkarte, Ketten-Graph, Auftrags-Benachrichtigung, Zeitsteuerung, Tutorial, Autosave, 10 Speicherplätze | Testrunde auf Tablet und Smartphone ohne Handbuch | umgesetzt, Testrunde offen |
 | 4 · Veröffentlichung | PWA über GitHub Pages, APK über Capacitor in GitHub Releases, optional F-Droid; danach Szenarien, Daueraufträge, ggf. Online-Mehrspieler | – | offen |
+| 5 · Endgame: Großprojekte und Modulwelten | teure Großprojekte mit Prestige; abgeschlossene Welten werden zu festen Modulen, neue Welten mit eigenen Waren, Endziel: alle sechs Quark-Sorten, je eine Modulwelt pro Sorte (Abschnitt „Vision: Großprojekte und Modulwelten“) | – | Vision, noch nicht entworfen |
 
 Jede Phase endet mit einem prüfbaren Tor; Phase 0 trägt das größte Risiko, weil die offenen Punkte zur Balance dort geklärt werden müssen.
 
@@ -566,3 +567,107 @@ Konzept: `docs/superpowers/specs/2026-11-12-automatisierung-konzept.md`.
 | Grenzen | nur eigene Anlagen, kein Terra, keine fremden Firmen; die KI kauft keine Logistikzentrale | das Spiel soll sich nicht selbst spielen |
 | Linienschiffe nach der Fahrt | fliegen zurück zur Quelle und warten dort; vor jeder Fahrt Wartung, wenn der Zustand unter der Wartungsgrenze der Route liegt (35–90 %, Vorgabe 60 %, pro Route einstellbar) | echte Automation ohne liegengebliebene Schiffe; Spieler behält die Kontrolle (Rocco) |
 | Wartungsort | Stufe I: Werft auf Terra (Umweg); ab Stufe II Wartung vor Ort an Quelle oder Ziel für 150 % des Werftpreises | spürbarer Vorteil des Ausbaus (Rocco) |
+
+## Vision: Großprojekte und Modulwelten (Endgame)
+
+Stand: 2026-11-14 · Status: Vision aus dem Gespräch mit Rocco, noch kein Entwurf. Vor dem Bau wird jeder Teil wie üblich entworfen und freigegeben.
+
+### Ausgangslage
+
+- Im Spieltest bringen große Aufträge in einer gut ausgebauten Wirtschaft sehr viel Geld, aber das Geld hat ab da **keinen sinnvollen Gegenwert** mehr (Rocco).
+- Die Logistikzentrale funktioniert im Midgame sehr gut: ein teures Sparziel mit spürbarer Belohnung (Rocco). Davon braucht das Spiel mehr, und zwar Ziele, deren Preise mit dem Spiel mitwachsen.
+- Das Spiel braucht einen langen Bogen: erst die Grundlagen in einer kleinen Welt lernen, dann eine neue Ebene erleben.
+
+### Stufe 1: Großprojekte
+
+- Sehr teure Ziele in der heutigen Spielwelt, deren Preise mit dem Vermögen bzw. dem Spielfortschritt skalieren: z. B. Ausbau des Raumhafens auf Terra, ein Sternentor, eine Forschungsstation.
+- Jedes Großprojekt bringt einen dauerhaften Vorteil oder **Prestige** – einen zusätzlichen Wert, den man erreichen kann (Rocco: „sehr gut“).
+- Lässt sich in der bestehenden Welt bauen und löst das Geldproblem sofort; empfohlen als erster Schritt vor den Modulwelten. Später können Großprojekte das Endziel in der Mitte der Gesamtübersicht bilden.
+
+### Stufe 2: Modulwelten
+
+**Grundidee (Rocco):** Ist eine Spielwelt durch das Micromanagement so weit ausgebaut, dass sie für sich läuft, wird sie als **Modul** abgeschlossen. Ihr Ausstoß wird festgelegt – z. B. was dort dominiert: Roboter, Maschinen oder Medizin. Danach zoomt man aus der Karte heraus und startet eine neue kleine Spielwelt als nächstes Modul. So entstehen mehrere Modulwelten (sechs, siehe unten), im Kreis angeordnet, die zusammen ein großes Endziel in der Mitte des Bildschirms ermöglichen: jedes Modul überträgt seine Spezialität zur Mitte.
+
+**Entschieden (Rocco):**
+
+- Ein abgeschlossenes Modul ist **fest**: nachträglich lässt sich nichts mehr ändern.
+- Dadurch wird ein Modul nicht weiter simuliert, sondern **eingefroren** – sein Ausstoß (z. B. Durchschnitt der letzten Tage) wird zu einer festen Zahl. Es müssen also nie mehrere Welten gleichzeitig berechnet werden; das hält das Spiel auf dem Tablet flüssig.
+- Die Wahl, mit welchem Ausstoß eine Welt abgeschlossen wird, ist eine **strategische Entscheidung**: Der Spieler löst ein Rätsel oder beeinflusst zumindest das Zusammenwirken der Module. (Details überlegt Rocco noch.)
+
+**Heranführung (Rocco):**
+
+- Schon in der ersten Welt ist das große Bild zu erahnen: Die noch nicht gebauten Modulwelten sind in der Gesamtübersicht angedeutet, und beim Tippen oder Darüberfahren zeigen sie ihre **Zielangaben**.
+- Der Spieler lernt zuerst die Grundlagen in der kleinen Welt. Hat er sie gemeistert und abgeschlossen, öffnet sich **plötzlich der weite Horizont** – das Herauszoomen auf die Gesamtübersicht hebt das Spiel auf eine neue Ebene.
+- Damit das Rätsel sich wie Strategie anfühlt und nicht wie Zufall, muss vor dem Abschluss einer Welt sichtbar sein, was die Mitte noch braucht.
+
+**Neue Warenwelten (Rocco):**
+
+- Die nächsten Modulwelten bekommen **eigene Rohstoffe, Zwischen- und Endprodukte**. Die Spielmechanik bleibt ähnlich wie in der ersten Welt (Förderung → Verarbeitung → Endprodukt, Börse, Transporte), aber jede Welt bekommt einen komplett neuen Touch.
+- Die Daten-Architektur passt dazu: Waren, Anlagen, Schiffe und Planeten stehen schon in `src/data/*.json`, Planeten werden im Code erzeugt. Eine neue Welt ist im Kern ein neuer Datensatz plus eigene Planetenoptik.
+- Ideen für Themen (nur Anregungen): eine Ozean- und Biowelt (Algen, Salz, Biokunststoff …), eine Fusionswelt (Deuterium, Helium-3, Supraleiter, Fusionszellen), eine Welt exotischer Materie für das späte Spiel.
+- Spannend: Ein fertiges Modul beeinflusst die nächste Welt (z. B. macht eine Roboterwelt Roboter in der nächsten Welt günstiger). Dann zählt auch die Reihenfolge.
+
+### Das Endziel: alle sechs Quarks – das Standardmodell vervollständigen
+
+Rocco ist Astrophysik-Fan; der Anspruch ist **wissenschaftlich korrekt, aber spielerisch verpackt**. Vereinfachen ist erlaubt, Falsches behaupten nicht. Spieler sollen nebenbei etwas lernen.
+
+**Entschieden (Rocco):** Jede Quark-Sorte muss **genau einmal** erzeugt werden; erst wenn alle sechs da sind, ist das Endziel erreicht. Es gibt damit einen einzigen Gesamtlösungsweg – gut planbar. Daraus folgt: **sechs Modulwelten**.
+
+Physik dahinter (Stand der Teilchenphysik):
+
+- **Sechs Sorten („Flavours“)** in drei Generationen: up/down, charm/strange, top/bottom. Sie sind sehr unterschiedlich schwer – up und down wenige MeV, das Top-Quark mit rund 173 GeV das schwerste bekannte Elementarteilchen.
+- **Elektrische Ladung:** up, charm, top tragen +⅔ („up-artig“), down, strange, bottom −⅓ („down-artig“) der Elementarladung.
+- **Farbladung und Confinement:** jedes Quark trägt Rot, Grün oder Blau; Quarks kommen nur in „farblosen“ Verbindungen vor. Die Farben bleiben als Gestaltungsmittel für die bunte Gesamtübersicht.
+- **Warum kein Teilchen aus allen sechs:** Das Top-Quark zerfällt nach etwa 5·10⁻²⁵ s, bevor es sich mit anderen Quarks verbinden kann. Das Endziel ist deshalb kein Teilchen, sondern **„Das Standardmodell vervollständigen“**: ein großer Teilchenbeschleuniger in der Mitte weist alle sechs Sorten nach.
+- **Dramaturgie aus der Geschichte:** up, down und strange wurden 1968 nachgewiesen, charm 1974, bottom 1977, top erst 1995 – das schwerste zuletzt. (Das frühere Gedankenspiel mit dem Pentaquark, vier Quarks und ein Antiquark, 2015 am CERN nachgewiesen, ist damit vom Tisch: es enthält Sorten doppelt.)
+
+### Wie eine Welt zu einem Quark wird
+
+**Entschieden (Rocco):** Der Ausgang jeder Modulwelt ist **offen** – jede Welt kann jede Sorte werden. Eine Anzeige im Statusbalken zeigt, in welche Quark-Richtung sich die Welt gerade entwickelt. Einen guten Trend bestärkt man, sonst baut man die Welt um. Ist der Balken voll, schließt sich die Modulwelt, und die nächste beginnt.
+
+**Zwei Achsen, sechs Felder** (Vorschlag, nach Ladung und Masse der Quarks):
+
+| | Industrie (up-artig) | Versorgung (down-artig) |
+|---|---|---|
+| leicht | up | down |
+| mittel | charm | strange |
+| schwer | top | bottom |
+
+- **Ladung = Ausrichtung:** Anteil von Industriegütern (z. B. Roboter, Maschinen, Plastikwaren) gegenüber Versorgungsgütern (z. B. Medikamente, Nahrung, Getränke) an dem, was die Welt liefert. Welche Waren zu welcher Seite zählen, legt jede Warenwelt in ihren Daten fest.
+- **Masse = Gewicht der Wirtschaft:** z. B. Wert pro Einheit und Länge der Ketten. Wer von Rohstoffen und einfachen Waren lebt, ist leicht; lange Ketten und teure Endprodukte sind schwer.
+- Daraus ergibt sich eine natürliche Schwierigkeit: eine junge, kleine Welt landet eher bei up oder down, ein Top-Quark verlangt eine große Hochwert-Industrie.
+
+**Der Balken** (Vorschlag):
+
+- Er füllt sich mit dem, was die Welt liefert (Wert der Lieferungen) – ein Augenzwinkern an E = mc²: schwere Quarks brauchen mehr „Energie“.
+- Statusbalken: Trend und Füllstand, z. B. `Quark-Trend: ◐ charm ▓▓▓▓▓▓▓░░░ 68 %`; langes Drücken zeigt die Details (Anteil Industrie/Versorgung, Gewicht, was zur nächsten Sorte fehlt).
+- **Er kann sinken (Rocco):** Der Balken bildet den Zustand der Welt ab, keinen gesammelten Fortschritt. Ändert sich die Produktion – durch Umbau, eine Rezession oder einen Wissenschaftsdurchbruch aus den Story-Ereignissen –, wandert der Trend und der Balken verliert. Vorschlag zur Umsetzung: jede der sechs Sorten hat ihren eigenen Speicher, der mit den passenden Lieferungen wächst und langsam abklingt; die führende Sorte ist der Trend. So gibt es Trägheit statt Sprüngen.
+- **Keine doppelten Quarks (Rocco):** Eine schon erzeugte Sorte ist in der Anzeige ausgegraut, ihr Speicher wächst nicht. Zeigt der Trend dorthin, muss man umbauen.
+- **Vorwarnung:** bei etwa 90 % eine Meldung („Deine Welt verdichtet sich zu einem Charm-Quark“), damit man noch gegensteuern kann. Bei 100 % schließt sich die Welt.
+
+**Startbedingungen (Rocco):** Jede Modulwelt kann von Beginn an eine Tendenz in sich tragen – etwa Rohstoffe, die Landwirtschaft mehr fördern als andere Technologien. Dadurch sind andere Waren knapper.
+
+**Garantie: der Spieler entscheidet immer selbst (Rocco: „spieltechnisch sicherstellen“).** Vorschläge, wie das gesichert wird:
+
+- Eine Tendenz verändert nur Kosten, Entfernungen und Häufigkeiten, nie die Verfügbarkeit: in jeder Welt sind die Ketten für Industrie und für Versorgung vollständig baubar, auch die langen, schweren.
+- Mit den Grenzen einer Firma (heute höchstens 10 Standorte) muss jede der sechs Ecken erreichbar sein; das wird für jede Warenwelt geprüft.
+- Wer sich auf eine Richtung konzentriert, füllt den Balken schneller, als er abklingt – die Abklingrate wird so gewählt.
+- Story-Ereignisse schieben nur zeitweise (sie haben eine begrenzte Dauer) und blockieren nie dauerhaft.
+- Ein automatischer Test erzeugt viele Startwelten und prüft, dass in jeder alle noch freien Sorten erreichbar sind – so wie heute die 1.000-Tage-Läufe die Wirtschaft prüfen.
+
+**Warenwelten und Generationen:** Weil jede Welt jede Sorte werden kann, ist eine Warenwelt nicht mehr an eine Generation gebunden. Die Themen (z. B. Ozean- und Biowelt, Fusionswelt, exotische Materie) sorgen für Abwechslung und unterschiedliche Startbedingungen; manche Themen machen bestimmte Sorten leichter, keine macht eine unmöglich.
+
+### Technische Leitplanken
+
+- Ein Modul ist ein eingefrorener Datensatz (Sorte, Farbe, Ausstoß, Kennzahlen, Name), keine laufende Simulation.
+- Ein neuer Spielstand-Typ „Kampagne“ enthält die festen Module und die gerade laufende Welt; der heutige Spielstand bleibt die Einzelwelt.
+- Modulwelten sollten kleiner bzw. kürzer sein als die heutige Welt, sonst wird das ganze Spiel sehr lang (Richtwert offen).
+- Die Phase-Tore (Wirtschaft stabil, Balance) gelten für jede neue Warenwelt eigens.
+
+### Offene Fragen
+
+- Genaue Messgrößen der beiden Achsen (welche Waren Industrie bzw. Versorgung sind, wie „Gewicht“ berechnet wird) und die Grenzen zwischen leicht, mittel und schwer.
+- Wie viel „Energie“ jede Sorte braucht und wie schnell die Speicher abklingen.
+- Wie stark ein abgeschlossenes Modul die nächsten Welten beeinflusst.
+- Wie lang eine Modulwelt dauern soll.
+- Reihenfolge der Umsetzung: Großprojekte zuerst (empfohlen), Modulwelten als große Erweiterung nach der Veröffentlichung.
