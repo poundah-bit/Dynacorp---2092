@@ -389,3 +389,47 @@ describe('Bauphase', () => {
     expect(said()).toBe(1);
   });
 });
+
+// ---------- Orbitaldock in der Flotte ----------
+
+import { fleetView } from '../src/ui/views';
+
+describe('Orbitaldock in der Flotte', () => {
+  it('mit Orbitaldock keine kostenpflichtige Reparatur-Vormerkung mehr', () => {
+    const { w, me } = rich();
+    const s = buyShip(w, me, 'tank-a');
+    if (!s.ok) throw new Error(s.error);
+    Object.assign(s.value, { at: 'vesta-nova', condition: 60 });
+    const html = () => fleetView({ w, me } as never);
+    expect(html()).toContain('Beim nächsten Terra-Stopp reparieren');
+    expect(startProject(w, me, 'dock').ok).toBe(true);
+    w.projects![0]!.buildDaysLeft = 1;
+    projectsTick(w);
+    expect(html()).not.toContain('Beim nächsten Terra-Stopp reparieren');
+    expect(html()).toContain('Zur Reparatur nach Terra');
+    expect(html()).toContain('kostenlos');
+  });
+});
+
+// ---------- Prestige und Firmenindex ----------
+
+import { indexParts } from '../src/sim/index';
+import { projectsCard, statsView } from '../src/ui/views';
+
+describe('Prestige im Firmenindex', () => {
+  it('die Teile ergeben den Index; Prestige zählt 1:1', () => {
+    const { w, me } = rich();
+    company(w, me).prestige = 5000;
+    const p = indexParts(w, me);
+    expect(p.prestige).toBe(5000);
+    expect(Math.abs(p.value + p.profit + p.reputation + p.prestige - companyIndex(w, me))).toBeLessThanOrEqual(2);
+  });
+
+  it('Projektkarte nennt den Indexgewinn, die Rangliste erklärt den eigenen Index', () => {
+    const { w, me } = rich();
+    expect(projectsCard(w, me)).toContain('+5.000 Prestige (= +5.000 Firmenindex)');
+    company(w, me).prestige = 5000;
+    const html = statsView({ w, me, priceTrend: () => 0, chainGood: '' } as never);
+    expect(html).toMatch(/data-tip="Firmenindex = Firmenwert [\d.]+ · Gewinn -?[\d.]+ · Ruf [\d.]+ · Prestige 5\.000"/);
+  });
+});

@@ -624,6 +624,17 @@ export function companyIndex(w: World, companyId: string): number {
   return Math.max(0, Math.round(raw / 1000));
 }
 
+/** The parts of the Firmenindex in index points (rounded; their sum can differ from the index by rounding). */
+export function indexParts(w: World, companyId: string): { value: number; profit: number; reputation: number; prestige: number } {
+  const c = company(w, companyId);
+  return {
+    value: Math.round(companyValue(w, companyId) / 1000),
+    profit: Math.round((0.5 * (c.revenue - c.expenses)) / 1000),
+    reputation: Math.round((c.reputation * 5000) / 1000),
+    prestige: c.prestige ?? 0,
+  };
+}
+
 export function ranking(w: World) {
   return w.companies
     .map((c) => ({ id: c.id, name: c.name, index: companyIndex(w, c.id), cash: Math.round(c.cash), debt: debt(w, c.id), bankrupt: c.bankrupt }))
