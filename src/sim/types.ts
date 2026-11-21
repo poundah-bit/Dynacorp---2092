@@ -200,6 +200,8 @@ export interface Ship {
   critical?: boolean;
   /** Folgeauftrag: transport the ship starts as soon as it is free (player only) */
   next?: string;
+  /** further transports of the same route that ride along on the Folgeauftrag trip */
+  nextJoined?: string[];
 }
 
 export interface LogEntry {

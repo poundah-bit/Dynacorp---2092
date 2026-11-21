@@ -41,6 +41,9 @@ import {
   type Result,
   type Ship,
   type World,
+  canJoin,
+  nextRoom,
+  nextLoads,
 } from '../sim/index';
 import {
   plannableShips,
@@ -115,6 +118,14 @@ const soonLabel = (w: World, s: Ship, l: Load) =>
   `<b>${shipDef(s.model).name} #${s.id.slice(1)}</b> – ${qty(shipDef(s.model).capacity, l.cargo)} Laderaum – <span class="warn">frei in ${days(daysUntilFree(w, s) ?? 0)}</span> (Folgeauftrag)<br><small>Ankunft am Ziel ${inDays(queuedTripDays(w, s, l.from, l.to, l.readyIn))}</small>`;
 
 /** One ship for one load (a facility from Terra, another company's transport). */
+/** A ship that flies this route already – now (rides along) or on its booked next trip. */
+function alongLabel(w: World, s: Ship, l: Load): string {
+  const name = `<b>${shipDef(s.model).name} #${s.id.slice(1)}</b>`;
+  if (nextLoads(w, s).length && !canJoin(w, s, { cargo: l.cargo, amount: 1, fromPlanet: l.from, toPlanet: l.to }))
+    return `${name} – fliegt diese Strecke als nächste Fahrt, noch ${qty(nextRoom(w, s), l.cargo)} frei<br><small>Kommt zur Folgefahrt dazu – frei in ${days(daysUntilFree(w, s) ?? 0)}, Ankunft am Ziel ${inDays(queuedTripDays(w, s, l.from, l.to, l.readyIn))}</small>`;
+  return `${name} – fliegt diese Strecke schon, noch ${qty(shipRoom(w, s), l.cargo)} frei<br><small>Die Ladung kommt dazu – ein Flug für mehrere Aufträge</small>`;
+}
+
 function choiceBlock(w: World, me: string, l: Load): string {
   let pick = defaultChoice(w, me, l.cargo, l.amount, l.from, l.allowBuy, l.to);
   // nothing free and no public posting here: the first ship that is free soon is the sensible pick
@@ -125,7 +136,7 @@ function choiceBlock(w: World, me: string, l: Load): string {
   const radio = (value: string, label: string, disabled = false) =>
     `<label class="opt${disabled ? ' dim' : ''}"><input type="radio" name="how" value="${value}" ${value === pick ? 'checked' : ''} ${disabled ? 'disabled' : ''}><span>${label}</span></label>`;
   const along = joinableShips(w, me, l.cargo, l.from, l.to, l.amount)
-    .map((s) => radio(`ship:${s.id}`, `<b>${shipDef(s.model).name} #${s.id.slice(1)}</b> – fliegt diese Strecke schon, noch ${qty(shipRoom(w, s), l.cargo)} frei<br><small>Die Ladung kommt dazu – ein Flug für mehrere Aufträge</small>`))
+    .map((s) => radio(`ship:${s.id}`, alongLabel(w, s, l)))
     .join('');
   const own = along + idleFittingShips(w, me, l.cargo, l.amount)
     .map((s) => ({ s, d: tripDays(w, shipDef(s.model).speed, s.at ?? TERRA, l.from, l.to, l.readyIn) }))
@@ -158,8 +169,8 @@ function planBlock(w: World, me: string, l: Load): string {
   const pick = new Set(defaultPlan(w, me, l.cargo, l.amount, l.from, l.to).ships);
   const along = joinableShips(w, me, l.cargo, l.from, l.to)
     .map(
-      (s) => `<label class="opt"><input type="checkbox" name="ship" value="${s.id}" data-cap="${tripRoom(w, s)}" ${pick.has(s.id) ? 'checked' : ''}>
-        <span><b>${shipDef(s.model).name} #${s.id.slice(1)}</b> – fliegt diese Strecke schon, noch ${qty(tripRoom(w, s), l.cargo)} frei<br><small>Die Ladung kommt dazu – ein Flug für mehrere Aufträge</small></span></label>`,
+      (s) => `<label class="opt"><input type="checkbox" name="ship" value="${s.id}" data-cap="${tripRoom(w, s, l.from, l.to)}" ${pick.has(s.id) ? 'checked' : ''}>
+        <span>${alongLabel(w, s, l)}</span></label>`,
     )
     .join('');
   const ships =
