@@ -16,6 +16,10 @@ import {
   canJoin,
   canQueue,
   daysUntilFree,
+  canJoinNext,
+  nextLoads,
+  joinNext,
+  nextRoom,
   queueTransport,
   cargoName,
   company,
@@ -118,7 +122,8 @@ export function cheapestShipFor(cargo: Cargo, amount: number): ShipDef | undefin
  * on the same trip (e.g. several small orders from one plant to Terra on one big tanker).
  */
 export function joinableShips(w: World, me: string, cargo: Cargo, from: string, to: string, amount = 1): Ship[] {
-  return plannableShips(w, me).filter((s) => canJoin(w, s, { cargo, amount, fromPlanet: from, toPlanet: to }));
+  const t = { cargo, amount, fromPlanet: from, toPlanet: to };
+  return plannableShips(w, me).filter((s) => canJoin(w, s, t) || canJoinNext(w, s, t));
 }
 
 /** Can the player carry this transport: with an idle ship now, a busy one later, or not at all? */
@@ -231,8 +236,16 @@ export interface ShipPlan {
 const fail = (error: string): Result<never> => ({ ok: false, error });
 
 /** Hold a ship offers for a new load: all of it when idle, the rest when it is already booked for the trip. */
-export const tripRoom = (w: World, s: Ship) =>
-  s.phase === 'idle' || canQueue(w, s) ? shipDef(s.model).capacity : shipRoom(w, s);
+/**
+ * Room a ship offers for a load of this route: the running trip if it flies the route and can still take
+ * loads, else its booked next trip on the route, else a whole empty hold (idle or free soon).
+ */
+export function tripRoom(w: World, s: Ship, from?: string, to?: string): number {
+  const leg = from && to ? { cargo: shipDef(s.model).cargo, amount: 1, fromPlanet: from, toPlanet: to } : undefined;
+  if (leg ? canJoin(w, s, leg) : s.phase === 'toPickup' || s.phase === 'loading') return shipRoom(w, s);
+  if (nextLoads(w, s).length) return leg && !canJoinNext(w, s, leg) ? 0 : nextRoom(w, s);
+  return s.phase === 'idle' || canQueue(w, s) ? shipDef(s.model).capacity : shipRoom(w, s);
+}
 
 /** Own ships that will be free within `ships.queueDays` and can take a Folgeauftrag of this cargo and size. */
 export function soonFreeShips(w: World, me: string, cargo: Cargo, amount = 1): Ship[] {
@@ -245,7 +258,10 @@ export function soonFreeShips(w: World, me: string, cargo: Cargo, amount = 1): S
 export function sendShip(w: World, me: string, shipId: string, transportId: string): Result<undefined> {
   const s = w.ships.find((x) => x.id === shipId);
   const t = transport(w, transportId);
-  if (s && t && s.phase !== 'idle' && !canJoin(w, s, t) && canQueue(w, s, t)) return queueTransport(w, me, shipId, transportId);
+  if (s && t && s.phase !== 'idle' && !canJoin(w, s, t)) {
+    if (canJoinNext(w, s, t)) return joinNext(w, me, shipId, transportId);
+    if (canQueue(w, s, t)) return queueTransport(w, me, shipId, transportId);
+  }
   return assignShip(w, me, shipId, transportId);
 }
 
@@ -288,8 +304,9 @@ function checkPlan(w: World, me: string, d: Demand, from: string, plan: ShipPlan
     const s = w.ships.find((x) => x.id === id);
     if (!s || s.owner !== me) return fail('Schiff nicht gefunden.');
     if (shipDef(s.model).cargo !== cargo) return fail(`${shipDef(s.model).name} transportiert kein ${cargoName(cargo)}.`);
-    if (s.phase !== 'idle' && !canJoin(w, s, { cargo, amount: 1, fromPlanet: from, toPlanet: d.toPlanet }) && !canQueue(w, s)) return fail(`${shipDef(s.model).name} ist nicht mehr frei.`);
-    rest -= tripRoom(w, s);
+    const leg = { cargo, amount: 1, fromPlanet: from, toPlanet: d.toPlanet };
+    if (s.phase !== 'idle' && !canJoin(w, s, leg) && !canJoinNext(w, s, leg) && !canQueue(w, s)) return fail(`${shipDef(s.model).name} ist nicht mehr frei.`);
+    rest -= tripRoom(w, s, from, d.toPlanet);
   }
   rest = Math.max(0, rest);
   if (rest > 0 && plan.rest === 'public' && plan.fee !== undefined) {
@@ -309,7 +326,7 @@ export function shipDemand(w: World, me: string, demandId: string, plan: ShipPla
   if (!pre.ok) return pre;
   const ships = [...new Set(plan.ships)]
     .map((id) => w.ships.find((x) => x.id === id)!)
-    .map((s) => ({ s, room: tripRoom(w, s) }))
+    .map((s) => ({ s, room: tripRoom(w, s, from.planet, d.toPlanet) }))
     .sort((a, b) => b.room - a.room);
   const out: Transport[] = [];
   for (const { s, room } of ships) {
@@ -367,11 +384,12 @@ export function shipAll(w: World, me: string, demandId: string, shipIds: string[
     // a ship already on this route takes the load along; a chosen ship that stayed idle starts the trip
     const s =
       ships.find((s) => canJoin(w, s, load)) ??
+      ships.find((s) => canJoinNext(w, s, load)) ??
       ships.find((s) => s.phase === 'idle' && shipDef(s.model).cargo === load.cargo && shipDef(s.model).capacity >= load.amount && s.condition >= CONFIG.ships.criticalBelow);
     if (!s) continue;
     const t = postTransportForDemand(w, me, x.id, 'own', undefined, load.amount);
     if (!t.ok) return t;
-    const a = assignShip(w, me, s.id, t.value.id);
+    const a = sendShip(w, me, s.id, t.value.id);
     if (!a.ok) return a;
     count += 1;
     amount += load.amount;
@@ -402,7 +420,7 @@ export function defaultPlan(w: World, me: string, cargo: Cargo, amount: number, 
   for (const s of [...joining, ...idle]) {
     if (left <= 0) break;
     ships.push(s.id);
-    left -= tripRoom(w, s);
+    left -= tripRoom(w, s, at, to);
   }
   return { ships, rest: 'public' };
 }

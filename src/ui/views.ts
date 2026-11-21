@@ -49,7 +49,7 @@ import {
   unshippedDemands,
   waitingTransports,
 } from './play';
-import { PROJECTS, QUARK_NAME, canCancelOverdue, campaignOf, campaignValue, closableQuarks, canQueue, daysUntilFree, latePenaltyRate, transport, automationLevel, automationName, buildingProject, hasProject, lineRoute, nextAutomation, projectState, quarkStatus, routeLimit, routeName, serviceLimit, storyStrength, unitOf, unshippedAmount, type Flavour, type StoryEvent } from '../sim/index';
+import { PROJECTS, QUARK_NAME, canCancelOverdue, canJoinNext, nextLoads, campaignOf, campaignValue, closableQuarks, canQueue, daysUntilFree, latePenaltyRate, transport, automationLevel, automationName, buildingProject, hasProject, lineRoute, nextAutomation, projectState, quarkStatus, routeLimit, routeName, serviceLimit, storyStrength, unitOf, unshippedAmount, type Flavour, type StoryEvent } from '../sim/index';
 import { chainDetail, chainSvg } from './chain';
 import {
   cr,
@@ -516,14 +516,15 @@ export function fleetView({ w, me, order }: ViewCtx): string {
               .join('') +
             // soon free: book the next job now (Folgeauftrag)
             waiting
-              .filter((t) => canQueue(w, s, t))
+              .filter((t) => canQueue(w, s, t) || canJoinNext(w, s, t))
               .map((t) =>
                 btn(`Danach: ${loadName(w, t)} ${pName(w, t.fromPlanet)} → ${pName(w, t.toPlanet)}`, 'assign', `${s.id}|${t.id}`, `data-tip="Folgeauftrag: das Schiff ist in ${days(daysUntilFree(w, s) ?? 0)} frei und fliegt dann direkt zum Abholort."`),
               )
               .join('');
-      const queued = s.next ? transport(w, s.next) : undefined;
-      const nextLine = queued
-        ? `<div class="small">${icon('travelling')} Danach: <b>${loadName(w, queued)}</b> ${pName(w, queued.fromPlanet)} → ${pName(w, queued.toPlanet)} ${btn('Lösen', 'unqueue', s.id, 'class="ghost" data-tip="Gibt den Folgeauftrag wieder frei – er wartet dann unter „Aufträge“ auf ein Schiff."')}</div>`
+      const queued = nextLoads(w, s);
+      const head = queued[0];
+      const nextLine = head
+        ? `<div class="small">${icon('travelling')} Danach: <b>${queued.length > 1 ? `${queued.length} Aufträge, ${qty(queued.reduce((sum, x) => sum + x.amount, 0), head.cargo)}` : loadName(w, head)}</b> ${pName(w, head.fromPlanet)} → ${pName(w, head.toPlanet)} ${btn('Lösen', 'unqueue', s.id, 'class="ghost" data-tip="Gibt die vorgemerkte Folgefahrt wieder frei – ihre Aufträge warten dann unter „Aufträge“ auf ein Schiff."')}</div>`
         : '';
       const atTerra = s.phase === 'idle' && s.at === TERRA;
       const worn = s.condition < 100;

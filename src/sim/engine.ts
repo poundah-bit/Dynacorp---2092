@@ -169,8 +169,6 @@ function shipsTick(w: World) {
         }
       }
     }
-    // a ship that has become free starts its Folgeauftrag right away
-    if (s.phase === 'idle' && s.next) startQueued(w, s);
     // Orbitaldock: every worn ship standing idle on Terra is repaired for free
     if (s.condition < 100 && s.phase === 'idle' && s.at === TERRA && hasProject(w, s.owner, 'dock')) {
       s.phase = 'repair';
@@ -187,6 +185,8 @@ function shipsTick(w: World) {
         log(w, s.owner, `Vorgemerkte Reparatur des ${def.name} nicht möglich: ${r.error}`, 2);
       }
     }
+    // a ship that has become free starts its Folgeauftrag right away (after a repair marked or due on Terra)
+    if (s.phase === 'idle' && s.next) startQueued(w, s);
   }
 }
 
