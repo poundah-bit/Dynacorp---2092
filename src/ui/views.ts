@@ -49,7 +49,7 @@ import {
   unshippedDemands,
   waitingTransports,
 } from './play';
-import { PROJECTS, QUARK_NAME, canCancelOverdue, canJoinNext, nextLoads, campaignOf, campaignValue, closableQuarks, canQueue, daysUntilFree, latePenaltyRate, transport, automationLevel, automationName, buildingProject, hasProject, lineRoute, nextAutomation, projectState, quarkStatus, routeLimit, routeName, serviceLimit, storyStrength, unitOf, unshippedAmount, type Flavour, type StoryEvent } from '../sim/index';
+import { PROJECTS, QUARK_NAME, indexParts, canCancelOverdue, canJoinNext, nextLoads, campaignOf, campaignValue, closableQuarks, canQueue, daysUntilFree, latePenaltyRate, transport, automationLevel, automationName, buildingProject, hasProject, lineRoute, nextAutomation, projectState, quarkStatus, routeLimit, routeName, serviceLimit, storyStrength, unitOf, unshippedAmount, type Flavour, type StoryEvent } from '../sim/index';
 import { chainDetail, chainSvg } from './chain';
 import {
   cr,
@@ -310,7 +310,7 @@ export function projectsCard(w: World, me: string): string {
   const rows = PROJECTS.map((def) => {
     const st = projectState(w, def.id);
     const goods = Object.entries(def.materials);
-    const head = `<b>${def.name}</b> ${quarkTag(def.quark)} <span class="price">${cr(def.price)}</span> <span class="muted small">+${num(def.prestige)} Prestige</span>`;
+    const head = `<b>${def.name}</b> ${quarkTag(def.quark)} <span class="price">${cr(def.price)}</span> <span class="muted small">+${num(def.prestige)} Prestige (= +${num(def.prestige)} Firmenindex)</span>`;
     if (st?.status === 'done' && st.fromModule) return `<div class="row project done"><div class="grow">${head} <span class="good">aktiv aus Modul ${st.fromModule} ✓</span><div class="small">${def.effect}</div></div></div>`;
     if (st?.status === 'done') return `<div class="row project done"><div class="grow">${head} <span class="good">fertig ✓</span><div class="small">${def.effect}</div></div></div>`;
     if (st?.buildDaysLeft !== undefined) {
@@ -339,7 +339,7 @@ export function projectsCard(w: World, me: string): string {
       <div class="acts">${btn('Starten…', 'project-start', def.id, `${can ? 'class="primary"' : 'disabled'} data-tip="Schuldenfrei und aus Barkapital. Danach bestellt die Baustelle im Orbit von Terra ihre Waren an der Börse – aus eigenen Anlagen lieferst du kostenlos, liefert eine andere Firma, zahlst du den Marktpreis."`)}</div></div>`;
   }).join('');
   return `<section class="card projects"><h2>${icon('quark')} Großprojekte</h2>
-    <p class="hint">Teure Ziele für große Firmen: erst Geld, dann viele Waren aus einem Quark-Feld. Jedes fertige Projekt bringt Prestige im Firmenindex und einen Vorteil.${running ? '' : ' Es gibt eine Baustelle zur Zeit.'}</p>
+    <p class="hint">Teure Ziele für große Firmen: erst Geld, dann viele Waren aus einem Quark-Feld. Jedes fertige Projekt bringt Prestige – 1 Prestige zählt 1 Punkt im Firmenindex – und einen Vorteil.${running ? '' : ' Es gibt eine Baustelle zur Zeit.'}</p>
     ${rows}</section>`;
 }
 
@@ -755,10 +755,16 @@ export function ordersView({ w, me }: ViewCtx): string {
 
 // ---------- Statistik ----------
 
+/** Long-press explanation of the player's Firmenindex. */
+function indexTip(w: World, me: string): string {
+  const p = indexParts(w, me);
+  return ` data-tip="Firmenindex = Firmenwert ${num(p.value)} · Gewinn ${num(p.profit)} · Ruf ${num(p.reputation)} · Prestige ${num(p.prestige)}"`;
+}
+
 export function statsView({ w, me, priceTrend, chainGood }: ViewCtx): string {
   const rank = ranking(w)
     .map(
-      (r, i) => `<tr class="${r.id === me ? 'me' : ''}"><td>${i + 1}</td><td>${esc(r.name)}${r.bankrupt ? ' ✝' : ''}</td><td class="n">${num(r.index)}</td><td class="n ${r.cash < 0 ? 'bad' : ''}">${cr(r.cash)}</td><td class="n">${cr(r.debt)}</td>
+      (r, i) => `<tr class="${r.id === me ? 'me' : ''}"><td>${i + 1}</td><td>${esc(r.name)}${r.bankrupt ? ' ✝' : ''}</td><td class="n"${r.id === me ? indexTip(w, me) : ''}>${num(r.index)}</td><td class="n ${r.cash < 0 ? 'bad' : ''}">${cr(r.cash)}</td><td class="n">${cr(r.debt)}</td>
       <td class="n">${facilitiesOf(w, r.id).length}</td><td class="n">${shipsOf(w, r.id).length}</td></tr>`,
     )
     .join('');

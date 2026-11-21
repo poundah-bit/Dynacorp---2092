@@ -410,3 +410,26 @@ describe('Orbitaldock in der Flotte', () => {
     expect(html()).toContain('kostenlos');
   });
 });
+
+// ---------- Prestige und Firmenindex ----------
+
+import { indexParts } from '../src/sim/index';
+import { projectsCard, statsView } from '../src/ui/views';
+
+describe('Prestige im Firmenindex', () => {
+  it('die Teile ergeben den Index; Prestige zählt 1:1', () => {
+    const { w, me } = rich();
+    company(w, me).prestige = 5000;
+    const p = indexParts(w, me);
+    expect(p.prestige).toBe(5000);
+    expect(Math.abs(p.value + p.profit + p.reputation + p.prestige - companyIndex(w, me))).toBeLessThanOrEqual(2);
+  });
+
+  it('Projektkarte nennt den Indexgewinn, die Rangliste erklärt den eigenen Index', () => {
+    const { w, me } = rich();
+    expect(projectsCard(w, me)).toContain('+5.000 Prestige (= +5.000 Firmenindex)');
+    company(w, me).prestige = 5000;
+    const html = statsView({ w, me, priceTrend: () => 0, chainGood: '' } as never);
+    expect(html).toMatch(/data-tip="Firmenindex = Firmenwert [\d.]+ · Gewinn -?[\d.]+ · Ruf [\d.]+ · Prestige 5\.000"/);
+  });
+});
