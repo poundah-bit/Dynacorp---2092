@@ -527,15 +527,19 @@ export function fleetView({ w, me, order }: ViewCtx): string {
         ? `<div class="small">${icon('travelling')} Danach: <b>${queued.length > 1 ? `${queued.length} Aufträge, ${qty(queued.reduce((sum, x) => sum + x.amount, 0), head.cargo)}` : loadName(w, head)}</b> ${pName(w, head.fromPlanet)} → ${pName(w, head.toPlanet)} ${btn('Lösen', 'unqueue', s.id, 'class="ghost" data-tip="Gibt die vorgemerkte Folgefahrt wieder frei – ihre Aufträge warten dann unter „Aufträge“ auf ein Schiff."')}</div>`
         : '';
       const atTerra = s.phase === 'idle' && s.at === TERRA;
+      const dock = hasProject(w, me, 'dock');
       const worn = s.condition < 100;
       const loads = shipLoads(w, s);
       const room = loads.length && s.phase !== 'toDelivery' && s.phase !== 'unloading' ? shipRoom(w, s) : 0;
       const acts = [
         jobs,
         s.phase === 'idle' && !atTerra && !line ? btn('Nach Terra fliegen', 'to-terra', s.id) : '',
-        s.phase === 'idle' && !atTerra && worn ? btn('Zur Reparatur nach Terra', 'repair-trip', s.id) : '',
-        atTerra && worn ? btn(`Reparieren (${cr(repairShipCost(s))})`, 'repair-ship', s.id) : '',
-        !atTerra && worn && s.phase !== 'repair'
+        s.phase === 'idle' && !atTerra && worn
+          ? btn('Zur Reparatur nach Terra', 'repair-trip', s.id, dock ? 'data-tip="Orbitaldock: auf Terra wird das Schiff kostenlos repariert."' : '')
+          : '',
+        atTerra && worn && !dock ? btn(`Reparieren (${cr(repairShipCost(s))})`, 'repair-ship', s.id) : '',
+        // with the Orbitaldock every stop on Terra repairs for free: nothing to mark or pay
+        !dock && !atTerra && worn && s.phase !== 'repair'
           ? s.repairAtTerra
             ? btn('Reparatur vorgemerkt ✓ aufheben', 'repair-mark', `${s.id}|0`, 'class="on" data-tip="Hebt die Vormerkung auf; das Schiff wird auf Terra dann nicht automatisch repariert."')
             : btn(`Beim nächsten Terra-Stopp reparieren (~${cr(repairShipCost(s))})`, 'repair-mark', `${s.id}|1`, 'data-tip="Das Schiff fliegt weiter wie geplant und wird beim nächsten Halt auf Terra automatisch repariert."')

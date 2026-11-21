@@ -389,3 +389,24 @@ describe('Bauphase', () => {
     expect(said()).toBe(1);
   });
 });
+
+// ---------- Orbitaldock in der Flotte ----------
+
+import { fleetView } from '../src/ui/views';
+
+describe('Orbitaldock in der Flotte', () => {
+  it('mit Orbitaldock keine kostenpflichtige Reparatur-Vormerkung mehr', () => {
+    const { w, me } = rich();
+    const s = buyShip(w, me, 'tank-a');
+    if (!s.ok) throw new Error(s.error);
+    Object.assign(s.value, { at: 'vesta-nova', condition: 60 });
+    const html = () => fleetView({ w, me } as never);
+    expect(html()).toContain('Beim nächsten Terra-Stopp reparieren');
+    expect(startProject(w, me, 'dock').ok).toBe(true);
+    w.projects![0]!.buildDaysLeft = 1;
+    projectsTick(w);
+    expect(html()).not.toContain('Beim nächsten Terra-Stopp reparieren');
+    expect(html()).toContain('Zur Reparatur nach Terra');
+    expect(html()).toContain('kostenlos');
+  });
+});
