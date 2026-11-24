@@ -105,6 +105,10 @@ export interface Facility {
   reserved: Record<string, number>; // promised to accepted demands
   storages: string[]; // ids of extra storage modules (StorageDef)
   idleDays: number; // consecutive running days without production
+  /** repair in progress: manual repairs stop the plant, automatic ones (Automatische Fabriken) do not */
+  repair?: { daysLeft: number; auto: boolean };
+  /** days after a repair without wear */
+  freshDays?: number;
 }
 
 /** Something bought at Terra that still has to be flown to its destination. */

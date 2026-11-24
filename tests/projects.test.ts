@@ -140,16 +140,16 @@ describe('Großprojekte', () => {
 
   it('fertig: Prestige, Firmenindex steigt, keine neuen Aufträge', () => {
     const { w, me } = rich();
-    expect(startProject(w, me, 'clinic').ok).toBe(true);
+    expect(startProject(w, me, 'autofactory').ok).toBe(true);
     const index = companyIndex(w, me);
-    w.projects![0]!.delivered.medicine = 6250;
+    w.projects![0]!.delivered = { machines: 30_000, robots: 15_000 };
     for (let i = 0; i <= CONFIG.projects.buildDays; i++) projectsTick(w);
     expect(w.projects![0]!.status).toBe('done');
     expect(company(w, me).prestige).toBe(20_000);
     expect(companyIndex(w, me)).toBe(index + 20_000);
     projectsTick(w);
-    expect(orders(w, 'clinic').filter((d) => d.status === 'open')).toEqual([]);
-    expect(startProject(w, me, 'clinic')).toEqual({ ok: false, error: expect.stringContaining('schon gebaut') });
+    expect(orders(w, 'autofactory').filter((d) => d.status === 'open')).toEqual([]);
+    expect(startProject(w, me, 'autofactory')).toEqual({ ok: false, error: expect.stringContaining('schon gebaut') });
   });
 
   it('Abbrechen nimmt offene Aufträge zurück', () => {
@@ -222,7 +222,8 @@ describe('Vorteile der Großprojekte', () => {
     const w = createWorld({ seed: 2, stories: true, playerName: 'T', aiCompanies: 5 });
     run(w, 400);
     expect(w.stories!.events.map((e) => [e.cause, e.place, e.startDay])).toEqual([
-      ['habitatschaden', 'mirabel', 183], ['erzausfall', 'terra', 226], ['bauboom', 'polymer-ix', 280], ['modewelle', 'terra', 327], ['bauboom', 'vesta-nova', 381],
+      ['habitatschaden', 'mirabel', 183], ['erzausfall', 'terra', 226], ['modewelle', 'terra', 280], ['habitatschaden', 'arkadia', 324],
+      ['flottenausbau', 'terra', 357], ['duerre', 'sulcis', 394],
     ]);
   });
 
@@ -258,22 +259,6 @@ describe('Vorteile der Großprojekte', () => {
     expect(routeLimit(w, me)).toBe(CONFIG.automation.levels[0]!.routes + 2);
   });
 
-  it('Klinikring: Gravo-Sturm-Schäden halbiert', () => {
-    const make = (clinic: boolean) => {
-      const w = createWorld({ seed: 11, playerName: 'T', aiCompanies: 0 });
-      const me = player(w);
-      for (const p of ['automa', 'asklepios', 'ostara', 'seidra', 'arkadia', 'kolossos']) plant(w, me, 'pharma', p);
-      w.facilities.forEach((f, i) => (f.id = `f${i}`));
-      company(w, me).cash = 1e9;
-      if (clinic) finished(w, 'clinic');
-      run(w, 300);
-      return w.facilities.reduce((s, f) => s + (100 - f.condition), 0);
-    };
-    const without = make(false);
-    const withClinic = make(true);
-    expect(without).toBeGreaterThan(0);
-    expect(withClinic).toBeLessThan(without);
-  });
 });
 
 // ---------- Quark ----------

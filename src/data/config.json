@@ -69,7 +69,10 @@
   "facilities": {
     "wearPerDay": 0.15,
     "repairBelow": 70,
-    "repairCostPerPercent": 0.003
+    "repairCostPerPercent": 0.003,
+    "repairDays": [1, 2, 3],
+    "freshDays": 10,
+    "autoRepairBelow": 90
   },
   "events": {
     "outerRingParsec": 550,
@@ -104,7 +107,6 @@
   },
   "projects": {
     "openOrdersPerGood": 2,
-    "stormDamageFactor": 0.5,
     "extraSites": 1,
     "extraRoutes": 2,
     "warningDays": 7,

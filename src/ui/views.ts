@@ -24,6 +24,7 @@ import {
   productionEfficiency,
   ranking,
   repairFacilityCost,
+  facilityRepairDays,
   repairShipCost,
   shipDef,
   shipLoads,
@@ -470,7 +471,9 @@ export function facilitiesView({ w, me, order }: ViewCtx): string {
         f.status === 'running' ? btn('Stilllegen', 'stop', f.id, 'data-tip="Hält die Produktion an. Dann fallen nur noch Wartungskosten an."') : '',
         Object.keys(def.inputs).length && f.status !== 'construction' ? btn('Ware bestellen…', 'order', f.id, 'data-tip="Stellt eine Nachfrage an die Börse: andere Firmen liefern dir Rohstoffe zum genannten Preis."') : '',
         btn('Lager erweitern…', 'storage', f.id, 'data-tip="Kauft ein Zusatzlager für eine Frachtart. Es wird wie eine Anlage hingeflogen."'),
-        f.condition < 100 ? btn(`Reparieren (${cr(repairFacilityCost(f))})`, 'repair-facility', f.id) : '',
+        f.condition < 100 && !f.repair && !hasProject(w, me, 'autofactory')
+          ? btn(`Reparieren (${cr(repairFacilityCost(f))})`, 'repair-facility', f.id, `data-tip="Ein Dynacore-Wartungsteam repariert die Anlage auf 100 %. Sie steht dafür ${days(facilityRepairDays(f.type))} still und verschleißt danach ${CONFIG.facilities.freshDays} Tage lang nicht."`)
+          : '',
         btn('Verschrotten', 'scrap', f.id, 'class="ghost"'),
       ].join('');
       return `<section class="card drag-item" data-drag-item="${f.id}">
