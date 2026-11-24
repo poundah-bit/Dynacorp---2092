@@ -14,6 +14,9 @@
   --bad: #ff7b72;
   --tap: 48px;
   --map-bg: #070b17;
+  /* facility goods flow: what goes in, what comes out */
+  --io-in: #7ee787;
+  --io-out: #4fd8f0;
   --tier-raw: #6fa8ff;
   --tier-mid: #f2cc60;
   --tier-final: #d68cff;
@@ -422,3 +425,7 @@ td .bar { height: 8px; min-width: 64px; margin-left: auto; }
 .ov-detail { border-left: 3px solid currentColor; padding: 4px 10px; }
 .ov-detail b, .ov-detail p { color: var(--text); }
 .finale h3 { margin-top: 0; }
+
+/* facility inputs and outputs */
+.io-in { color: var(--io-in); }
+.io-out { color: var(--io-out); }

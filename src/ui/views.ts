@@ -61,6 +61,7 @@ import {
   facilityStatus,
   fe,
   flows,
+  ioLine,
   gName,
   inDays,
   loadName,
@@ -258,7 +259,7 @@ export function terraView({ w, me }: ViewCtx): string {
       .join('');
     const cls = c.cash < def.price ? ' dim' : '';
     return `<div class="row${cls}"><div class="grow"><b>${def.name}</b> <span class="price">${cr(def.price)}</span>
-      <div class="small">liefert ${flows(def.outputs)} pro Tag${Object.keys(def.inputs).length ? ` · braucht ${flows(def.inputs)}` : ''}</div>
+      <div class="small">${ioLine(def)}</div>
       <div class="small muted">Kosten ${num(def.maintenance)} + ${num(def.operation)} Cr/Tag (Wartung + Betrieb) · Transport als Stückgut ${fe(def.size)}</div></div>
       <div class="acts">${sites}</div></div>`;
   }).join('');
@@ -479,7 +480,8 @@ export function facilitiesView({ w, me, order }: ViewCtx): string {
       return `<section class="card drag-item" data-drag-item="${f.id}">
         <h2>${icon(facilityIcon(f.type))}${facilityLabel(w, f)}${f.units > 1 ? ` <span class="muted">× ${f.units}</span>` : ''} <span class="badge ${st.cls}">${icon(st.icon)} ${st.text}</span>${dragHandle('facility', f.id, `${facilityLabel(w, f)} verschieben`)}</h2>
         <div class="meters">${meterRow('Zustand', bar({ value: f.condition, max: 100, tone: facilityConditionTone(f.condition), label: 'Zustand' }))}</div>
-        <p class="small">Zustand <b class="${toneClass(facilityConditionTone(f.condition))}">${dec(f.condition)} %</b> · Auslastung ${eff} % · Kosten heute ${cr(cost)} · liefert bis zu ${flows(def.outputs, f.units)} pro Tag${Object.keys(def.inputs).length ? ` aus ${flows(def.inputs, f.units)}` : ''}</p>
+        <p class="small">Zustand <b class="${toneClass(facilityConditionTone(f.condition))}">${dec(f.condition)} %</b> · Auslastung ${eff} % · Kosten heute ${cr(cost)}</p>
+        <p class="small">${ioLine(def, f.units)} <span class="muted">(höchstens)</span></p>
         ${f.status === 'running' && eff === 0 ? `<p class="bad small">Steht still: ${Object.keys(def.inputs).some((g) => (f.stock[g] ?? 0) <= 0) ? 'Rohstoffe fehlen – „Ware bestellen“.' : 'Lager voll – liefere Ware aus.'}</p>` : ''}
         <table><tr><th>Ware</th><th class="n">Lager</th><th class="n">Kapazität</th><th class="n">Aufträge</th><th class="n"></th></tr>${stock}</table>
         ${f.storages.length ? `<p class="small muted">Zusatzlager: ${f.storages.map((id) => storageDef(id).name).join(', ')}</p>` : ''}

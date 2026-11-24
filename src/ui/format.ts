@@ -117,6 +117,12 @@ export function flows(rec: Record<string, number>, units = 1): string {
   return parts.length ? parts.join(' + ') : '–';
 }
 
+/** What goes into a plant (green „in:“) and what comes out (cyan „out:“), per day. */
+export function ioLine(def: { inputs: Record<string, number>; outputs: Record<string, number> }, units = 1): string {
+  const ins = Object.keys(def.inputs).length ? `<span class="io-in"><b>in:</b> ${flows(def.inputs, units)}</span> · ` : '';
+  return `${ins}<span class="io-out"><b>out:</b> ${flows(def.outputs, units)}</span> <span class="muted">pro Tag</span>`;
+}
+
 // ---------- fill bars ----------
 
 export type Tone = 'good' | 'warn' | 'bad' | 'neutral';
