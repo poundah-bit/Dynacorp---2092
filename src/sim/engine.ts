@@ -2,7 +2,7 @@
 
 import type { Result } from './actions';
 import { CONFIG, FACILITIES, GOODS, SHIPS, TERRA, distance, facilityDef, good, loadingDays, planet, shipDef, storageDef, unitOf, worldPlanets } from './data';
-import { companyValue, debt, diff, repairShip, shipLoads, startQueued, startRoute, transportDeadline } from './actions';
+import { companyValue, debt, diff, facilityRepairDays, repairShip, shipLoads, startQueued, startRoute, transportDeadline } from './actions';
 import { runAi } from './ai';
 import { routesTick } from './automation';
 import { hasProject, projectDelivered, projectsTick } from './projects';
@@ -105,10 +105,21 @@ function facilitiesTick(w: World) {
     }
     let cost = def.maintenance * f.units;
     for (const sid of f.storages) cost += storageDef(sid).maintenance + storageDef(sid).operation;
-    if (f.status === 'running') {
+    // Automatische Fabriken: below the limit the plant is repaired for free while it keeps producing
+    const startsToday = !f.repair && f.condition < CONFIG.facilities.autoRepairBelow && hasProject(w, f.owner, 'autofactory');
+    if (startsToday) f.repair = { daysLeft: facilityRepairDays(f.type), auto: true };
+    // a manual repair stops the plant; an automatic one does not
+    const standing = f.repair && !f.repair.auto;
+    if (f.status === 'running' && !standing) {
       cost += def.operation * f.units;
       produce(f);
-      f.condition = Math.max(0, f.condition - CONFIG.facilities.wearPerDay);
+      if (f.freshDays) f.freshDays -= 1;
+      else if (!f.repair) f.condition = Math.max(0, f.condition - CONFIG.facilities.wearPerDay);
+    }
+    if (f.repair && !startsToday && --f.repair.daysLeft <= 0) {
+      f.repair = undefined;
+      f.condition = 100;
+      f.freshDays = CONFIG.facilities.freshDays;
     }
     pay(w, f.owner, null, cost);
   }
@@ -117,8 +128,8 @@ function facilitiesTick(w: World) {
 /** Efficiency 0..1: limited by inputs on stock, free storage for outputs and condition. */
 export function productionEfficiency(f: Facility): number {
   const def = facilityDef(f.type);
-  // wear only hurts below 90 % condition, down to half output
-  let eff = f.condition >= 90 ? 1 : Math.max(0.5, f.condition / 90);
+  // wear only hurts below 90 % condition, down to half output (not while the Automatische Fabriken repair it)
+  let eff = f.condition >= 90 || f.repair?.auto ? 1 : Math.max(0.5, f.condition / 90);
   for (const [g, need] of Object.entries(def.inputs)) {
     eff = Math.min(eff, (f.stock[g] ?? 0) / (need * f.units));
   }
@@ -569,11 +580,7 @@ function gravoStorms(w: World) {
   const p = outer[Math.floor(random(w) * outer.length)];
   if (!p) return;
   const [lo, hi] = e.gravoStormDamage as [number, number];
-  // the Klinikring halves the damage to its owner's plants and ships (same dice, so the RNG stays the same)
-  const damage = (owner: string) => {
-    const d = randInt(w, lo, hi);
-    return hasProject(w, owner, 'clinic') ? Math.ceil(d * CONFIG.projects.stormDamageFactor) : d;
-  };
+  const damage = (_owner: string) => randInt(w, lo, hi);
   for (const f of w.facilities.filter((x) => x.planet === p.id)) f.condition = Math.max(0, f.condition - damage(f.owner));
   for (const s of w.ships) {
     const near = s.at === p.id || s.route?.to === p.id || s.route?.from === p.id;

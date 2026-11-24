@@ -69,6 +69,8 @@ export { cargoName };
 export function facilityStatus(f: Facility): { text: string; cls: string; icon: IconName } {
   if (f.status === 'construction') return { text: `Im Bau – noch ${days(f.buildDaysLeft)}`, cls: 'warn', icon: 'construction' };
   if (f.status === 'stopped') return { text: 'Stillgelegt', cls: 'bad', icon: 'stopped' };
+  if (f.repair && !f.repair.auto) return { text: `In Reparatur – steht still, noch ${days(f.repair.daysLeft)}`, cls: 'warn', icon: 'construction' };
+  if (f.repair) return { text: `Wartet sich selbst – noch ${days(f.repair.daysLeft)}`, cls: 'good', icon: 'running' };
   if (productionEfficiency(f) <= 0) return { text: 'Steht still', cls: 'bad', icon: 'stopped' };
   return { text: 'In Betrieb', cls: 'good', icon: 'running' };
 }

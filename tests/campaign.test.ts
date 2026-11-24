@@ -103,9 +103,9 @@ describe('Welt abschließen', () => {
   });
 
   it('sechstes Quark: keine neue Welt, Kampagne vollständig', () => {
-    const { w } = finished(['clinic']);
+    const { w } = finished(['datacenter']);
     const mod = (n: number, quark: 'up' | 'down' | 'charm' | 'strange' | 'top', project: string) => ({ n, quark, project, worldName: `Welt ${n}`, firm: 'F', days: 900, index: 1000, facilities: 7, ships: 9, closedDay: 900 });
-    w.campaign = { world: 6, modules: [mod(1, 'up', 'dock'), mod(2, 'down', 'dome'), mod(3, 'charm', 'yard'), mod(4, 'strange', 'city'), mod(5, 'top', 'datacenter')], usedNames: [] };
+    w.campaign = { world: 6, modules: [mod(1, 'up', 'dock'), mod(2, 'down', 'dome'), mod(3, 'charm', 'yard'), mod(4, 'strange', 'city'), mod(5, 'top', 'autofactory')], usedNames: [] };
     const r = closeWorld(w, 'bottom');
     expect(r.ok && r.value).toBe(w);
     expect(campaignComplete(w)).toBe(true);
@@ -136,7 +136,7 @@ describe('Welt abschließen', () => {
 describe('Ganze Kampagne', () => {
   it('fünf echte Abschlüsse hintereinander: jede Welt bekommt neue Namen, die sechste schließt die Kampagne', () => {
     const order: [string, 'up' | 'down' | 'charm' | 'strange' | 'top' | 'bottom'][] = [
-      ['dock', 'up'], ['dome', 'down'], ['yard', 'charm'], ['city', 'strange'], ['datacenter', 'top'], ['clinic', 'bottom'],
+      ['dock', 'up'], ['dome', 'down'], ['yard', 'charm'], ['city', 'strange'], ['autofactory', 'top'], ['datacenter', 'bottom'],
     ];
     let w = createWorld({ seed: 9, playerName: 'T', aiCompanies: 1 });
     const names = new Set<string>();

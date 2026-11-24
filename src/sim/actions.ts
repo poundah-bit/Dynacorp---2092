@@ -446,13 +446,22 @@ export function repairFacilityCost(f: Facility): number {
   return Math.round(facilityDef(f.type).price * f.units * CONFIG.facilities.repairCostPerPercent * (100 - f.condition));
 }
 
-/** Orders a Dynacore maintenance ship; repaired immediately in this version (travel time comes with the UI). */
+/** Days a repair takes: 1 for raw-goods plants, 2 for processing, 3 for final goods (by the plant's output). */
+export function facilityRepairDays(type: string): number {
+  const tier = good(Object.keys(facilityDef(type).outputs)[0]!).tier;
+  return CONFIG.facilities.repairDays[tier === 'raw' ? 0 : tier === 'intermediate' ? 1 : 2]!;
+}
+
+/** Orders a Dynacore maintenance team: paid now, the plant stands still for the repair days. */
 export function repairFacility(w: World, companyId: string, facilityId: string): Result<undefined> {
   const r = ownFacility(w, companyId, facilityId);
   if (!r.ok) return r;
+  if (r.value.repair) return fail('Die Anlage wird schon repariert.');
+  if (hasProject(w, companyId, 'autofactory')) return fail('Automatische Fabriken: deine Anlagen warten sich selbst.');
+  if (r.value.condition >= 100) return fail('Die Anlage ist in bestem Zustand.');
   const paid = payFromCash(w, companyId, repairFacilityCost(r.value), 'die Reparatur');
   if (!paid.ok) return paid;
-  r.value.condition = 100;
+  r.value.repair = { daysLeft: facilityRepairDays(r.value.type), auto: false };
   return ok(undefined);
 }
 

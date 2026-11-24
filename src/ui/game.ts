@@ -19,6 +19,7 @@ import {
   cancelTransport,
   company,
   ensureQuark,
+  ensureProjects,
   good,
   projectDef,
   repairShipOnSite,
@@ -182,6 +183,7 @@ function showStart() {
 function begin(world: World, hideGuide: boolean, order?: unknown) {
   ensureStories(world);
   ensureQuark(world);
+  ensureProjects(world);
   setMusicWorld(campaignOf(world).world);
   w = world;
   listOrder = parseOrder(order);
@@ -616,7 +618,7 @@ const ACTS: Record<string, (a: string) => void> = {
   unrelease: (id) => result(cancelTransport(w!, me, id), 'Ausschreibung zurückgezogen – weise jetzt ein eigenes Schiff zu.'),
   start: (id) => result(startFacility(w!, me, id), 'Die Anlage läuft.'),
   stop: (id) => result(stopFacility(w!, me, id), 'Die Anlage ist stillgelegt.'),
-  'repair-facility': (id) => result(repairFacility(w!, me, id), 'Ein Dynacore-Wartungsschiff hat die Anlage repariert.', 'repair'),
+  'repair-facility': (id) => result(repairFacility(w!, me, id), 'Das Dynacore-Wartungsteam repariert die Anlage – sie steht dafür kurz still.', 'repair'),
   scrap(id) {
     if (confirm('Anlage wirklich verschrotten? Das lässt sich nicht rückgängig machen.')) result(scrapFacility(w!, me, id), 'Verschrottet.');
   },

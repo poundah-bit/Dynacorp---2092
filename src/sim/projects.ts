@@ -23,6 +23,19 @@ export function projectProgress(w: World, id: string): { material: number; build
   return { material: Math.min(1, got / need), build: p.buildDaysLeft === undefined ? 0 : (days - p.buildDaysLeft) / days };
 }
 
+/**
+ * Old saves: the Klinikring became the Automatische Fabriken (same place in the list, new quark), so closed
+ * modules take the quark their project has now.
+ */
+export function ensureProjects(w: World): void {
+  for (const p of w.projects ?? []) if (p.id === 'clinic') p.id = 'autofactory';
+  for (const d of w.demands) if (d.project === 'clinic') d.project = 'autofactory';
+  for (const m of w.campaign?.modules ?? []) {
+    if (m.project === 'clinic') m.project = 'autofactory';
+    m.quark = projectDef(m.project).quark;
+  }
+}
+
 /** Has this company finished the project? (only the player builds projects) */
 export const hasProject = (w: World, c: string, id: string) => c === w.playerId && projectState(w, id)?.status === 'done';
 
